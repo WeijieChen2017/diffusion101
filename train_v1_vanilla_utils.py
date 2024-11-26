@@ -49,8 +49,6 @@ def train_or_eval_or_test_the_batch(
     batch_per_eval = get_param("train_param")["batch_per_eval"]
     num_frames = get_param("num_frames")
     root_dir = get_param("root")
-    slice_z = num_frames * 3
-    slice_offset = 7
     # 256 to 128
 
     # body is the body mask, only masked region should be from 0-1 to -1 to 1
