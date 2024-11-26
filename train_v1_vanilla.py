@@ -11,7 +11,7 @@ from train_v1_vanilla_utils import prepare_dataset, train_or_eval_or_test_the_ba
 from global_config import global_config, set_param, get_param
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<< running setting
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 root_dir = "projects/v1_vanilla_step1000"
 os.path.exists(root_dir) or os.makedirs(root_dir)
 data_division_file = "James_data_v3/cv_list.json"
