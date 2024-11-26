@@ -12,15 +12,13 @@ from global_config import global_config, set_param, get_param
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<< running setting
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-root_dir = "projects/v1_vanilla_step1000"
+root_dir = "projects/v1_vanilla_s1000_1126"
 os.path.exists(root_dir) or os.makedirs(root_dir)
 data_division_file = "James_data_v3/cv_list.json"
 seeds = 729
 base_learning_rate = 1e-4
-num_frames = 5
 
 set_param("cv", 0)
-set_param("num_frames", num_frames)
 set_param("root", root_dir)
 set_param("lr", base_learning_rate)
 set_param("log_txt_path", os.path.join(root_dir, "log.txt"))
