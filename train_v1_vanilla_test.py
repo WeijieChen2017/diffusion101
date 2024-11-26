@@ -60,6 +60,8 @@ model_ckpt_path = root_dir+"/best.pth"
 if os.path.exists(model_ckpt_path):
     printlog(f"Loading model from {model_ckpt_path}")
     checkpoint = torch.load(model_ckpt_path)
+    # show all checkpoint keys
+    printlog(f"Checkpoint keys: {checkpoint["state_dict"].keys()}")
     diffusion.load_state_dict(checkpoint["state_dict"])
     best_val_loss = checkpoint["loss"]
     printlog(f"Loaded model from {model_ckpt_path}, with the average val loss {best_val_loss:.6f}.")
