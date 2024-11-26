@@ -5,7 +5,7 @@ import numpy as np
 from omegaconf import OmegaConf
 
 import torch.optim as optim
-from video_diffusion_pytorch import Unet3D, GaussianDiffusion
+from denoising_diffusion_pytorch import Unet, GaussianDiffusion
 
 from train_v1_vanilla_utils import prepare_dataset, train_or_eval_or_test_the_batch, printlog
 # from train_v1_vanilla_utils import load_inception_model
@@ -43,20 +43,20 @@ for key in experiment_config.keys():
 # PRETRAINED_WEIGHTS_PATH = "inception_v3_weights.pth"
 # inceptionV3 = load_inception_model(PRETRAINED_WEIGHTS_PATH).to(device)
 
-model = Unet3D(
+model = Unet(
     dim = 64,
-    dim_mults = (1, 2, 4, 8)
+    dim_mults = (1, 2, 4, 8),
+    flash_attn = False,
 )
 
 diffusion = GaussianDiffusion(
     model,
-    image_size = 64,
-    num_frames = 5,
-    timesteps = 100,   # number of steps
-    loss_type = 'l1'    # L1 or L2
+    image_size = 256,
+    timesteps = 1000,   # number of steps
+    # loss_type = 'l1'    # L1 or L2
 ).to(device)
 
-model_ckpt_path = root_dir+"/epoch_best.pth"
+model_ckpt_path = root_dir+"/best.pth"
 if os.path.exists(model_ckpt_path):
     printlog(f"Loading model from {model_ckpt_path}")
     checkpoint = torch.load(model_ckpt_path)
