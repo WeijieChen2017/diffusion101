@@ -101,7 +101,7 @@ def train_or_eval_or_test_the_batch(
             # printlog(f"save batch_y to {save_name}")
             # exit()
 
-            batch_y = batch_y.half().to(device)
+            batch_y = batch_y.to(device)
             
             if stage == "train":
                 optimizer.zero_grad()

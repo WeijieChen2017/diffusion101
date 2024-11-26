@@ -45,7 +45,7 @@ train_loader, val_loader, _ = prepare_dataset(data_div, invlove_test=False)
 model = Unet(
     dim = 64,
     dim_mults = (1, 2, 4, 8),
-    flash_attn = True,
+    flash_attn = False,
 )
 
 diffusion = GaussianDiffusion(
