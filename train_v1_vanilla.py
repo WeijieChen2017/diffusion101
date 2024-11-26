@@ -121,7 +121,7 @@ for idx_epoch in range(epoch):
     if avg_loss < best_val_loss:
         best_val_loss = avg_loss
         torch.save({
-            "state_dict": model.state_dict(),
+            "state_dict": diffusion.state_dict(),
             "optimizer": optimizer.state_dict(),
             "epoch": idx_epoch,
             "loss": avg_loss,
@@ -130,7 +130,7 @@ for idx_epoch in range(epoch):
     
     if idx_epoch % get_param("train_param")["save_per_epoch"] == 0:
         torch.save({
-            "state_dict": model.state_dict(),
+            "state_dict": diffusion.state_dict(),
             "optimizer": optimizer.state_dict(),
             "epoch": idx_epoch,
             "loss": avg_loss,

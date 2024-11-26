@@ -62,8 +62,8 @@ if os.path.exists(model_ckpt_path):
     checkpoint = torch.load(model_ckpt_path)
     ckpt_keys = checkpoint["state_dict"].keys()
     # show all checkpoint keys
-    printlog(f"Checkpoint keys, {ckpt_keys}")
-    diffusion.load_state_dict(checkpoint["state_dict"])
+    # printlog(f"Checkpoint keys, {ckpt_keys}")
+    model.load_state_dict(checkpoint["state_dict"])
     best_val_loss = checkpoint["loss"]
     printlog(f"Loaded model from {model_ckpt_path}, with the average val loss {best_val_loss:.6f}.")
 
