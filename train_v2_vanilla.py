@@ -4,7 +4,7 @@ import torch
 from omegaconf import OmegaConf
 
 import torch.optim as optim
-from denoising_diffusion_pytorch import Unet, GaussianDiffusionCondition
+from denoising_diffusion_pytorch import Unet, GaussianDiffusion
 
 from train_v2_vanilla_utils import prepare_dataset, train_or_eval_or_test_the_batch_cond, printlog
 # from train_v1_vanilla_utils import load_inception_model
@@ -46,7 +46,7 @@ model = Unet(
     flash_attn = False,
 )
 
-diffusion = GaussianDiffusionCondition(
+diffusion = GaussianDiffusion(
     model,
     image_size = 256,
     timesteps = 1000,   # number of steps

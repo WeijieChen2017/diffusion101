@@ -475,7 +475,7 @@ def sigmoid_beta_schedule(timesteps, start = -3, end = 3, tau = 1, clamp_min = 1
     betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
     return torch.clip(betas, 0, 0.999)
 
-class GaussianDiffusionCondition(Module):
+class GaussianDiffusion(Module):
     def __init__(
         self,
         model,
