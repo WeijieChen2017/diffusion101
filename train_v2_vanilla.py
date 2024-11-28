@@ -6,7 +6,7 @@ from omegaconf import OmegaConf
 import torch.optim as optim
 from denoising_diffusion_pytorch import Unet, GaussianDiffusionCondition
 
-from train_v2_vanilla_utils import prepare_dataset, train_or_eval_or_test_the_batch, printlog
+from train_v2_vanilla_utils import prepare_dataset, train_or_eval_or_test_the_batch_cond, printlog
 # from train_v1_vanilla_utils import load_inception_model
 from global_config import global_config, set_param, get_param
 
@@ -71,7 +71,7 @@ for idx_epoch in range(epoch):
     total_case_train = len(train_loader)
 
     for idx_case, batch in enumerate(train_loader):
-        cl_1, cl_2, cl_3 = train_or_eval_or_test_the_batch(
+        cl_1, cl_2, cl_3 = train_or_eval_or_test_the_batch_cond(
             batch=batch,
             batch_size=get_param("train_param")["train_stage"]["batch_size"],
             stage="train",
@@ -98,7 +98,7 @@ for idx_epoch in range(epoch):
     total_case_val = len(val_loader)
 
     for idx_case, batch in enumerate(val_loader):
-        cl_1, cl_2, cl_3 = train_or_eval_or_test_the_batch(
+        cl_1, cl_2, cl_3 = train_or_eval_or_test_the_batch_cond(
             batch=batch,
             batch_size=get_param("train_param")["val_stage"]["batch_size"],
             stage="eval",
