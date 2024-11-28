@@ -801,7 +801,7 @@ class GaussianDiffusion(Module):
         # noise sample
 
         x = self.q_sample(x_start = x_start, t = t, noise = noise)
-        print(f"shape of x: {x.shape}")
+        # print(f"shape of x: {x.shape}")
 
         # if doing self-conditioning, 50% of the time, predict x_start from current set of times
         # and condition with unet with that

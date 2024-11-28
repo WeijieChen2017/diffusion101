@@ -43,6 +43,7 @@ train_loader, val_loader, _ = prepare_dataset(data_div, invlove_test=False)
 model = Unet(
     dim = 64,
     dim_mults = (1, 2, 4, 8),
+    channels = 6,
     flash_attn = False,
 )
 
