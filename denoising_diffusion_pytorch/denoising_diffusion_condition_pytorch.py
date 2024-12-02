@@ -629,6 +629,8 @@ class GaussianDiffusion(Module):
         )
 
     def q_posterior(self, x_start, x_t, t):
+        x_start = x_start[:, :3, :, :]  # First 3 channels are `x`
+        x_t = x_t[:, :3, :, :]  # First 3 channels are `x`
         posterior_mean = (
             extract(self.posterior_mean_coef1, t, x_t.shape) * x_start +
             extract(self.posterior_mean_coef2, t, x_t.shape) * x_t
