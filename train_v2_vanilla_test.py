@@ -37,7 +37,12 @@ for key in experiment_config.keys():
     set_param(key, experiment_config[key])
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<< prepare data loader, inceptionV3, and mode
-_, val_loader, _ = prepare_dataset(data_div, invlove_train=False, invlove_val=True, invlove_test=False)
+_, _, test_loader = prepare_dataset(
+    data_div, 
+    invlove_train=False, 
+    invlove_val=False, 
+    invlove_test=True
+)
 
 # Path to save/load pretrained weights
 # PRETRAINED_WEIGHTS_PATH = "inception_v3_weights.pth"

@@ -66,7 +66,7 @@ def test_diffusion_model_and_save_slices(val_loader, model, device, output_dir):
 
             # Compute MAE loss with a factor of 4000
             slice_mae = F.l1_loss(pred_slice_normalized, ct_slice_normalized, reduction="mean") * 4000
-            printlog(f"Case {idx_case + 1}, Slice {z}: MAE = {slice_mae.item():.6f}")
+            printlog(f"Case {idx_case + 1}/{len_z}, Slice {z}: MAE = {slice_mae.item():.6f}")
 
             # Save PET, CT, and Pred_CT for this slice
             save_data = {
