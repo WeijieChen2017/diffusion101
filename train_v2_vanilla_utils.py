@@ -49,7 +49,7 @@ def test_diffusion_model_and_save(val_loader, model, device, output_dir):
         slice_mae_losses = []  # To store MAE losses for each slice
 
         # Generate predictions slice by slice
-        for z in range(1, len_z - 1):
+        for z in tqdm(range(1, len_z - 1), desc="Predicting slices", disable=True):
             # Create batch for model input
             cond = torch.zeros((1, 3, pet.shape[2], pet.shape[3])).to(device)  # Shape: (batch_size, 3, h, w)
             cond[0, 0, :, :] = pet[:, z - 1, :, :]
