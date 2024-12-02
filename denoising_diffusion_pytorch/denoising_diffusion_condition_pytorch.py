@@ -723,8 +723,8 @@ class GaussianDiffusion(Module):
         # Normalize cond
         cond = self.normalize(cond)
 
-        # img = torch.randn(shape, device=device)
-        img = torch.randn((batch, 3, shape[2], shape[3]), device=device)
+        img = torch.randn(shape, device=device)
+        # img = torch.randn((batch, 3, shape[2], shape[3]), device=device)
         imgs = [img]
 
         x_start = None
@@ -841,7 +841,7 @@ class GaussianDiffusion(Module):
 
     @torch.inference_mode()
     def sample(self, batch_size=16, cond=None, return_all_timesteps=False):
-        (h, w), channels = self.image_size, self.channels
+        (h, w), channels = self.image_size, self.channels // 2
         sample_fn = self.p_sample_loop if not self.is_ddim_sampling else self.ddim_sample
 
         # Cond must be provided and should match the batch size
