@@ -734,8 +734,9 @@ class GaussianDiffusion(Module):
             self_cond = x_start if self.self_condition else None
             # Concatenate img and cond
             img_cond = torch.cat((img, cond), dim=1)
-            print(f"img_cond shape {img_cond.shape}")
+            # print(f"img_cond shape {img_cond.shape}") # img_cond shape torch.Size([1, 6, 256, 256])
             img, x_start = self.p_sample(img_cond, t, cond, self_cond)
+            print(f"model output shape {img.shape}")
             imgs.append(img)
 
         ret = img if not return_all_timesteps else torch.stack(imgs, dim=1)
