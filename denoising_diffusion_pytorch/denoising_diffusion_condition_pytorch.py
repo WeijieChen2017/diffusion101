@@ -615,12 +615,14 @@ class GaussianDiffusion(Module):
         )
 
     def predict_v(self, x_start, t, noise):
+        x_start = x_start[:, :3, :, :]  # First 3 channels are `x`
         return (
             extract(self.sqrt_alphas_cumprod, t, x_start.shape) * noise -
             extract(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape) * x_start
         )
 
     def predict_start_from_v(self, x_t, t, v):
+        x_t = x_t[:, :3, :, :]  # First 3 channels are `x`
         return (
             extract(self.sqrt_alphas_cumprod, t, x_t.shape) * x_t -
             extract(self.sqrt_one_minus_alphas_cumprod, t, x_t.shape) * v
