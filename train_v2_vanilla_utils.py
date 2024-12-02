@@ -11,6 +11,7 @@ from monai.transforms import (
     Compose, 
     LoadImaged, 
     EnsureChannelFirstd,
+    EnsureTyped,
 )
 import torch.nn.functional as F
 
@@ -41,6 +42,7 @@ def test_diffusion_model_and_save_slices(val_loader, model, device, output_dir):
     for idx_case, batch in enumerate(val_loader):
         printlog(f"Processing case {idx_case + 1}/{len(val_loader)}")
 
+        filenames = batch["filename"]
         pet = batch["PET"].to(device)  # Shape: (1, z, 256, 256)
         ct = batch["CT"].to(device)  # Ground truth CT, Shape: (1, z, 256, 256)
         len_z = pet.shape[1]  # Number of slices along the z-axis
@@ -73,7 +75,7 @@ def test_diffusion_model_and_save_slices(val_loader, model, device, output_dir):
                 "Pred_CT": pred_slice_normalized.cpu().numpy(),
                 "MAE": slice_mae.item()
             }
-            save_path = os.path.join(output_dir, f"case_{idx_case + 1}_slice_{z}.npz")
+            save_path = os.path.join(output_dir, f"{filenames}_case_{idx_case + 1}_slice_{z}.npz")
             np.savez_compressed(save_path, **save_data)
 
             printlog(f"Saved slice {z} for case {idx_case + 1} to {save_path} at MAE {slice_mae.item()}")
@@ -576,6 +578,7 @@ def prepare_dataset(data_div, invlove_train=False, invlove_val=False, invlove_te
             "PET": f"James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz",
             "CT": f"James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz",
             "BODY": f"James_data_v3/mask/mask_body_contour_{hashname}.nii.gz",
+            "filename": hashname,
         })
 
     for hashname in val_list:
@@ -583,6 +586,7 @@ def prepare_dataset(data_div, invlove_train=False, invlove_val=False, invlove_te
             "PET": f"James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz",
             "CT": f"James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz",
             "BODY": f"James_data_v3/mask/mask_body_contour_{hashname}.nii.gz",
+            "filename": hashname,
         })
 
     for hashname in test_list:
@@ -590,6 +594,7 @@ def prepare_dataset(data_div, invlove_train=False, invlove_val=False, invlove_te
             "PET": f"James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz",
             "CT": f"James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz",
             "BODY": f"James_data_v3/mask/mask_body_contour_{hashname}.nii.gz",
+            "filename": hashname,
         })
 
     # save the data division file
@@ -615,6 +620,7 @@ def prepare_dataset(data_div, invlove_train=False, invlove_val=False, invlove_te
             [
                 LoadImaged(keys=input_modality, image_only=True),
                 EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
+                EnsureTyped(keys=input_modality),
                 # NormalizeIntensityd(keys=input_modality, nonzero=True, channel_wise=False),
                 # RandSpatialCropd(
                 #     keys=input_modality_dict["x"], 
@@ -639,6 +645,7 @@ def prepare_dataset(data_div, invlove_train=False, invlove_val=False, invlove_te
             [
                 LoadImaged(keys=input_modality, image_only=True),
                 EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
+                EnsureTyped(keys=input_modality),
                 # NormalizeIntensityd(keys=input_modality, nonzero=True, channel_wise=False),
                 # RandSpatialCropd(
                 #     keys=input_modality_dict["x"], 
@@ -661,6 +668,7 @@ def prepare_dataset(data_div, invlove_train=False, invlove_val=False, invlove_te
             [
                 LoadImaged(keys=input_modality, image_only=True),
                 EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
+                EnsureTyped(keys=input_modality),
                 # NormalizeIntensityd(keys=input_modality, nonzero=True, channel_wise=False),
                 # RandSpatialCropd(
                 #     keys=input_modality_dict["x"], 
