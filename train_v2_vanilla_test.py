@@ -37,7 +37,7 @@ for key in experiment_config.keys():
     set_param(key, experiment_config[key])
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<< prepare data loader, inceptionV3, and mode
-train_loader, val_loader, _ = prepare_dataset(data_div, invlove_test=False)
+_, val_loader, _ = prepare_dataset(data_div, invlove_train=False, invlove_val=True, invlove_test=False)
 
 # Path to save/load pretrained weights
 # PRETRAINED_WEIGHTS_PATH = "inception_v3_weights.pth"
@@ -46,6 +46,7 @@ train_loader, val_loader, _ = prepare_dataset(data_div, invlove_test=False)
 model = Unet(
     dim = 64,
     dim_mults = (1, 2, 4, 8),
+    channels = 6,
     flash_attn = False,
 )
 
