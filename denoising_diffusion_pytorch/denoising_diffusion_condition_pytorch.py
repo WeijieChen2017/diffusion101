@@ -723,7 +723,8 @@ class GaussianDiffusion(Module):
         # Normalize cond
         cond = self.normalize(cond)
 
-        img = torch.randn(shape, device=device)
+        # img = torch.randn(shape, device=device)
+        img = torch.randn((batch, 3, shape[2], shape[3]), device=device)
         imgs = [img]
 
         x_start = None
