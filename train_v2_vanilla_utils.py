@@ -29,6 +29,62 @@ def printlog(message):
         f.write(message)
         f.write("\n")
 
+
+@torch.inference_mode()
+def test_diffusion_model_and_save(val_loader, model, device, output_dir):
+    model.eval()
+    os.makedirs(output_dir, exist_ok=True)  # Create the output directory if it doesn't exist
+
+    print("Starting testing...")
+
+    for idx_case, batch in enumerate(val_loader):
+        printlog(f"Processing case {idx_case + 1}/{len(val_loader)}")
+
+        pet = batch["PET"].to(device)  # Shape: (1, z, 256, 256)
+        ct = batch["CT"].to(device)  # Ground truth CT, Shape: (1, z, 256, 256)
+        len_z = pet.shape[1]  # Number of slices along the z-axis
+
+        pred_ct_case = torch.zeros_like(ct)  # Placeholder for predicted CT, same shape as input CT
+
+        # Generate predictions slice by slice
+        for z in range(1, len_z - 1):
+            # Create batch for model input
+            cond = torch.zeros((1, 3, pet.shape[2], pet.shape[3])).to(device)  # Shape: (batch_size, 3, h, w)
+            cond[0, 0, :, :] = pet[:, z - 1, :, :]
+            cond[0, 1, :, :] = pet[:, z, :, :]
+            cond[0, 2, :, :] = pet[:, z + 1, :, :]
+
+            # Generate prediction using the diffusion model
+            pred_slice = model.sample(batch_size=1, cond=cond).squeeze(0)  # Shape: (3, h, w)
+
+            # Assign the middle slice prediction to the corresponding z position
+            pred_ct_case[:, z, :, :] = pred_slice[1, :, :]  # Middle slice corresponds to current z
+
+        # Clip predictions to [-1, 1], normalize to [0, 1], and ground truth is already in [0, 1]
+        pred_ct_case = torch.clamp(pred_ct_case, min=-1, max=1)
+        pred_ct_case = (pred_ct_case + 1) / 2.0  # Normalize to [0, 1]
+        # ct = (ct + 1) / 2.0  # Normalize CT to [0, 1] as well
+
+        # Compute MAE loss with a factor of 4000
+        mae_loss = F.l1_loss(pred_ct_case, ct, reduction="mean") * 4000
+        printlog(f"Case {idx_case + 1}: MAE Loss = {mae_loss.item():.6f}")
+
+        # Save PET, CT, and predicted CT for this case
+        case_data = {
+            "PET": pet.cpu().numpy(),
+            "CT": ct.cpu().numpy(),
+            "Pred_CT": pred_ct_case.cpu().numpy(),
+            "MAE": mae_loss.item()
+        }
+        save_path = os.path.join(output_dir, f"case_{idx_case + 1}.npz")
+        np.savez_compressed(save_path, **case_data)
+
+        printlog(f"Saved results for case {idx_case + 1} to {save_path}")
+
+    printlog("Testing and saving completed.")
+
+
+
 def train_or_eval_or_test_the_batch_cond(
         batch, 
         batch_size, 

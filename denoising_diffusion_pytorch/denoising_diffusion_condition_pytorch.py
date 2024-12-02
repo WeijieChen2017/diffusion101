@@ -670,51 +670,145 @@ class GaussianDiffusion(Module):
         model_mean, posterior_variance, posterior_log_variance = self.q_posterior(x_start = x_start, x_t = x, t = t)
         return model_mean, posterior_variance, posterior_log_variance, x_start
 
+    # @torch.inference_mode()
+    # def p_sample(self, x, t: int, x_self_cond = None):
+    #     b, *_, device = *x.shape, self.device
+    #     batched_times = torch.full((b,), t, device = device, dtype = torch.long)
+    #     model_mean, _, model_log_variance, x_start = self.p_mean_variance(x = x, t = batched_times, x_self_cond = x_self_cond, clip_denoised = True)
+    #     noise = torch.randn_like(x) if t > 0 else 0. # no noise if t == 0
+    #     pred_img = model_mean + (0.5 * model_log_variance).exp() * noise
+    #     return pred_img, x_start
+
     @torch.inference_mode()
-    def p_sample(self, x, t: int, x_self_cond = None):
+    def p_sample(self, x, t: int, cond, x_self_cond=None):
         b, *_, device = *x.shape, self.device
-        batched_times = torch.full((b,), t, device = device, dtype = torch.long)
-        model_mean, _, model_log_variance, x_start = self.p_mean_variance(x = x, t = batched_times, x_self_cond = x_self_cond, clip_denoised = True)
-        noise = torch.randn_like(x) if t > 0 else 0. # no noise if t == 0
+        batched_times = torch.full((b,), t, device=device, dtype=torch.long)
+        # Normalize cond
+        cond = self.normalize(cond)
+
+        # Concatenate x and cond along the channel dimension
+        x_cond = torch.cat((x, cond), dim=1)
+
+        # Use the updated x_cond for model predictions
+        model_mean, _, model_log_variance, x_start = self.p_mean_variance(
+            x=x_cond, t=batched_times, x_self_cond=x_self_cond, clip_denoised=True
+        )
+        noise = torch.randn_like(x) if t > 0 else 0.0  # no noise if t == 0
         pred_img = model_mean + (0.5 * model_log_variance).exp() * noise
         return pred_img, x_start
 
+    # @torch.inference_mode()
+    # def p_sample_loop(self, shape, return_all_timesteps = False):
+    #     batch, device = shape[0], self.device
+
+    #     img = torch.randn(shape, device = device)
+    #     imgs = [img]
+
+    #     x_start = None
+
+    #     for t in tqdm(reversed(range(0, self.num_timesteps)), desc = 'sampling loop time step', total = self.num_timesteps):
+    #         self_cond = x_start if self.self_condition else None
+    #         img, x_start = self.p_sample(img, t, self_cond)
+    #         imgs.append(img)
+
+    #     ret = img if not return_all_timesteps else torch.stack(imgs, dim = 1)
+
+    #     ret = self.unnormalize(ret)
+    #     return ret
+
     @torch.inference_mode()
-    def p_sample_loop(self, shape, return_all_timesteps = False):
+    def p_sample_loop(self, shape, cond, return_all_timesteps=False):
         batch, device = shape[0], self.device
 
-        img = torch.randn(shape, device = device)
+        # Normalize cond
+        cond = self.normalize(cond)
+
+        img = torch.randn(shape, device=device)
         imgs = [img]
 
         x_start = None
 
-        for t in tqdm(reversed(range(0, self.num_timesteps)), desc = 'sampling loop time step', total = self.num_timesteps):
+        for t in tqdm(reversed(range(0, self.num_timesteps)), desc="sampling loop time step", total=self.num_timesteps):
             self_cond = x_start if self.self_condition else None
-            img, x_start = self.p_sample(img, t, self_cond)
+            # Concatenate img and cond
+            img_cond = torch.cat((img, cond), dim=1)
+            img, x_start = self.p_sample(img_cond, t, cond, self_cond)
             imgs.append(img)
 
-        ret = img if not return_all_timesteps else torch.stack(imgs, dim = 1)
+        ret = img if not return_all_timesteps else torch.stack(imgs, dim=1)
 
         ret = self.unnormalize(ret)
         return ret
 
+    # @torch.inference_mode()
+    # def ddim_sample(self, shape, return_all_timesteps = False):
+    #     batch, device, total_timesteps, sampling_timesteps, eta, objective = shape[0], self.device, self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta, self.objective
+
+    #     times = torch.linspace(-1, total_timesteps - 1, steps = sampling_timesteps + 1)   # [-1, 0, 1, 2, ..., T-1] when sampling_timesteps == total_timesteps
+    #     times = list(reversed(times.int().tolist()))
+    #     time_pairs = list(zip(times[:-1], times[1:])) # [(T-1, T-2), (T-2, T-3), ..., (1, 0), (0, -1)]
+
+    #     img = torch.randn(shape, device = device)
+    #     imgs = [img]
+
+    #     x_start = None
+
+    #     for time, time_next in tqdm(time_pairs, desc = 'sampling loop time step'):
+    #         time_cond = torch.full((batch,), time, device = device, dtype = torch.long)
+    #         self_cond = x_start if self.self_condition else None
+    #         pred_noise, x_start, *_ = self.model_predictions(img, time_cond, self_cond, clip_x_start = True, rederive_pred_noise = True)
+
+    #         if time_next < 0:
+    #             img = x_start
+    #             imgs.append(img)
+    #             continue
+
+    #         alpha = self.alphas_cumprod[time]
+    #         alpha_next = self.alphas_cumprod[time_next]
+
+    #         sigma = eta * ((1 - alpha / alpha_next) * (1 - alpha_next) / (1 - alpha)).sqrt()
+    #         c = (1 - alpha_next - sigma ** 2).sqrt()
+
+    #         noise = torch.randn_like(img)
+
+    #         img = x_start * alpha_next.sqrt() + \
+    #               c * pred_noise + \
+    #               sigma * noise
+
+    #         imgs.append(img)
+
+    #     ret = img if not return_all_timesteps else torch.stack(imgs, dim = 1)
+
+    #     ret = self.unnormalize(ret)
+    #     return ret
     @torch.inference_mode()
-    def ddim_sample(self, shape, return_all_timesteps = False):
-        batch, device, total_timesteps, sampling_timesteps, eta, objective = shape[0], self.device, self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta, self.objective
+    def ddim_sample(self, shape, cond, return_all_timesteps=False):
+        batch, device, total_timesteps, sampling_timesteps, eta, objective = (
+            shape[0], self.device, self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta, self.objective
+        )
 
-        times = torch.linspace(-1, total_timesteps - 1, steps = sampling_timesteps + 1)   # [-1, 0, 1, 2, ..., T-1] when sampling_timesteps == total_timesteps
+        # Normalize cond
+        cond = self.normalize(cond)
+
+        times = torch.linspace(-1, total_timesteps - 1, steps=sampling_timesteps + 1)  # [-1, 0, 1, 2, ..., T-1]
         times = list(reversed(times.int().tolist()))
-        time_pairs = list(zip(times[:-1], times[1:])) # [(T-1, T-2), (T-2, T-3), ..., (1, 0), (0, -1)]
+        time_pairs = list(zip(times[:-1], times[1:]))
 
-        img = torch.randn(shape, device = device)
+        img = torch.randn(shape, device=device)
         imgs = [img]
 
         x_start = None
 
-        for time, time_next in tqdm(time_pairs, desc = 'sampling loop time step'):
-            time_cond = torch.full((batch,), time, device = device, dtype = torch.long)
+        for time, time_next in tqdm(time_pairs, desc="sampling loop time step"):
+            time_cond = torch.full((batch,), time, device=device, dtype=torch.long)
             self_cond = x_start if self.self_condition else None
-            pred_noise, x_start, *_ = self.model_predictions(img, time_cond, self_cond, clip_x_start = True, rederive_pred_noise = True)
+
+            # Concatenate img and cond
+            img_cond = torch.cat((img, cond), dim=1)
+
+            pred_noise, x_start, *_ = self.model_predictions(
+                img_cond, time_cond, self_cond, clip_x_start=True, rederive_pred_noise=True
+            )
 
             if time_next < 0:
                 img = x_start
@@ -729,22 +823,32 @@ class GaussianDiffusion(Module):
 
             noise = torch.randn_like(img)
 
-            img = x_start * alpha_next.sqrt() + \
-                  c * pred_noise + \
-                  sigma * noise
+            img = x_start * alpha_next.sqrt() + c * pred_noise + sigma * noise
 
             imgs.append(img)
 
-        ret = img if not return_all_timesteps else torch.stack(imgs, dim = 1)
+        ret = img if not return_all_timesteps else torch.stack(imgs, dim=1)
 
         ret = self.unnormalize(ret)
         return ret
 
+    # @torch.inference_mode()
+    # def sample(self, batch_size = 16, return_all_timesteps = False):
+    #     (h, w), channels = self.image_size, self.channels
+    #     sample_fn = self.p_sample_loop if not self.is_ddim_sampling else self.ddim_sample
+    #     return sample_fn((batch_size, channels, h, w), return_all_timesteps = return_all_timesteps)
+
     @torch.inference_mode()
-    def sample(self, batch_size = 16, return_all_timesteps = False):
+    def sample(self, batch_size=16, cond=None, return_all_timesteps=False):
         (h, w), channels = self.image_size, self.channels
         sample_fn = self.p_sample_loop if not self.is_ddim_sampling else self.ddim_sample
-        return sample_fn((batch_size, channels, h, w), return_all_timesteps = return_all_timesteps)
+
+        # Cond must be provided and should match the batch size
+        assert cond is not None, "Conditioning input `cond` is required for sampling."
+        assert cond.shape[0] == batch_size, "Conditioning input batch size must match `batch_size`."
+
+        return sample_fn((batch_size, channels, h, w), cond, return_all_timesteps=return_all_timesteps)
+
 
     @torch.inference_mode()
     def interpolate(self, x1, x2, t = None, lam = 0.5):
