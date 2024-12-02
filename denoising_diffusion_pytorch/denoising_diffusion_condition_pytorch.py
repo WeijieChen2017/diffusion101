@@ -719,6 +719,7 @@ class GaussianDiffusion(Module):
     @torch.inference_mode()
     def p_sample_loop(self, shape, cond, return_all_timesteps=False):
         batch, device = shape[0], self.device
+        print(f"shape is  {shape}")
 
         # Normalize cond
         cond = self.normalize(cond)
