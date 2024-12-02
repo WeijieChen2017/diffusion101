@@ -56,6 +56,7 @@ def test_diffusion_model_and_save(val_loader, model, device, output_dir):
             cond[0, 1, :, :] = pet[:, z, :, :]
             cond[0, 2, :, :] = pet[:, z + 1, :, :]
 
+
             # Generate prediction using the diffusion model
             pred_slice = model.sample(batch_size=1, cond=cond).squeeze(0)  # Shape: (3, h, w)
 
@@ -65,10 +66,11 @@ def test_diffusion_model_and_save(val_loader, model, device, output_dir):
             # Clip predictions to [-1, 1], normalize to [0, 1]
             pred_slice_clipped = torch.clamp(pred_slice[1, :, :], min=-1, max=1)
             pred_slice_normalized = (pred_slice_clipped + 1) / 2.0  # Normalize to [0, 1]
+            ct_slice = ct[:, z, :, :]
             # ct_slice_normalized = (ct[:, z, :, :] + 1) / 2.0  # Normalize CT slice to [0, 1]
 
             # Compute MAE loss with a factor of 4000
-            slice_mae = F.l1_loss(pred_slice_normalized, ct, reduction="mean") * 4000
+            slice_mae = F.l1_loss(pred_slice_normalized, ct_slice, reduction="mean") * 4000
             slice_mae_losses.append(slice_mae.item())
 
             # Log the MAE for this slice
