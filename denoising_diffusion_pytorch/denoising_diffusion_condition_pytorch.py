@@ -603,12 +603,14 @@ class GaussianDiffusion(Module):
         return self.betas.device
 
     def predict_start_from_noise(self, x_t, t, noise):
+        x_t = x_t[:, :3, :, :]  # First 3 channels are `x`
         return (
             extract(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t -
             extract(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape) * noise
         )
 
     def predict_noise_from_start(self, x_t, t, x0):
+        x_t = x_t[:, :3, :, :]  # First 3 channels are `x`
         return (
             (extract(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t - x0) / \
             extract(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape)
