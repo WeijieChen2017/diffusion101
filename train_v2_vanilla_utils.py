@@ -32,7 +32,7 @@ def printlog(message):
 
 
 @torch.inference_mode()
-def test_diffusion_model_and_save(val_loader, model, device, output_dir):
+def test_diffusion_model_and_save_slices(val_loader, model, device, output_dir):
     model.eval()
     os.makedirs(output_dir, exist_ok=True)  # Create the output directory if it doesn't exist
 
@@ -45,9 +45,6 @@ def test_diffusion_model_and_save(val_loader, model, device, output_dir):
         ct = batch["CT"].to(device)  # Ground truth CT, Shape: (1, z, 256, 256)
         len_z = pet.shape[1]  # Number of slices along the z-axis
 
-        pred_ct_case = torch.zeros_like(ct)  # Placeholder for predicted CT, same shape as input CT
-        slice_mae_losses = []  # To store MAE losses for each slice
-
         # Generate predictions slice by slice
         for z in tqdm(range(1, len_z - 1), desc="Predicting slices", disable=True):
             # Create batch for model input
@@ -56,46 +53,30 @@ def test_diffusion_model_and_save(val_loader, model, device, output_dir):
             cond[0, 1, :, :] = pet[:, z, :, :]
             cond[0, 2, :, :] = pet[:, z + 1, :, :]
 
-
             # Generate prediction using the diffusion model
             pred_slice = model.sample(batch_size=1, cond=cond).squeeze(0)  # Shape: (3, h, w)
 
-            # Assign the middle slice prediction to the corresponding z position
-            pred_ct_case[:, z, :, :] = pred_slice[1, :, :]  # Middle slice corresponds to current z
-
-            # Clip predictions to [-1, 1], normalize to [0, 1]
+            # Select middle slice prediction
             pred_slice_clipped = torch.clamp(pred_slice[1, :, :], min=-1, max=1)
             pred_slice_normalized = (pred_slice_clipped + 1) / 2.0  # Normalize to [0, 1]
-            ct_slice = ct[:, z, :, :]
-            # ct_slice_normalized = (ct[:, z, :, :] + 1) / 2.0  # Normalize CT slice to [0, 1]
+            ct_slice_normalized = (ct[:, z, :, :] + 1) / 2.0  # Normalize CT slice to [0, 1]
+            pet_slice = pet[:, z, :, :].cpu().numpy()  # Extract corresponding PET slice
 
             # Compute MAE loss with a factor of 4000
-            slice_mae = F.l1_loss(pred_slice_normalized, ct_slice, reduction="mean") * 4000
-            slice_mae_losses.append(slice_mae.item())
-
-            # Log the MAE for this slice
+            slice_mae = F.l1_loss(pred_slice_normalized, ct_slice_normalized, reduction="mean") * 4000
             printlog(f"Case {idx_case + 1}, Slice {z}: MAE = {slice_mae.item():.6f}")
 
-        # # Clip predictions to [-1, 1], normalize to [0, 1], and ground truth is already in [0, 1]
-        # pred_ct_case = torch.clamp(pred_ct_case, min=-1, max=1)
-        # pred_ct_case = (pred_ct_case + 1) / 2.0  # Normalize to [0, 1]
-        # # ct = (ct + 1) / 2.0  # Normalize CT to [0, 1] as well
+            # Save PET, CT, and Pred_CT for this slice
+            save_data = {
+                "PET": pet_slice,
+                "CT": ct_slice_normalized.cpu().numpy(),
+                "Pred_CT": pred_slice_normalized.cpu().numpy(),
+                "MAE": slice_mae.item()
+            }
+            save_path = os.path.join(output_dir, f"case_{idx_case + 1}_slice_{z}.npz")
+            np.savez_compressed(save_path, **save_data)
 
-        # # Compute MAE loss with a factor of 4000
-        # mae_loss = F.l1_loss(pred_ct_case, ct, reduction="mean") * 4000
-        # printlog(f"Case {idx_case + 1}: MAE Loss = {mae_loss.item():.6f}")
-
-        # Save PET, CT, and predicted CT for this case
-        case_data = {
-            "PET": pet.cpu().numpy(),
-            "CT": ct.cpu().numpy(),
-            "Pred_CT": pred_ct_case.cpu().numpy(),
-            "Slice_MAE_Losses": slice_mae_losses
-        }
-        save_path = os.path.join(output_dir, f"case_{idx_case + 1}.npz")
-        np.savez_compressed(save_path, **case_data)
-
-        printlog(f"Saved results for case {idx_case + 1} to {save_path}")
+            printlog(f"Saved slice {z} for case {idx_case + 1} to {save_path} at MAE {slice_mae.item()}")
 
     printlog("Testing and saving completed.")
 
