@@ -719,7 +719,7 @@ class GaussianDiffusion(Module):
     @torch.inference_mode()
     def p_sample_loop(self, shape, cond, return_all_timesteps=False):
         batch, device = shape[0], self.device
-        print(f"shape is  {shape}")
+        # print(f"shape is  {shape}")
 
         # Normalize cond
         cond = self.normalize(cond)
@@ -734,6 +734,7 @@ class GaussianDiffusion(Module):
             self_cond = x_start if self.self_condition else None
             # Concatenate img and cond
             img_cond = torch.cat((img, cond), dim=1)
+            print(f"img_cond shape {img_cond.shape}")
             img, x_start = self.p_sample(img_cond, t, cond, self_cond)
             imgs.append(img)
 
