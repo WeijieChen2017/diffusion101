@@ -75,7 +75,7 @@ def test_diffusion_model_and_save_slices(val_loader, model, device, output_dir):
                 "Pred_CT": pred_slice_normalized.cpu().numpy(),
                 "MAE": slice_mae.item()
             }
-            save_path = os.path.join(output_dir, f"{filenames}_case_{idx_case + 1}_slice_{z}.npz")
+            save_path = os.path.join(output_dir, f"{filenames[0]}_case_{idx_case + 1}_slice_{z}.npz")
             np.savez_compressed(save_path, **save_data)
 
             printlog(f"Saved slice {z} for case {idx_case + 1} to {save_path} at MAE {slice_mae.item()}")
