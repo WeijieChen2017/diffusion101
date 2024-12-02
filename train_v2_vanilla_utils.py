@@ -33,14 +33,15 @@ def printlog(message):
 
 
 @torch.inference_mode()
-def test_diffusion_model_and_save_slices(val_loader, model, device, output_dir):
+def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir):
     model.eval()
     os.makedirs(output_dir, exist_ok=True)  # Create the output directory if it doesn't exist
 
     print("Starting testing...")
+    num_case = len(data_loader)
 
-    for idx_case, batch in enumerate(val_loader):
-        printlog(f"Processing case {idx_case + 1}/{len(val_loader)}")
+    for idx_case, batch in enumerate(data_loader):
+        printlog(f"Processing case {idx_case + 1}/{len(data_loader)}")
 
         filenames = batch["filename"]
         pet = batch["PET"].to(device)  # Shape: (1, z, 256, 256)
@@ -66,7 +67,7 @@ def test_diffusion_model_and_save_slices(val_loader, model, device, output_dir):
 
             # Compute MAE loss with a factor of 4000
             slice_mae = F.l1_loss(pred_slice_normalized, ct_slice_normalized, reduction="mean") * 4000
-            printlog(f"Case {idx_case + 1}/{len_z}, Slice {z}: MAE = {slice_mae.item():.6f}")
+            printlog(f"Case {idx_case + 1}/{num_case}, Slice {z}: MAE = {slice_mae.item():.6f}")
 
             # Save PET, CT, and Pred_CT for this slice
             save_data = {
