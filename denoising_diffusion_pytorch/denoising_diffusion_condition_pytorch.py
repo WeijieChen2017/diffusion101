@@ -499,7 +499,7 @@ class GaussianDiffusion(Module):
 
         self.model = model
 
-        self.channels = self.model.channels
+        self.channels = self.model.channels // 2
         self.self_condition = self.model.self_condition
 
         if isinstance(image_size, int):
@@ -841,7 +841,7 @@ class GaussianDiffusion(Module):
 
     @torch.inference_mode()
     def sample(self, batch_size=16, cond=None, return_all_timesteps=False):
-        (h, w), channels = self.image_size, self.channels // 2
+        (h, w), channels = self.image_size, self.channels
         sample_fn = self.p_sample_loop if not self.is_ddim_sampling else self.ddim_sample
 
         # Cond must be provided and should match the batch size
