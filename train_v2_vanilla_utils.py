@@ -12,6 +12,7 @@ from monai.transforms import (
     LoadImaged, 
     EnsureChannelFirstd,
 )
+import torch.nn.functional as F
 
 import time
 from monai.data import CacheDataset, DataLoader
@@ -45,6 +46,7 @@ def test_diffusion_model_and_save(val_loader, model, device, output_dir):
         len_z = pet.shape[1]  # Number of slices along the z-axis
 
         pred_ct_case = torch.zeros_like(ct)  # Placeholder for predicted CT, same shape as input CT
+        slice_mae_losses = []  # To store MAE losses for each slice
 
         # Generate predictions slice by slice
         for z in range(1, len_z - 1):
@@ -60,21 +62,33 @@ def test_diffusion_model_and_save(val_loader, model, device, output_dir):
             # Assign the middle slice prediction to the corresponding z position
             pred_ct_case[:, z, :, :] = pred_slice[1, :, :]  # Middle slice corresponds to current z
 
-        # Clip predictions to [-1, 1], normalize to [0, 1], and ground truth is already in [0, 1]
-        pred_ct_case = torch.clamp(pred_ct_case, min=-1, max=1)
-        pred_ct_case = (pred_ct_case + 1) / 2.0  # Normalize to [0, 1]
-        # ct = (ct + 1) / 2.0  # Normalize CT to [0, 1] as well
+            # Clip predictions to [-1, 1], normalize to [0, 1]
+            pred_slice_clipped = torch.clamp(pred_slice[1, :, :], min=-1, max=1)
+            pred_slice_normalized = (pred_slice_clipped + 1) / 2.0  # Normalize to [0, 1]
+            # ct_slice_normalized = (ct[:, z, :, :] + 1) / 2.0  # Normalize CT slice to [0, 1]
 
-        # Compute MAE loss with a factor of 4000
-        mae_loss = F.l1_loss(pred_ct_case, ct, reduction="mean") * 4000
-        printlog(f"Case {idx_case + 1}: MAE Loss = {mae_loss.item():.6f}")
+            # Compute MAE loss with a factor of 4000
+            slice_mae = F.l1_loss(pred_slice_normalized, ct, reduction="mean") * 4000
+            slice_mae_losses.append(slice_mae.item())
+
+            # Log the MAE for this slice
+            printlog(f"Case {idx_case + 1}, Slice {z}: MAE = {slice_mae.item():.6f}")
+
+        # # Clip predictions to [-1, 1], normalize to [0, 1], and ground truth is already in [0, 1]
+        # pred_ct_case = torch.clamp(pred_ct_case, min=-1, max=1)
+        # pred_ct_case = (pred_ct_case + 1) / 2.0  # Normalize to [0, 1]
+        # # ct = (ct + 1) / 2.0  # Normalize CT to [0, 1] as well
+
+        # # Compute MAE loss with a factor of 4000
+        # mae_loss = F.l1_loss(pred_ct_case, ct, reduction="mean") * 4000
+        # printlog(f"Case {idx_case + 1}: MAE Loss = {mae_loss.item():.6f}")
 
         # Save PET, CT, and predicted CT for this case
         case_data = {
             "PET": pet.cpu().numpy(),
             "CT": ct.cpu().numpy(),
             "Pred_CT": pred_ct_case.cpu().numpy(),
-            "MAE": mae_loss.item()
+            "Slice_MAE_Losses": slice_mae_losses
         }
         save_path = os.path.join(output_dir, f"case_{idx_case + 1}.npz")
         np.savez_compressed(save_path, **case_data)

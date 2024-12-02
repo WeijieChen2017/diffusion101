@@ -21,7 +21,7 @@ base_learning_rate = 1e-4
 set_param("cv", 0)
 set_param("root", root_dir)
 set_param("lr", base_learning_rate)
-set_param("log_txt_path", os.path.join(root_dir, "log.txt"))
+set_param("log_txt_path", os.path.join(root_dir, "log_test.txt"))
 
 # load data data division
 with open(data_division_file, "r") as f:
