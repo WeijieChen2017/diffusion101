@@ -86,7 +86,7 @@ if os.path.exists(model_ckpt_path):
 # Test the model and save results
 output_directory = root_dir+"/test_results"
 test_diffusion_model_and_save_slices(
-    val_loader=val_loader, 
+    val_loader=test_loader, 
     model=diffusion, 
     device=device, 
     output_dir=output_directory
