@@ -59,6 +59,7 @@ diffusion = GaussianDiffusion(
     model,
     image_size = 256,
     timesteps = 1000,   # number of steps
+    sampling_timesteps = 50, # for ddim sampling
     # loss_type = 'l1'    # L1 or L2
 ).to(device)
 

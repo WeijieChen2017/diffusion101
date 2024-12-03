@@ -797,48 +797,53 @@ class GaussianDiffusion(Module):
             shape[0], self.device, self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta, self.objective
         )
 
-        # Normalize cond
-        cond = self.normalize(cond)
+        # Normalize cond (if required, remove if normalization is already handled upstream)
+        # cond = self.normalize(cond)
 
-        times = torch.linspace(-1, total_timesteps - 1, steps=sampling_timesteps + 1)  # [-1, 0, 1, 2, ..., T-1]
+        # Prepare time steps for DDIM
+        times = torch.linspace(0, total_timesteps - 1, steps=sampling_timesteps + 1)  # [0, 1, ..., T-1]
         times = list(reversed(times.int().tolist()))
-        time_pairs = list(zip(times[:-1], times[1:]))
+        time_pairs = list(zip(times[:-1], times[1:]))  # [(T-1, T-2), ..., (1, 0)]
 
-        img = torch.randn(shape, device=device)
-        imgs = [img]
+        img = torch.randn(shape, device=device)  # Initialize latent variable
+        imgs = [img]  # Store intermediate results for debugging or visualization
 
         x_start = None
 
-        for time, time_next in tqdm(time_pairs, desc="sampling loop time step"):
+        for time, time_next in tqdm(time_pairs, desc="sampling loop time step", total=sampling_timesteps):
             time_cond = torch.full((batch,), time, device=device, dtype=torch.long)
             self_cond = x_start if self.self_condition else None
 
-            # Concatenate img and cond
+            # Concatenate img and cond for the model input
             img_cond = torch.cat((img, cond), dim=1)
 
+            # Model predictions for current step
             pred_noise, x_start, *_ = self.model_predictions(
                 img_cond, time_cond, self_cond, clip_x_start=True, rederive_pred_noise=True
             )
 
             if time_next < 0:
+                # Directly use x_start for the last step
                 img = x_start
                 imgs.append(img)
                 continue
 
+            # Calculate alphas and auxiliary variables for DDIM updates
             alpha = self.alphas_cumprod[time]
             alpha_next = self.alphas_cumprod[time_next]
 
             sigma = eta * ((1 - alpha / alpha_next) * (1 - alpha_next) / (1 - alpha)).sqrt()
-            c = (1 - alpha_next - sigma ** 2).sqrt()
+            c = (1 - alpha_next - sigma**2).sqrt()
 
-            noise = torch.randn_like(img)
+            noise = torch.randn_like(img) if sigma > 0 else 0  # Add noise only if sigma > 0
 
+            # DDIM update equation
             img = x_start * alpha_next.sqrt() + c * pred_noise + sigma * noise
 
             imgs.append(img)
 
+        # Return the final image or the entire trajectory
         ret = img if not return_all_timesteps else torch.stack(imgs, dim=1)
-
         ret = self.unnormalize(ret)
         return ret
 
