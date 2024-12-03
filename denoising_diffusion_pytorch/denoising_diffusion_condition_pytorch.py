@@ -840,7 +840,7 @@ class GaussianDiffusion(Module):
             noise_channels = x_start[:, :3] * alpha_next.sqrt() + c * pred_noise[:, :3] + sigma * noise
 
             # DDIM update equation
-            img = x_start[:, :3] * alpha_next.sqrt() + c * pred_noise[:, :3] + sigma * noise
+            img = torch.cat((noise_channels, cond), dim=1)
             # img = x_start * alpha_next.sqrt() + c * pred_noise + sigma * noise
 
             imgs.append(img)
