@@ -841,8 +841,8 @@ class GaussianDiffusion(Module):
             c = (1 - alpha_next - sigma**2).sqrt()
 
             # noise = torch.randn_like(cond) if sigma > 0 else 0
-            noise = torch.randn_like(img) if sigma > 0 else 0  # Add noise only if sigma > 0
-            img = x_start * alpha_next.sqrt() + c * pred_noise + sigma * noise
+            # noise = torch.randn_like(img) if sigma > 0 else 0  # Add noise only if sigma > 0
+            img = x_start * alpha_next.sqrt() + c * pred_noise # + sigma * noise
 
             # DDIM update equation
             # img = torch.cat((noise_channels, cond), dim=1)
