@@ -823,8 +823,8 @@ class GaussianDiffusion(Module):
             )
 
             # output shape
-            print(f"pred_noise shape {pred_noise.shape}")
-            print(f"x_start shape {x_start.shape}")
+            # print(f"pred_noise shape {pred_noise.shape}")
+            # print(f"x_start shape {x_start.shape}")
             
 
             if time_next < 0:
@@ -840,9 +840,9 @@ class GaussianDiffusion(Module):
             sigma = eta * ((1 - alpha / alpha_next) * (1 - alpha_next) / (1 - alpha)).sqrt()
             c = (1 - alpha_next - sigma**2).sqrt()
 
-            noise = torch.randn_like(cond) if sigma > 0 else 0
+            # noise = torch.randn_like(cond) if sigma > 0 else 0
             # noise = torch.randn_like(img) if sigma > 0 else 0  # Add noise only if sigma > 0
-            img = x_start[:, :3] * alpha_next.sqrt() + c * pred_noise[:, :3] + sigma * noise
+            img = x_start[:, :3] * alpha_next.sqrt() + c * pred_noise[:, :3] # + sigma * noise
 
             # DDIM update equation
             # img = torch.cat((noise_channels, cond), dim=1)
