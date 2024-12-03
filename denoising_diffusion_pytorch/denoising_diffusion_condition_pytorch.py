@@ -822,6 +822,11 @@ class GaussianDiffusion(Module):
                 img_cond, time_cond, self_cond, clip_x_start=True, rederive_pred_noise=True
             )
 
+            # output shape
+            print(f"pred_noise shape {pred_noise.shape}")
+            print(f"x_start shape {x_start.shape}")
+            
+
             if time_next < 0:
                 # Directly use x_start for the last step
                 img = x_start
