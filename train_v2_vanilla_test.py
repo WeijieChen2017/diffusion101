@@ -59,7 +59,7 @@ diffusion = GaussianDiffusion(
     model,
     image_size = 256,
     timesteps = 1000,   # number of steps
-    sampling_timesteps = 50, # for ddim sampling
+    sampling_timesteps = 100, # for ddim sampling
     # loss_type = 'l1'    # L1 or L2
 ).to(device)
 
@@ -85,7 +85,9 @@ if os.path.exists(model_ckpt_path):
 
 
 # Test the model and save results
-output_directory = root_dir+"/test_results"
+output_directory = root_dir+"/test_results_ddim"
+if not os.path.exists(output_directory):
+    os.makedirs(output_directory)
 test_diffusion_model_and_save_slices(
     data_loader=test_loader, 
     model=diffusion, 
