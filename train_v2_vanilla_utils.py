@@ -33,9 +33,9 @@ def printlog(message):
 
 
 @torch.inference_mode()
-def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir):
+def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir, batch_size=8):
     model.eval()
-    os.makedirs(output_dir, exist_ok=True)  # Create the output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
 
     print("Starting testing...")
     num_case = len(data_loader)
@@ -48,38 +48,50 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir)
         ct = batch["CT"].to(device)  # Ground truth CT, Shape: (1, z, 256, 256)
         len_z = pet.shape[1]  # Number of slices along the z-axis
 
-        # Generate predictions slice by slice
-        for z in tqdm(range(1, len_z - 1), desc="Predicting slices", disable=True):
+        # Process slices in batches
+        for z_start in range(1, len_z - 1, batch_size):
+            # Calculate actual batch size for this iteration
+            current_batch_size = min(batch_size, len_z - 1 - z_start)
+            
             # Create batch for model input
-            cond = torch.zeros((1, 3, pet.shape[2], pet.shape[3])).to(device)  # Shape: (batch_size, 3, h, w)
-            cond[0, 0, :, :] = pet[:, z - 1, :, :]
-            cond[0, 1, :, :] = pet[:, z, :, :]
-            cond[0, 2, :, :] = pet[:, z + 1, :, :]
+            cond = torch.zeros((current_batch_size, 3, pet.shape[2], pet.shape[3])).to(device)
+            
+            # Fill the conditioning tensor for each slice in the batch
+            for i in range(current_batch_size):
+                z = z_start + i
+                cond[i, 0, :, :] = pet[:, z - 1, :, :]
+                cond[i, 1, :, :] = pet[:, z, :, :]
+                cond[i, 2, :, :] = pet[:, z + 1, :, :]
 
-            # Generate prediction using the diffusion model
-            pred_slice = model.sample(batch_size=1, cond=cond).squeeze(0)  # Shape: (3, h, w)
+            # Generate predictions for the batch
+            pred_slices = model.sample(batch_size=current_batch_size, cond=cond)  # Shape: (batch_size, 3, h, w)
 
-            # Select middle slice prediction
-            pred_slice_clipped = torch.clamp(pred_slice[1, :, :], min=-1, max=1)
-            pred_slice_normalized = (pred_slice_clipped + 1) / 2.0  # Normalize to [0, 1]
-            ct_slice_normalized = (ct[:, z, :, :] + 1) / 2.0  # Normalize CT slice to [0, 1]
-            pet_slice = pet[:, z, :, :].cpu().numpy()  # Extract corresponding PET slice
+            # Process and save each slice in the batch
+            for i in range(current_batch_size):
+                z = z_start + i
+                
+                # Select middle slice prediction
+                pred_slice = pred_slices[i]  # Shape: (3, h, w)
+                pred_slice_clipped = torch.clamp(pred_slice[1, :, :], min=-1, max=1)
+                pred_slice_normalized = (pred_slice_clipped + 1) / 2.0
+                ct_slice_normalized = (ct[:, z, :, :] + 1) / 2.0
+                pet_slice = pet[:, z, :, :].cpu().numpy()
 
-            # Compute MAE loss with a factor of 4000
-            slice_mae = F.l1_loss(pred_slice_normalized, ct_slice_normalized, reduction="mean") * 4000
-            printlog(f"Case {idx_case + 1}/{num_case}, Slice {z}/{len_z}: MAE = {slice_mae.item():.6f}")
+                # Compute MAE loss with a factor of 4000
+                slice_mae = F.l1_loss(pred_slice_normalized, ct_slice_normalized, reduction="mean") * 4000
+                printlog(f"Case {idx_case + 1}/{num_case}, Slice {z}/{len_z}: MAE = {slice_mae.item():.6f}")
 
-            # Save PET, CT, and Pred_CT for this slice
-            save_data = {
-                "PET": pet_slice,
-                "CT": ct_slice_normalized.cpu().numpy(),
-                "Pred_CT": pred_slice_normalized.cpu().numpy(),
-                "MAE": slice_mae.item()
-            }
-            save_path = os.path.join(output_dir, f"{filenames[0]}_case_{idx_case + 1}_slice_{z}.npz")
-            np.savez_compressed(save_path, **save_data)
+                # Save data for this slice
+                save_data = {
+                    "PET": pet_slice,
+                    "CT": ct_slice_normalized.cpu().numpy(),
+                    "Pred_CT": pred_slice_normalized.cpu().numpy(),
+                    "MAE": slice_mae.item()
+                }
+                save_path = os.path.join(output_dir, f"{filenames[0]}_case_{idx_case + 1}_slice_{z}.npz")
+                np.savez_compressed(save_path, **save_data)
 
-            printlog(f"Saved slice {z} for case {idx_case + 1} to {save_path} at MAE {slice_mae.item()}")
+                printlog(f"Saved slice {z} for case {idx_case + 1} to {save_path} at MAE {slice_mae.item()}")
 
     printlog("Testing and saving completed.")
 
