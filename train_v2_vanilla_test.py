@@ -19,7 +19,7 @@ data_division_file = "James_data_v3/cv_list.json"
 seeds = 729
 base_learning_rate = 1e-4
 num_frames = 5
-batch_size = 64
+batch_size = 48
 sampling_timesteps = 500
 
 set_param("cv", 0)
