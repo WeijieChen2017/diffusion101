@@ -61,7 +61,7 @@ diffusion = GaussianDiffusion(
     model,
     image_size = 256,
     timesteps = 1000,   # number of steps
-    # sampling_timesteps = sampling_timesteps, # for ddim sampling
+    sampling_timesteps = sampling_timesteps, # for ddim sampling
     # loss_type = 'l1'    # L1 or L2
 ).to(device)
 
@@ -87,7 +87,7 @@ if os.path.exists(model_ckpt_path):
 
 
 # Test the model and save results
-output_directory = root_dir+f"/test_results_ddpm_batch_{batch_size}"
+output_directory = root_dir+f"/test_results_ddim_batch_{batch_size}_step_{sampling_timesteps}"
 # output_directory = root_dir+f"/test_results_ddpm"
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)
