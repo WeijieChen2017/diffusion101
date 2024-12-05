@@ -73,6 +73,8 @@ def process_eval_folds(root_dir, eval_folds, mask_folder):
                 continue
                 
             mask_nifti = nib.load(mask_path)
+            mask_data = mask_nifti.get_fdata()
+            mask_binary = mask_data > 0.5  # Create binary mask
             header = mask_nifti.header
             affine = mask_nifti.affine
             
@@ -100,8 +102,39 @@ def process_eval_folds(root_dir, eval_folds, mask_folder):
             ct_volume = (ct_volume - 0.5) * 2
             pred_ct_volume = (pred_ct_volume - 0.5) * 2
             
-            # Compute metrics
-            metrics = compute_metrics(ct_volume, pred_ct_volume)
+            # Extract only the masked values
+            ct_masked = ct_volume[mask_binary]
+            pred_ct_masked = pred_ct_volume[mask_binary]
+            
+            # Compute metrics only on masked values
+            mae = np.mean(np.abs(ct_masked - pred_ct_masked)) * 4000
+            
+            # For SSIM and PSNR, we need to compute slice by slice
+            ssim_scores = []
+            psnr_scores = []
+            for z in range(ct_volume.shape[-1]):
+                mask_slice = mask_binary[..., z]
+                if np.any(mask_slice):  # Only compute if the slice has masked regions
+                    ct_slice = ct_volume[..., z]
+                    pred_slice = pred_ct_volume[..., z]
+                    
+                    # Apply mask to slices
+                    ct_slice_masked = ct_slice.copy()
+                    pred_slice_masked = pred_slice.copy()
+                    ct_slice_masked[~mask_slice] = 0
+                    pred_slice_masked[~mask_slice] = 0
+                    
+                    ssim_score = ssim(ct_slice_masked, pred_slice_masked, data_range=1.0)
+                    psnr_score = psnr(ct_slice_masked, pred_slice_masked, data_range=1.0)
+                    
+                    ssim_scores.append(ssim_score)
+                    psnr_scores.append(psnr_score)
+            
+            metrics = {
+                'MAE': mae,
+                'SSIM': np.mean(ssim_scores) if ssim_scores else 0,
+                'PSNR': np.mean(psnr_scores) if psnr_scores else 0
+            }
             
             # Store results
             results.append({
@@ -114,15 +147,24 @@ def process_eval_folds(root_dir, eval_folds, mask_folder):
             
             print(f"Processed case {case_name} in fold {fold}")
             
-            # Save volumes as NIFTI
+            # Save volumes as NIFTI (original volumes with mask applied for visualization)
             output_dir = os.path.join(root_dir, f"{fold}_nifti")
             os.makedirs(output_dir, exist_ok=True)
             
-            ct_nifti = nib.Nifti1Image(ct_volume, affine, header)
+            ct_vis = ct_volume.copy()
+            pred_ct_vis = pred_ct_volume.copy()
+            ct_vis[~mask_binary] = 0
+            pred_ct_vis[~mask_binary] = 0
+            
+            ct_nifti = nib.Nifti1Image(ct_vis, affine, header)
             nib.save(ct_nifti, os.path.join(output_dir, f"CT_{case_name}.nii.gz"))
             
-            pred_ct_nifti = nib.Nifti1Image(pred_ct_volume, affine, header)
+            pred_ct_nifti = nib.Nifti1Image(pred_ct_vis, affine, header)
             nib.save(pred_ct_nifti, os.path.join(output_dir, f"Pred_CT_{case_name}.nii.gz"))
+            
+            # Also save the mask for reference
+            mask_nifti_out = nib.Nifti1Image(mask_binary.astype(np.float32), affine, header)
+            nib.save(mask_nifti_out, os.path.join(output_dir, f"Mask_{case_name}.nii.gz"))
     
     # Create DataFrame and save to Excel
     df = pd.DataFrame(results)
