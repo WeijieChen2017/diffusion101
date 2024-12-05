@@ -96,6 +96,10 @@ def process_eval_folds(root_dir, eval_folds, mask_folder):
             pred_ct_volume = np.stack(pred_ct_volume, axis=0)
             pred_ct_volume = np.moveaxis(pred_ct_volume, 0, -1)
             
+            # Rescale volumes from [0.5, 1] to [0, 1]
+            ct_volume = (ct_volume - 0.5) * 2
+            pred_ct_volume = (pred_ct_volume - 0.5) * 2
+            
             # Compute metrics
             metrics = compute_metrics(ct_volume, pred_ct_volume)
             
