@@ -64,6 +64,10 @@ def process_eval_folds(root_dir, eval_folds, mask_folder):
             pet_volume = np.stack(pet_volume, axis=0)
             ct_volume = np.stack(ct_volume, axis=0)
             pred_ct_volume = np.stack(pred_ct_volume, axis=0)
+
+            # Show the numpy shape
+            print(f"pet shape {pet_volume.shape}, ct shape {ct_volume.shape}, pred ct shape {pred_ct_volume.shape}")
+
             
             # Create and save NIFTI files
             output_dir = os.path.join(root_dir, f"{fold}_nifti")
