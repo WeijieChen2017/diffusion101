@@ -20,7 +20,7 @@ seeds = 729
 base_learning_rate = 1e-4
 num_frames = 5
 batch_size = 18
-sampling_timesteps = 500
+sampling_timesteps = 50
 
 set_param("cv", 0)
 set_param("num_frames", num_frames)
