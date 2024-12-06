@@ -102,458 +102,137 @@ def train_or_eval_or_test_the_batch_cond(
         batch_size, 
         stage, model, 
         optimizer=None, 
-        device=None, 
-        # inceptionV3=None
+        device=None
     ):
 
-    # if stage == "eval" or stage == "test":
-    #     sampler = DDIMSampler(model)
-    #     steps = get_param("steps")
     pet = batch["PET"] # 1, z, 256, 256
     ct = batch["CT"] # 1, z, 256, 256
     body = batch["BODY"]
     body = body > 0
-    len_z = ct.shape[1]
+    
+    # Ensure first dimension (z) is multiple of 16
+    required_multiple = 16
+    pad_z = (required_multiple - pet.shape[1] % required_multiple) % required_multiple
+    if pad_z > 0:
+        pet = torch.nn.functional.pad(pet, (0, 0, 0, 0, 0, pad_z, 0, 0), mode='constant', value=0)
+        ct = torch.nn.functional.pad(ct, (0, 0, 0, 0, 0, pad_z, 0, 0), mode='constant', value=0)
+        body = torch.nn.functional.pad(body, (0, 0, 0, 0, 0, pad_z, 0, 0), mode='constant', value=0)
+
+    len_z = pet.shape[1]
     batch_per_eval = get_param("train_param")["batch_per_eval"]
     num_frames = get_param("num_frames")
     root_dir = get_param("root")
-    # 256 to 128
 
-    # body is the body mask, only masked region should be from 0-1 to -1 to 1
-    # ct[body] = ct[body] * 2 - 1
-
-    # ct = ct * 2 - 1
-    # currently is simple from 0 to 1
-    # ct = ct[:, :, 96:-96, 96:-96]
-
-    # 1, z, 256, 256 tensor
     case_loss_first = 0.0
     case_loss_second = 0.0
     case_loss_third = 0.0
 
+    # First dimension (z-axis)
     indices_list_first = [i for i in range(1, ct.shape[1]-1)]
-
     random.shuffle(indices_list_first)
-
-    # enumreate first dimension
+    
     batch_size_count = 0
     batch_x = torch.zeros((batch_size, 3, ct.shape[2], ct.shape[3]))
     batch_y = torch.zeros((batch_size, 3, ct.shape[2], ct.shape[3]))
+    
+    # Process first dimension
     for index in indices_list_first:
+        # Fill PET conditioning
         batch_x[batch_size_count, 0, :, :] = pet[:, index-1, :, :]
         batch_x[batch_size_count, 1, :, :] = pet[:, index, :, :]
         batch_x[batch_size_count, 2, :, :] = pet[:, index+1, :, :]
 
-
+        # Fill CT target
         batch_y[batch_size_count, 0, :, :] = ct[:, index-1, :, :]
         batch_y[batch_size_count, 1, :, :] = ct[:, index, :, :]
         batch_y[batch_size_count, 2, :, :] = ct[:, index+1, :, :]
-        # batch_y[batch_size_count, 0, 1, :, :] = ct[:, index-4, :, :]
-        # batch_y[batch_size_count, 1, 1, :, :] = ct[:, index-3, :, :]
-        # batch_y[batch_size_count, 2, 1, :, :] = ct[:, index-2, :, :]
-        # batch_y[batch_size_count, 0, 2, :, :] = ct[:, index-1, :, :]
-        # batch_y[batch_size_count, 1, 2, :, :] = ct[:, index, :, :]
-        # batch_y[batch_size_count, 2, 2, :, :] = ct[:, index+1, :, :]
-        # batch_y[batch_size_count, 0, 3, :, :] = ct[:, index+2, :, :]
-        # batch_y[batch_size_count, 1, 3, :, :] = ct[:, index+3, :, :]
-        # batch_y[batch_size_count, 2, 3, :, :] = ct[:, index+4, :, :]
-        # batch_y[batch_size_count, 0, 4, :, :] = ct[:, index+5, :, :]
-        # batch_y[batch_size_count, 1, 4, :, :] = ct[:, index+6, :, :]
-        # batch_y[batch_size_count, 2, 4, :, :] = ct[:, index+7, :, :]
 
         batch_size_count += 1
 
         if batch_size_count < batch_size and index != indices_list_first[-1]:
             continue
         else:
-            # # we get a batch
-            # save_batch_y = batch_y.cpu().numpy()
-            # save_name = f"{root_dir}/batch_y_{index}_masked.npy"
-            # np.save(save_name, save_batch_y)
-            # printlog(f"save batch_y to {save_name}")
-            # exit()
-            batch_x = batch_x.to(device)
-            batch_y = batch_y.to(device)
-            
-            if stage == "train":
-                optimizer.zero_grad()
-                loss = model(
-                    img=batch_y,
-                    cond=batch_x,
-                )
-                loss.backward()
-                optimizer.step()
-                case_loss_first += loss.item()
-            elif stage == "eval" or stage == "test":
-                with torch.no_grad():
-                    loss = model(
-                        img=batch_y,
-                        cond=batch_x,
-                    )
-                    case_loss_first += loss.item()
-
+            case_loss_first += process_batch(batch_x, batch_y, stage, model, optimizer, device)
             batch_size_count = 0
-        
+
     case_loss_first = case_loss_first / (len(indices_list_first) // batch_size + 1)
-        # if (stage == "eval" or stage == "test") and batch_per_eval > 0:
-        #     case_loss_first = case_loss_first / batch_eval_count
-        # else:
-        #     case_loss_first = case_loss_first / (len(indices_list_first) // batch_size + 1)
-    
-    # # enumreate second dimension
-    # batch_size_count = 0
-    # batch_eval_count = 0
-    # batch_y = torch.zeros((batch_size, , ct.shape[1], ct.shape[3]))
 
-    # for indices in indices_list_second:
-    #     slice_y = ct[:, :, indices-1:indices+2, :]
-    #     # adjust the index order
-    #     slice_y = slice_y.permute(0, 2, 1, 3)
-    #     batch_size_count += 1
-
-    #     batch_y[batch_size_count-1] = slice_y
-
-    #     if batch_size_count < batch_size and indices != indices_list_second[-1]:
-    #         continue
-    #     else:
-    #         # we get a batch
-    #         batch_y = batch_y.to(device)
-    #         encoded_batch_y = model.first_stage_model.encode(batch_y)
-    #         # print(batch_x.size(), batch_y.size())
-    #         if stage == "train":
-    #             optimizer.zero_grad()
-    #             loss, loss_dict = model(x=encoded_batch_y, c=batch_x)
-    #             loss.backward()
-    #             optimizer.step()
-    #             case_loss_second += loss.item()
-    #         elif stage == "eval" or stage == "test":
-    #             with torch.no_grad():
-    #                 # loss, loss_dict = model(x=encoded_batch_y, c=batch_x)
-    #                 # case_loss_first += loss.item()
-    #                 encoded_batch_x = model.first_stage_model.encode(batch_x) / vqs
-    #                 shape = (encoded_batch_x.shape[1],)+encoded_batch_x.shape[2:]
-    #                 samples_ddim, _ = sampler.sample(
-    #                     S=steps,
-    #                     conditioning=encoded_batch_x,
-    #                     batch_size=encoded_batch_x.shape[0],
-    #                     shape=shape,
-    #                     verbose=False
-    #                 )
-    #                 recon_batch_y = model.decode_first_stage(samples_ddim)
-    #                 recon_batch_y = recon_batch_y.cpu().numpy().transpose(0,2,3,1)
-    #                 recon_batch_y = np.clip((recon_batch_y+1.0)/2.0, 0.0, 1.0)
-    #                 true_y = batch_y.cpu().numpy().transpose(0,2,3,1)
-    #                 true_y = np.clip((true_y+1.0)/2.0, 0.0, 1.0)
-    #                 # calculate the L1 loss
-    #                 loss = np.mean(np.abs(recon_batch_y-true_y))
-    #                 case_loss_second += loss
-    #                 batch_eval_count += 1
-    #                 if batch_eval_count == batch_per_eval:
-    #                     # stop the for loop
-    #                     break
-    #         batch_size_count = 0
-        
-    #     if (stage == "eval" or stage == "test") and batch_per_eval > 0:
-    #         case_loss_second = case_loss_second / batch_eval_count
-    #     else:
-    #         case_loss_second = case_loss_second / (len(indices_list_second) // batch_size + 1)
-    
-    # # enumreate third dimension
-    # batch_size_count = 0
-    # batch_eval_count = 0
-    # batch_x = torch.zeros((batch_size, 3, pet.shape[1], pet.shape[2]))
-    # batch_y = torch.zeros((batch_size, 3, ct.shape[1], ct.shape[2]))
-
-    # for indices in indices_list_third:
-    #     slice_x = pet[:, :, :, indices-1:indices+2]
-    #     slice_y = ct[:, :, :, indices-1:indices+2]
-    #     # adjust the index order
-    #     slice_x = slice_x.permute(0, 3, 1, 2)
-    #     slice_y = slice_y.permute(0, 3, 1, 2)
-    #     batch_size_count += 1
-
-    #     batch_x[batch_size_count-1] = slice_x
-    #     batch_y[batch_size_count-1] = slice_y
-
-    #     if batch_size_count < batch_size and indices != indices_list_third[-1]:
-    #         continue
-    #     else:
-    #         # we get a batch
-    #         batch_x = batch_x.to(device)
-    #         batch_y = batch_y.to(device)
-    #         encoded_batch_y = model.first_stage_model.encode(batch_y)
-    #         if stage == "train":
-    #             optimizer.zero_grad()
-    #             loss, loss_dict = model(x=encoded_batch_y, c=batch_x)
-    #             loss.backward()
-    #             optimizer.step()
-    #             case_loss_third += loss.item()
-    #         elif stage == "eval" or stage == "test":
-    #             with torch.no_grad():
-    #                 # loss, loss_dict = model(x=encoded_batch_y, c=batch_x)
-    #                 # case_loss_first += loss.item()
-    #                 encoded_batch_x = model.first_stage_model.encode(batch_x) / vqs
-    #                 shape = (encoded_batch_x.shape[1],)+encoded_batch_x.shape[2:]
-    #                 samples_ddim, _ = sampler.sample(
-    #                     S=steps,
-    #                     conditioning=encoded_batch_x,
-    #                     batch_size=encoded_batch_x.shape[0],
-    #                     shape=shape,
-    #                     verbose=False
-    #                 )
-    #                 recon_batch_y = model.decode_first_stage(samples_ddim)
-    #                 recon_batch_y = recon_batch_y.cpu().numpy().transpose(0,2,3,1)
-    #                 recon_batch_y = np.clip((recon_batch_y+1.0)/2.0, 0.0, 1.0)
-    #                 true_y = batch_y.cpu().numpy().transpose(0,2,3,1)
-    #                 true_y = np.clip((true_y+1.0)/2.0, 0.0, 1.0)
-    #                 # calculate the L1 loss
-    #                 loss = np.mean(np.abs(recon_batch_y-true_y))
-    #                 case_loss_third += loss
-    #                 batch_eval_count += 1
-    #                 if batch_eval_count == batch_per_eval:
-    #                     # stop the for loop
-    #                     break
-    #         batch_size_count = 0
-        
-    #     if (stage == "eval" or stage == "test") and batch_per_eval > 0:
-    #         case_loss_third = case_loss_third / batch_eval_count
-    #     else:
-    #         case_loss_third = case_loss_third / (len(indices_list_third) // batch_size + 1)
-
-    return case_loss_first, case_loss_second, case_loss_third
-
-
-# def train_or_eval_or_test_the_batch_cond(batch, batch_size, stage, model, optimizer=None, device=None):
-
-    # if stage == "eval" or stage == "test":
-    #     sampler = DDIMSampler(model)
-    #     steps = get_param("steps")
-
-    pet = batch["PET"] # 1, z, 256, 256
-    ct = batch["CT"] # 1, z, 256, 256
-    len_z = pet.shape[1]
-
-    es = get_param("es")
-    vqs = get_param("vq_scaling")
-    batch_per_eval = get_param("train_param")["batch_per_eval"]
-    zac = get_param("z_as_channel")
-    eo = (zac - 1) // 2 # ends_offset
-
-    pet = pet * 2 - 1
-    ct = ct * 2 - 1
-
-    # if pet size and ct size are not the same skip this batch
-    if pet.shape != ct.shape:
-        printlog(f"skip this batch, pet shape: {pet.shape}, ct shape: {ct.shape}")
-        return 1.0, 1.0, 1.0
-
-    # 1, z, 256, 256 tensor
-    case_loss_first = 0.0
-    case_loss_second = 0.0
-    case_loss_third = 0.0
-
-    # pad shape
-    if len_z % es != 0:
-        pad_size = es - len_z % es
-        pet = torch.nn.functional.pad(pet, (0, 0, 0, 0, 0, pad_size, 0, 0), mode='constant', value=0)
-        ct = torch.nn.functional.pad(ct, (0, 0, 0, 0, 0, pad_size, 0, 0), mode='constant', value=0)
-
-    # printlog(f"pet shape {pet.shape}, ct shape {ct.shape}")
-
-    indices_list_first = [i for i in range(1, pet.shape[1]-eo)]
-    indices_list_second = [i for i in range(1, pet.shape[2]-eo)]
-    indices_list_third = [i for i in range(1, pet.shape[3]-eo)]
-
-    random.shuffle(indices_list_first)
+    # Second dimension (y-axis)
+    indices_list_second = [i for i in range(1, ct.shape[2]-1)]
     random.shuffle(indices_list_second)
-    random.shuffle(indices_list_third)
-
-    # enumreate first dimension
-    batch_size_count = 0
-    batch_eval_count = 0
-    batch_x = torch.zeros((batch_size, 1, zac, pet.shape[2], pet.shape[3]))
-    batch_y = torch.zeros((batch_size, 1, zac, ct.shape[2], ct.shape[3]))
-    for indices in indices_list_first:
-        slice_x = pet[:, indices-eo:indices+eo+1, :, :]
-        slice_y = ct[:, indices-eo:indices+eo+1, :, :]
-        batch_size_count += 1
-
-        batch_x[batch_size_count-1] = slice_x
-        batch_y[batch_size_count-1] = slice_y
-
-        if batch_size_count < batch_size and indices != indices_list_first[-1]:
-            continue
-        else:
-            # we get a batch
-            batch_x = batch_x.to(device)
-            batch_y = batch_y.to(device)
-            
-            if stage == "train":
-                encoded_batch_y = model.first_stage_model.encode(batch_y)
-                optimizer.zero_grad()
-                loss, loss_dict = model(x=encoded_batch_y, c=batch_x)
-                loss.backward()
-                optimizer.step()
-                case_loss_first += loss.item()
-            elif stage == "eval" or stage == "test":
-                with torch.no_grad():
-                    # loss, loss_dict = model(x=encoded_batch_y, c=batch_x)
-                    # case_loss_first += loss.item()
-                    encoded_batch_x = model.first_stage_model.encode(batch_x) / vqs
-                    shape = (encoded_batch_x.shape[1],)+encoded_batch_x.shape[2:]
-                    samples_ddim, _ = sampler.sample(
-                        S=steps,
-                        conditioning=encoded_batch_x,
-                        batch_size=encoded_batch_x.shape[0],
-                        shape=shape,
-                        verbose=False
-                    )
-                    recon_batch_y = model.decode_first_stage(samples_ddim)
-                    recon_batch_y = recon_batch_y.cpu().numpy().transpose(0,2,3,1)
-                    recon_batch_y = np.clip((recon_batch_y+1.0)/2.0, 0.0, 1.0)
-                    true_y = batch_y.cpu().numpy().transpose(0,2,3,1)
-                    true_y = np.clip((true_y+1.0)/2.0, 0.0, 1.0)
-                    # calculate the L1 loss
-                    loss = np.mean(np.abs(recon_batch_y-true_y))
-                    case_loss_first += loss
-                    batch_eval_count += 1
-                    if batch_eval_count == batch_per_eval:
-                        # stop the for loop
-                        break
-
-            batch_size_count = 0
-        
-        if (stage == "eval" or stage == "test") and batch_per_eval > 0:
-            case_loss_first = case_loss_first / batch_eval_count
-        else:
-            case_loss_first = case_loss_first / (len(indices_list_first) // batch_size + 1)
     
-    # enumreate second dimension
     batch_size_count = 0
-    batch_eval_count = 0
-    batch_x = torch.zeros((batch_size, 3, pet.shape[1], pet.shape[3]))
+    batch_x = torch.zeros((batch_size, 3, ct.shape[1], ct.shape[3]))
     batch_y = torch.zeros((batch_size, 3, ct.shape[1], ct.shape[3]))
-
-    for indices in indices_list_second:
-        slice_x = pet[:, :, indices-1:indices+2, :]
-        slice_y = ct[:, :, indices-1:indices+2, :]
-        # adjust the index order
-        slice_x = slice_x.permute(0, 2, 1, 3)
-        slice_y = slice_y.permute(0, 2, 1, 3)
-        batch_size_count += 1
-
-        batch_x[batch_size_count-1] = slice_x
-        batch_y[batch_size_count-1] = slice_y
-
-        if batch_size_count < batch_size and indices != indices_list_second[-1]:
-            continue
-        else:
-            # we get a batch
-            batch_x = batch_x.to(device)
-            batch_y = batch_y.to(device)
-            encoded_batch_y = model.first_stage_model.encode(batch_y)
-            # print(batch_x.size(), batch_y.size())
-            if stage == "train":
-                optimizer.zero_grad()
-                loss, loss_dict = model(x=encoded_batch_y, c=batch_x)
-                loss.backward()
-                optimizer.step()
-                case_loss_second += loss.item()
-            elif stage == "eval" or stage == "test":
-                with torch.no_grad():
-                    # loss, loss_dict = model(x=encoded_batch_y, c=batch_x)
-                    # case_loss_first += loss.item()
-                    encoded_batch_x = model.first_stage_model.encode(batch_x) / vqs
-                    shape = (encoded_batch_x.shape[1],)+encoded_batch_x.shape[2:]
-                    samples_ddim, _ = sampler.sample(
-                        S=steps,
-                        conditioning=encoded_batch_x,
-                        batch_size=encoded_batch_x.shape[0],
-                        shape=shape,
-                        verbose=False
-                    )
-                    recon_batch_y = model.decode_first_stage(samples_ddim)
-                    recon_batch_y = recon_batch_y.cpu().numpy().transpose(0,2,3,1)
-                    recon_batch_y = np.clip((recon_batch_y+1.0)/2.0, 0.0, 1.0)
-                    true_y = batch_y.cpu().numpy().transpose(0,2,3,1)
-                    true_y = np.clip((true_y+1.0)/2.0, 0.0, 1.0)
-                    # calculate the L1 loss
-                    loss = np.mean(np.abs(recon_batch_y-true_y))
-                    case_loss_second += loss
-                    batch_eval_count += 1
-                    if batch_eval_count == batch_per_eval:
-                        # stop the for loop
-                        break
-            batch_size_count = 0
-        
-        if (stage == "eval" or stage == "test") and batch_per_eval > 0:
-            case_loss_second = case_loss_second / batch_eval_count
-        else:
-            case_loss_second = case_loss_second / (len(indices_list_second) // batch_size + 1)
     
-    # enumreate third dimension
-    batch_size_count = 0
-    batch_eval_count = 0
-    batch_x = torch.zeros((batch_size, 3, pet.shape[1], pet.shape[2]))
-    batch_y = torch.zeros((batch_size, 3, ct.shape[1], ct.shape[2]))
-
-    for indices in indices_list_third:
-        slice_x = pet[:, :, :, indices-1:indices+2]
-        slice_y = ct[:, :, :, indices-1:indices+2]
-        # adjust the index order
-        slice_x = slice_x.permute(0, 3, 1, 2)
-        slice_y = slice_y.permute(0, 3, 1, 2)
+    for index in indices_list_second:
+        # Get slices and permute to correct orientation
+        pet_slices = pet[:, :, index-1:index+2, :].squeeze(0)  # z, 3, x
+        ct_slices = ct[:, :, index-1:index+2, :].squeeze(0)    # z, 3, x
+        
+        # Permute to get correct orientation
+        pet_slices = pet_slices.permute(1, 0, 2)  # 3, z, x
+        ct_slices = ct_slices.permute(1, 0, 2)    # 3, z, x
+        
+        batch_x[batch_size_count] = pet_slices
+        batch_y[batch_size_count] = ct_slices
+        
         batch_size_count += 1
-
-        batch_x[batch_size_count-1] = slice_x
-        batch_y[batch_size_count-1] = slice_y
-
-        if batch_size_count < batch_size and indices != indices_list_third[-1]:
+        
+        if batch_size_count < batch_size and index != indices_list_second[-1]:
             continue
         else:
-            # we get a batch
-            batch_x = batch_x.to(device)
-            batch_y = batch_y.to(device)
-            encoded_batch_y = model.first_stage_model.encode(batch_y)
-            if stage == "train":
-                optimizer.zero_grad()
-                loss, loss_dict = model(x=encoded_batch_y, c=batch_x)
-                loss.backward()
-                optimizer.step()
-                case_loss_third += loss.item()
-            elif stage == "eval" or stage == "test":
-                with torch.no_grad():
-                    # loss, loss_dict = model(x=encoded_batch_y, c=batch_x)
-                    # case_loss_first += loss.item()
-                    encoded_batch_x = model.first_stage_model.encode(batch_x) / vqs
-                    shape = (encoded_batch_x.shape[1],)+encoded_batch_x.shape[2:]
-                    samples_ddim, _ = sampler.sample(
-                        S=steps,
-                        conditioning=encoded_batch_x,
-                        batch_size=encoded_batch_x.shape[0],
-                        shape=shape,
-                        verbose=False
-                    )
-                    recon_batch_y = model.decode_first_stage(samples_ddim)
-                    recon_batch_y = recon_batch_y.cpu().numpy().transpose(0,2,3,1)
-                    recon_batch_y = np.clip((recon_batch_y+1.0)/2.0, 0.0, 1.0)
-                    true_y = batch_y.cpu().numpy().transpose(0,2,3,1)
-                    true_y = np.clip((true_y+1.0)/2.0, 0.0, 1.0)
-                    # calculate the L1 loss
-                    loss = np.mean(np.abs(recon_batch_y-true_y))
-                    case_loss_third += loss
-                    batch_eval_count += 1
-                    if batch_eval_count == batch_per_eval:
-                        # stop the for loop
-                        break
+            case_loss_second += process_batch(batch_x, batch_y, stage, model, optimizer, device)
             batch_size_count = 0
+            
+    case_loss_second = case_loss_second / (len(indices_list_second) // batch_size + 1)
+
+    # Third dimension (x-axis)
+    indices_list_third = [i for i in range(1, ct.shape[3]-1)]
+    random.shuffle(indices_list_third)
+    
+    batch_size_count = 0
+    batch_x = torch.zeros((batch_size, 3, ct.shape[1], ct.shape[2]))
+    batch_y = torch.zeros((batch_size, 3, ct.shape[1], ct.shape[2]))
+    
+    for index in indices_list_third:
+        # Get slices and permute to correct orientation
+        pet_slices = pet[:, :, :, index-1:index+2].squeeze(0)  # z, y, 3
+        ct_slices = ct[:, :, :, index-1:index+2].squeeze(0)    # z, y, 3
         
-        if (stage == "eval" or stage == "test") and batch_per_eval > 0:
-            case_loss_third = case_loss_third / batch_eval_count
+        # Permute to get correct orientation
+        pet_slices = pet_slices.permute(2, 0, 1)  # 3, z, y
+        ct_slices = ct_slices.permute(2, 0, 1)    # 3, z, y
+        
+        batch_x[batch_size_count] = pet_slices
+        batch_y[batch_size_count] = ct_slices
+        
+        batch_size_count += 1
+        
+        if batch_size_count < batch_size and index != indices_list_third[-1]:
+            continue
         else:
-            case_loss_third = case_loss_third / (len(indices_list_third) // batch_size + 1)
+            case_loss_third += process_batch(batch_x, batch_y, stage, model, optimizer, device)
+            batch_size_count = 0
+            
+    case_loss_third = case_loss_third / (len(indices_list_third) // batch_size + 1)
 
     return case_loss_first, case_loss_second, case_loss_third
+
+def process_batch(batch_x, batch_y, stage, model, optimizer, device):
+    batch_x = batch_x.to(device)
+    batch_y = batch_y.to(device)
+    
+    if stage == "train":
+        optimizer.zero_grad()
+        loss = model(img=batch_y, cond=batch_x)
+        loss.backward()
+        optimizer.step()
+        return loss.item()
+    elif stage == "eval" or stage == "test":
+        with torch.no_grad():
+            loss = model(img=batch_y, cond=batch_x)
+            return loss.item()
 
 def prepare_dataset(data_div, invlove_train=False, invlove_val=False, invlove_test=False):
     

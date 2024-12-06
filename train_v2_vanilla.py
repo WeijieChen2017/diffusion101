@@ -11,17 +11,18 @@ from train_v2_vanilla_utils import prepare_dataset, train_or_eval_or_test_the_ba
 from global_config import global_config, set_param, get_param
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<< running setting
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-root_dir = "projects/v1_vanilla_pet_cond"
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+cv_folds = 0
+root_dir = "projects/v2_img_petCond_acs_cv{cv_folds}"
 os.path.exists(root_dir) or os.makedirs(root_dir)
 data_division_file = "James_data_v3/cv_list.json"
 seeds = 729
 base_learning_rate = 1e-4
 
-set_param("cv", 0)
+set_param("cv", cv_folds)
 set_param("root", root_dir)
 set_param("lr", base_learning_rate)
-set_param("log_txt_path", os.path.join(root_dir, "log_test.txt"))
+set_param("log_txt_path", os.path.join(root_dir, "log_train.txt"))
 
 # load data data division
 with open(data_division_file, "r") as f:
