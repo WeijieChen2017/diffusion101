@@ -22,8 +22,8 @@ train_param:
   batch_per_eval: 10
   epoch: 100
   train_stage:
-    batch_size: 16
+    batch_size: 12
   val_stage:
-    batch_size: 16
+    batch_size: 12
   test_stage:
-    batch_size: 16
+    batch_size: 12
