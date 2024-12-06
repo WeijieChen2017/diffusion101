@@ -182,6 +182,7 @@ def train_or_eval_or_test_the_batch_cond(
         if batch_size_count < batch_size and index != indices_list_second[-1]:
             continue
         else:
+            print(f"batch_x shape {batch_x.shape}, batch_y shape {batch_y.shape}")
             case_loss_second += process_batch(batch_x, batch_y, stage, model, optimizer, device)
             batch_size_count = 0
             
