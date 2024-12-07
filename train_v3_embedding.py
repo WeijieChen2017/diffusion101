@@ -1,4 +1,4 @@
-import os
+# import os
 import json
 import torch
 from omegaconf import OmegaConf
@@ -6,12 +6,12 @@ from omegaconf import OmegaConf
 import torch.optim as optim
 from denoising_diffusion_pytorch import Unet, GaussianDiffusion
 
-from train_v2_vanilla_utils import prepare_dataset, train_or_eval_or_test_the_batch_cond, printlog
+from train_3_embedding_utils import prepare_dataset, train_or_eval_or_test_the_batch_cond, printlog
 # from train_v1_vanilla_utils import load_inception_model
 from global_config import global_config, set_param, get_param
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<< running setting
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 cv_folds = 0
 root_dir = f"projects/v2_img_petCond_acs_cv{cv_folds}"
 os.path.exists(root_dir) or os.makedirs(root_dir)
@@ -29,7 +29,7 @@ with open(data_division_file, "r") as f:
     data_div = json.load(f)
 
 
-experiment_config = OmegaConf.load("train_v2_vanilla_config.yaml")
+experiment_config = OmegaConf.load("train_v3_vanilla_config.yaml")
 print(experiment_config)
 for key in experiment_config.keys():
     set_param(key, experiment_config[key])

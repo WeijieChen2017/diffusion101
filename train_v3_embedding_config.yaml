@@ -1,0 +1,29 @@
+data_param:
+  dataset:
+    train:
+      cache_rate: 1.0
+      num_workers: 4
+    val:
+      cache_rate: 1.0
+      num_workers: 4
+    test:
+      cache_rate: 1.0
+      num_workers: 4
+  dataloader:
+    train:
+      num_workers: 4
+    val:
+      num_workers: 4
+    test:
+      num_workers: 4
+train_param:
+  embedding_scale: 8
+  save_per_epoch: 10
+  batch_per_eval: 10
+  epoch: 100
+  train_stage:
+    batch_size: 3
+  val_stage:
+    batch_size: 3
+  test_stage:
+    batch_size: 3
