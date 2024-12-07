@@ -248,8 +248,8 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                             shape=pet_embeddings_norm.shape
                         )
                         
-                        # Create visualizations for each slice
-                        for slice_idx in range(n_slices):
+                        # Create visualizations for every 10th slice
+                        for slice_idx in range(0, n_slices, 10):
                             fig, axes = plt.subplots(2, 3, figsize=(15, 8))
                             fig.suptitle(f"{hashname} - {orientation} - Slice {slice_idx}")
                             
@@ -264,9 +264,11 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                                 pet_slice = pet_vol[:, slice_idx, :]
                                 ct_slice = ct_vol[:, slice_idx, :]
                             
-                            # Get embedding slices
-                            pet_emb_slice = pet_embeddings_norm[slice_idx].transpose(1, 2, 0)  # (H, W, 3)
-                            ct_emb_slice = ct_embeddings_norm[slice_idx].transpose(1, 2, 0)  # (H, W, 3)
+                            # Get embedding slices (both original and normalized)
+                            pet_emb_slice_orig = pet_embeddings[slice_idx].transpose(1, 2, 0)  # (H, W, 3)
+                            pet_emb_slice_norm = pet_embeddings_norm[slice_idx].transpose(1, 2, 0)
+                            ct_emb_slice_orig = ct_embeddings[slice_idx].transpose(1, 2, 0)
+                            ct_emb_slice_norm = ct_embeddings_norm[slice_idx].transpose(1, 2, 0)
                             
                             # Plot PET row
                             # Original PET (grayscale)
@@ -275,17 +277,17 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                             axes[0, 0].axis('off')
                             
                             # PET embedding (RGB)
-                            axes[0, 1].imshow(pet_emb_slice)
+                            axes[0, 1].imshow(pet_emb_slice_norm)
                             axes[0, 1].set_title('PET Embedding')
                             axes[0, 1].axis('off')
                             
-                            # PET embedding histogram
-                            axes[0, 2].hist(pet_emb_slice.ravel(), bins=50, color='blue', alpha=0.7, range=(0, 1))
+                            # PET embedding histogram (original values)
+                            axes[0, 2].hist(pet_emb_slice_orig.ravel(), bins=50, color='blue', alpha=0.7)
                             axes[0, 2].set_yscale('log')
-                            axes[0, 2].set_title('PET Embedding Distribution')
+                            axes[0, 2].set_title('PET Embedding Distribution\n(Original [-4, 4])')
                             axes[0, 2].set_xlabel('Value')
                             axes[0, 2].set_ylabel('Count (log)')
-                            axes[0, 2].set_xlim(0, 1)
+                            axes[0, 2].set_xlim(-4, 4)
                             
                             # Plot CT row
                             # Original CT (grayscale)
@@ -294,17 +296,17 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                             axes[1, 0].axis('off')
                             
                             # CT embedding (RGB)
-                            axes[1, 1].imshow(ct_emb_slice)
+                            axes[1, 1].imshow(ct_emb_slice_norm)
                             axes[1, 1].set_title('CT Embedding')
                             axes[1, 1].axis('off')
                             
-                            # CT embedding histogram
-                            axes[1, 2].hist(ct_emb_slice.ravel(), bins=50, color='red', alpha=0.7, range=(0, 1))
+                            # CT embedding histogram (original values)
+                            axes[1, 2].hist(ct_emb_slice_orig.ravel(), bins=50, color='red', alpha=0.7)
                             axes[1, 2].set_yscale('log')
-                            axes[1, 2].set_title('CT Embedding Distribution')
+                            axes[1, 2].set_title('CT Embedding Distribution\n(Original [-4, 4])')
                             axes[1, 2].set_xlabel('Value')
                             axes[1, 2].set_ylabel('Count (log)')
-                            axes[1, 2].set_xlim(0, 1)
+                            axes[1, 2].set_xlim(-4, 4)
                             
                             # Save figure
                             plt.tight_layout()
