@@ -234,6 +234,10 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                         
                         # Process CT indices
                         ct_indices = np.load(ct_index_path)
+
+                        if orientation in ["sagittal", "coronal"]:
+                            # exchange width, height
+                            width, height = height, width
                         
                         # Get embeddings for both PET and CT
                         # PET embeddings
