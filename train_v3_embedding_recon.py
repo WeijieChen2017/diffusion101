@@ -246,13 +246,13 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                         pet_indices_reshaped = pet_indices.reshape(n_slices, width, height)
                         pet_embeddings = vq_weights[pet_indices_reshaped.flatten()].reshape(n_slices, width, height, 3)
                         pet_embeddings = pet_embeddings.transpose(0, 3, 1, 2)
-                        pet_embeddings_norm = pet_embeddings / 8.0 + 0.5
+                        pet_embeddings_norm = pet_embeddings / 10.0 + 0.5
                         
                         # CT embeddings
                         ct_indices_reshaped = ct_indices.reshape(n_slices, width, height)
                         ct_embeddings = vq_weights[ct_indices_reshaped.flatten()].reshape(n_slices, width, height, 3)
                         ct_embeddings = ct_embeddings.transpose(0, 3, 1, 2)
-                        ct_embeddings_norm = ct_embeddings / 8.0 + 0.5
+                        ct_embeddings_norm = ct_embeddings / 10.0 + 0.5
                         
                         # Save normalized embeddings
                         output_path = os.path.join(output_dir, f"{hashname}_{orientation}_embedding_norm.npz")
@@ -270,61 +270,54 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                                 fig.suptitle(f"{hashname} - {orientation} - Slice {slice_idx}/{n_slices}")
                                 
                                 # Get embedding slices (both original and normalized)
-                                pet_emb_slice_orig = pet_embeddings[slice_idx].transpose(1, 2, 0)  # (H, W, 3)
+                                pet_emb_slice_orig = pet_embeddings[slice_idx].transpose(1, 2, 0)
                                 pet_emb_slice_norm = pet_embeddings_norm[slice_idx].transpose(1, 2, 0)
                                 ct_emb_slice_orig = ct_embeddings[slice_idx].transpose(1, 2, 0)
                                 ct_emb_slice_norm = ct_embeddings_norm[slice_idx].transpose(1, 2, 0)
                                 
                                 # Plot PET row
-                                # Original indices
                                 axes[0, 0].imshow(pet_indices_reshaped[slice_idx], cmap='gray')
                                 axes[0, 0].set_title('PET Indices')
                                 axes[0, 0].axis('off')
                                 
-                                # PET embedding (RGB)
                                 axes[0, 1].imshow(pet_emb_slice_norm)
                                 axes[0, 1].set_title('PET Embedding')
                                 axes[0, 1].axis('off')
                                 
-                                # PET embedding histogram (original values)
                                 axes[0, 2].hist(pet_emb_slice_orig.ravel(), bins=50, color='blue', alpha=0.7)
                                 axes[0, 2].set_yscale('log')
-                                axes[0, 2].set_title('PET Embedding Distribution\n(Original [-4, 4])')
+                                axes[0, 2].set_title('PET Embedding Distribution\n(Original [-5, 5])')
                                 axes[0, 2].set_xlabel('Value')
                                 axes[0, 2].set_ylabel('Count (log)')
-                                axes[0, 2].set_xlim(-4, 4)
+                                axes[0, 2].set_xlim(-5, 5)
                                 
                                 # Plot CT row
-                                # Original indices
                                 axes[1, 0].imshow(ct_indices_reshaped[slice_idx], cmap='gray')
                                 axes[1, 0].set_title('CT Indices')
                                 axes[1, 0].axis('off')
                                 
-                                # CT embedding (RGB)
                                 axes[1, 1].imshow(ct_emb_slice_norm)
                                 axes[1, 1].set_title('CT Embedding')
                                 axes[1, 1].axis('off')
                                 
-                                # CT embedding histogram (original values)
                                 axes[1, 2].hist(ct_emb_slice_orig.ravel(), bins=50, color='red', alpha=0.7)
                                 axes[1, 2].set_yscale('log')
-                                axes[1, 2].set_title('CT Embedding Distribution\n(Original [-4, 4])')
+                                axes[1, 2].set_title('CT Embedding Distribution\n(Original [-5, 5])')
                                 axes[1, 2].set_xlabel('Value')
                                 axes[1, 2].set_ylabel('Count (log)')
-                                axes[1, 2].set_xlim(-4, 4)
+                                axes[1, 2].set_xlim(-5, 5)
                                 
-                                # Save figure
                                 plt.tight_layout()
                                 vis_path = os.path.join(vis_dir, f"{hashname}_{orientation}_slice_{slice_idx:03d}.png")
                                 plt.savefig(vis_path, dpi=150, bbox_inches='tight')
                                 plt.close()
-                                
+                        
                         # Create distribution summary plot for all slices
                         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
                         fig.suptitle(f"{hashname} - {orientation} - All Slices Distribution")
                         
                         # PET distribution
-                        pet_all_values = pet_embeddings_norm.reshape(-1)  # Flatten all values
+                        pet_all_values = pet_embeddings_norm.reshape(-1)
                         ax1.hist(pet_all_values, bins=100, color='blue', alpha=0.7)
                         ax1.set_title('PET Embedding Distribution (Normalized [0, 1])')
                         ax1.set_xlabel('Value')
@@ -333,7 +326,7 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                         ax1.set_xlim(0, 1)
                         
                         # CT distribution
-                        ct_all_values = ct_embeddings_norm.reshape(-1)  # Flatten all values
+                        ct_all_values = ct_embeddings_norm.reshape(-1)
                         ax2.hist(ct_all_values, bins=100, color='red', alpha=0.7)
                         ax2.set_title('CT Embedding Distribution (Normalized [0, 1])')
                         ax2.set_xlabel('Value')
