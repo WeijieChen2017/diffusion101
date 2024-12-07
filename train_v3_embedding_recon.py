@@ -45,6 +45,25 @@ def collect_and_save_all_shapes(data_div):
             orig_shape[2] + (4 - orig_shape[2] % 4) % 4
         )
         
+        # Calculate expected shapes after zoom and transpose
+        expected_shapes = {
+            "axial": (
+                padded_shape[2],  # z (unchanged)
+                padded_shape[0] // 4,  # x (zoomed)
+                padded_shape[1] // 4   # y (zoomed)
+            ),
+            "coronal": (
+                padded_shape[1],  # y (unchanged)
+                padded_shape[2],  # z
+                padded_shape[0] // 4   # x (zoomed)
+            ),
+            "sagittal": (
+                padded_shape[0],  # x (unchanged)
+                padded_shape[2],  # z
+                padded_shape[1] // 4   # y (zoomed)
+            )
+        }
+        
         # Initialize shape info for this case
         shape_info[hashname] = {
             "volume": {
@@ -57,7 +76,8 @@ def collect_and_save_all_shapes(data_div):
                     "axial": padded_shape,
                     "sagittal": (padded_shape[2], padded_shape[0], padded_shape[1]),
                     "coronal": (padded_shape[2], padded_shape[1], padded_shape[0])
-                }
+                },
+                "expected_index_shape": expected_shapes
             },
             "index": {}
         }
@@ -70,7 +90,8 @@ def collect_and_save_all_shapes(data_div):
                     "shape": index_data.shape,
                     "dtype": str(index_data.dtype),
                     "min": int(index_data.min()),
-                    "max": int(index_data.max())
+                    "max": int(index_data.max()),
+                    "matches_expected": (index_data.shape == expected_shapes[orientation])
                 }
             except Exception as e:
                 print(f"Error loading index file for {hashname} {orientation}: {str(e)}")
