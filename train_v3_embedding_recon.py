@@ -56,12 +56,12 @@ def collect_and_save_all_shapes(data_div):
             "coronal": (
                 padded_shape[1],  # y (unchanged)
                 padded_shape[0] // 4,  # x (zoomed)
-                padded_shape[2]   # z
+                padded_shape[2] // 4  # z
             ),
             "sagittal": (
                 padded_shape[0],  # x (unchanged)
                 padded_shape[1] // 4,  # y (zoomed)
-                padded_shape[2]   # z
+                padded_shape[2] // 4  # z
             )
         }
         
