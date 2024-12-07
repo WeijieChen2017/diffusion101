@@ -260,18 +260,7 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                         # Create visualizations for every 10th slice
                         for slice_idx in range(0, n_slices, 10):
                             fig, axes = plt.subplots(2, 3, figsize=(15, 8))
-                            fig.suptitle(f"{hashname} - {orientation} - Slice {slice_idx}")
-                            
-                            # Get PET and CT slices based on orientation
-                            if orientation == "axial":
-                                pet_slice = pet_vol[:, :, slice_idx]
-                                ct_slice = ct_vol[:, :, slice_idx]
-                            elif orientation == "sagittal":
-                                pet_slice = pet_vol[slice_idx, :, :]
-                                ct_slice = ct_vol[slice_idx, :, :]
-                            else:  # coronal
-                                pet_slice = pet_vol[:, slice_idx, :]
-                                ct_slice = ct_vol[:, slice_idx, :]
+                            fig.suptitle(f"{hashname} - {orientation} - Slice {slice_idx}/{n_slices}")
                             
                             # Get embedding slices (both original and normalized)
                             pet_emb_slice_orig = pet_embeddings[slice_idx].transpose(1, 2, 0)  # (H, W, 3)
@@ -280,9 +269,9 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                             ct_emb_slice_norm = ct_embeddings_norm[slice_idx].transpose(1, 2, 0)
                             
                             # Plot PET row
-                            # Original PET (grayscale)
-                            axes[0, 0].imshow(pet_slice, cmap='gray')
-                            axes[0, 0].set_title('PET')
+                            # Original indices
+                            axes[0, 0].imshow(pet_indices_reshaped[slice_idx], cmap='gray')
+                            axes[0, 0].set_title('PET Indices')
                             axes[0, 0].axis('off')
                             
                             # PET embedding (RGB)
@@ -299,9 +288,9 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                             axes[0, 2].set_xlim(-4, 4)
                             
                             # Plot CT row
-                            # Original CT (grayscale)
-                            axes[1, 0].imshow(ct_slice, cmap='gray')
-                            axes[1, 0].set_title('CT')
+                            # Original indices
+                            axes[1, 0].imshow(ct_indices_reshaped[slice_idx], cmap='gray')
+                            axes[1, 0].set_title('CT Indices')
                             axes[1, 0].axis('off')
                             
                             # CT embedding (RGB)
@@ -331,7 +320,7 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                         print(f"Error processing {hashname} {orientation}: {str(e)}")
                         
             except Exception as e:
-                print(f"Error loading volumes for {hashname}: {str(e)}")
+                print(f"Error loading for {hashname}: {str(e)}")
 
 # Example usage:
 if __name__ == "__main__":
