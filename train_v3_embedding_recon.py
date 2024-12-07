@@ -46,6 +46,7 @@ def collect_and_save_all_shapes(data_div):
         )
         
         # Calculate expected shapes after zoom and transpose
+        # Format: (unchanged_dim, width, height)
         expected_shapes = {
             "axial": (
                 padded_shape[2],  # z (unchanged)
@@ -54,29 +55,21 @@ def collect_and_save_all_shapes(data_div):
             ),
             "coronal": (
                 padded_shape[1],  # y (unchanged)
-                padded_shape[2],  # z
-                padded_shape[0] // 4   # x (zoomed)
+                padded_shape[0] // 4,  # x (zoomed)
+                padded_shape[2]   # z
             ),
             "sagittal": (
                 padded_shape[0],  # x (unchanged)
-                padded_shape[2],  # z
-                padded_shape[1] // 4   # y (zoomed)
+                padded_shape[1] // 4,  # y (zoomed)
+                padded_shape[2]   # z
             )
         }
         
         # Initialize shape info for this case
         shape_info[hashname] = {
             "volume": {
-                "original_shape": {
-                    "axial": orig_shape,
-                    "sagittal": (orig_shape[2], orig_shape[0], orig_shape[1]),
-                    "coronal": (orig_shape[2], orig_shape[1], orig_shape[0])
-                },
-                "padded_shape": {
-                    "axial": padded_shape,
-                    "sagittal": (padded_shape[2], padded_shape[0], padded_shape[1]),
-                    "coronal": (padded_shape[2], padded_shape[1], padded_shape[0])
-                },
+                "original_shape": orig_shape,
+                "padded_shape": padded_shape,
                 "expected_index_shape": expected_shapes
             },
             "index": {}
@@ -86,13 +79,37 @@ def collect_and_save_all_shapes(data_div):
         for orientation, path in index_paths.items():
             try:
                 index_data = np.load(path)
+                original_shape = index_data.shape
+                
+                # Expected flattened shape (c, w*h)
+                expected_c = expected_shapes[orientation][0]
+                expected_w = expected_shapes[orientation][1]
+                expected_h = expected_shapes[orientation][2]
+                expected_flat_shape = (expected_c, expected_w * expected_h)
+                
+                # Check if shape matches expected and can be reshaped
+                shape_matches = (
+                    len(index_data.shape) == 2 and
+                    index_data.shape[0] == expected_c and
+                    index_data.shape[1] == (expected_w * expected_h)
+                )
+                
                 shape_info[hashname]["index"][orientation] = {
-                    "shape": index_data.shape,
+                    "original_shape": original_shape,
+                    "expected_flat_shape": expected_flat_shape,
+                    "expected_reshaped": (expected_c, expected_w, expected_h),
+                    "shape_matches": shape_matches,
                     "dtype": str(index_data.dtype),
                     "min": int(index_data.min()),
-                    "max": int(index_data.max()),
-                    "matches_expected": (index_data.shape == expected_shapes[orientation])
+                    "max": int(index_data.max())
                 }
+                
+                if not shape_matches:
+                    shape_info[hashname]["index"][orientation]["error"] = (
+                        f"Shape mismatch: got {original_shape}, "
+                        f"expected {expected_flat_shape} (to be reshaped to {(expected_c, expected_w, expected_h)})"
+                    )
+                
             except Exception as e:
                 print(f"Error loading index file for {hashname} {orientation}: {str(e)}")
                 shape_info[hashname]["index"][orientation] = {
@@ -123,23 +140,19 @@ def analyze_shape_predictions(shape_info):
         case_mismatches = {}
         
         for orientation in ["axial", "sagittal", "coronal"]:
-            expected_shape = info["volume"]["expected_index_shape"][orientation]
-            
             if "error" in info["index"][orientation]:
                 case_mismatches[orientation] = {
-                    "expected": expected_shape,
-                    "actual": "File Error",
+                    "expected_flat": info["volume"]["expected_index_shape"][orientation],
                     "error": info["index"][orientation]["error"]
                 }
                 case_has_mismatch = True
                 continue
-                
-            actual_shape = info["index"][orientation]["shape"]
             
-            if actual_shape != expected_shape:
+            if not info["index"][orientation]["shape_matches"]:
                 case_mismatches[orientation] = {
-                    "expected": expected_shape,
-                    "actual": actual_shape
+                    "original_shape": info["index"][orientation]["original_shape"],
+                    "expected_flat": info["index"][orientation]["expected_flat_shape"],
+                    "expected_reshaped": info["index"][orientation]["expected_reshaped"]
                 }
                 case_has_mismatch = True
         
@@ -159,12 +172,13 @@ def analyze_shape_predictions(shape_info):
         for hashname, case_mismatches in mismatches.items():
             print(f"\nCase: {hashname}")
             for orientation, mismatch_info in case_mismatches.items():
+                print(f"  {orientation}:")
                 if "error" in mismatch_info:
-                    print(f"  {orientation}: File Error - {mismatch_info['error']}")
+                    print(f"    Error: {mismatch_info['error']}")
                 else:
-                    print(f"  {orientation}:")
-                    print(f"    Expected: {mismatch_info['expected']}")
-                    print(f"    Actual:   {mismatch_info['actual']}")
+                    print(f"    Got shape: {mismatch_info['original_shape']}")
+                    print(f"    Expected flat: {mismatch_info['expected_flat']}")
+                    print(f"    Should reshape to: {mismatch_info['expected_reshaped']}")
     
     return mismatches
 
