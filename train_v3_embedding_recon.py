@@ -107,10 +107,75 @@ def collect_and_save_all_shapes(data_div):
     print(f"Shape information saved to {output_path}")
     return shape_info
 
+def analyze_shape_predictions(shape_info):
+    """
+    Analyze and print discrepancies between predicted and actual shapes.
+    """
+    print("\nShape Analysis Report:")
+    print("=" * 80)
+    
+    mismatches = {}
+    total_cases = len(shape_info)
+    mismatch_count = 0
+    
+    for hashname, info in shape_info.items():
+        case_has_mismatch = False
+        case_mismatches = {}
+        
+        for orientation in ["axial", "sagittal", "coronal"]:
+            expected_shape = info["volume"]["expected_index_shape"][orientation]
+            
+            if "error" in info["index"][orientation]:
+                case_mismatches[orientation] = {
+                    "expected": expected_shape,
+                    "actual": "File Error",
+                    "error": info["index"][orientation]["error"]
+                }
+                case_has_mismatch = True
+                continue
+                
+            actual_shape = info["index"][orientation]["shape"]
+            
+            if actual_shape != expected_shape:
+                case_mismatches[orientation] = {
+                    "expected": expected_shape,
+                    "actual": actual_shape
+                }
+                case_has_mismatch = True
+        
+        if case_has_mismatch:
+            mismatches[hashname] = case_mismatches
+            mismatch_count += 1
+    
+    # Print summary
+    print(f"Total cases analyzed: {total_cases}")
+    print(f"Cases with mismatches: {mismatch_count}")
+    print(f"Match rate: {((total_cases - mismatch_count) / total_cases) * 100:.2f}%")
+    
+    # Print detailed mismatches
+    if mismatches:
+        print("\nDetailed Mismatches:")
+        print("-" * 80)
+        for hashname, case_mismatches in mismatches.items():
+            print(f"\nCase: {hashname}")
+            for orientation, mismatch_info in case_mismatches.items():
+                if "error" in mismatch_info:
+                    print(f"  {orientation}: File Error - {mismatch_info['error']}")
+                else:
+                    print(f"  {orientation}:")
+                    print(f"    Expected: {mismatch_info['expected']}")
+                    print(f"    Actual:   {mismatch_info['actual']}")
+    
+    return mismatches
+
 # Example usage:
 if __name__ == "__main__":
     # Load data_div from JSON file
     with open("James_data_v3/cv_list.json", "r") as f:
         data_div = json.load(f)
     
+    # Collect shape information
     shape_info = collect_and_save_all_shapes(data_div)
+    
+    # Analyze shapes
+    mismatches = analyze_shape_predictions(shape_info)
