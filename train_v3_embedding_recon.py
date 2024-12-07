@@ -3,6 +3,8 @@ import numpy as np
 import os
 from tqdm import tqdm
 import json
+import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
 
 def collect_and_save_all_shapes(data_div):
     """
@@ -182,14 +184,115 @@ def analyze_shape_predictions(shape_info):
     
     return mismatches
 
+def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4_weights_attn.npy"):
+    """
+    Convert indices to embeddings, normalize them, and create visualizations with PET/CT.
+    """
+    # Load VQ weights dictionary
+    print(f"Loading VQ weights from {vq_weights_path}")
+    vq_weights = np.load(vq_weights_path)  # Shape: (8192, 3)
+    
+    # Create output directories
+    output_dir = "data_inspection/embeddings"
+    vis_dir = "data_inspection/visualizations"
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(vis_dir, exist_ok=True)
+    
+    # Process each case
+    for cv_idx in range(5):
+        for hashname in tqdm(data_div[f"cv{cv_idx}"], desc=f"Processing CV{cv_idx}"):
+            # Load PET and CT volumes
+            pet_path = f"James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz"
+            ct_path = f"James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz"
+            
+            try:
+                pet_vol = nib.load(pet_path).get_fdata()
+                ct_vol = nib.load(ct_path).get_fdata()
+                
+                # Process each orientation
+                for orientation in ["axial", "sagittal", "coronal"]:
+                    index_path = f"James_data_v3/index/{hashname}_x_{orientation}_ind.npy"
+                    
+                    try:
+                        # Load and process indices
+                        indices = np.load(index_path)  # Shape: (c, w*h)
+                        n_slices, flattened = indices.shape
+                        width = int(np.sqrt(flattened))
+                        height = width
+                        
+                        # Reshape indices and get embeddings
+                        indices_reshaped = indices.reshape(n_slices, width, height)
+                        flat_indices = indices_reshaped.flatten()
+                        embeddings = vq_weights[flat_indices].reshape(n_slices, width, height, 3)
+                        embeddings = embeddings.transpose(0, 3, 1, 2)
+                        
+                        # Normalize embeddings from [-4, 4] to [0, 1]
+                        embeddings_norm = embeddings / 8.0 + 0.5
+                        
+                        # Save normalized embeddings
+                        output_path = os.path.join(output_dir, f"{hashname}_{orientation}_embedding_norm.npz")
+                        np.savez_compressed(
+                            output_path,
+                            embedding=embeddings_norm,
+                            shape=embeddings_norm.shape
+                        )
+                        
+                        # Create visualizations for each slice
+                        for slice_idx in range(n_slices):
+                            fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+                            fig.suptitle(f"{hashname} - {orientation} - Slice {slice_idx}")
+                            
+                            # Plot PET and CT
+                            if orientation == "axial":
+                                pet_slice = pet_vol[:, :, slice_idx]
+                                ct_slice = ct_vol[:, :, slice_idx]
+                            elif orientation == "sagittal":
+                                pet_slice = pet_vol[slice_idx, :, :]
+                                ct_slice = ct_vol[slice_idx, :, :]
+                            else:  # coronal
+                                pet_slice = pet_vol[:, slice_idx, :]
+                                ct_slice = ct_vol[:, slice_idx, :]
+                            
+                            # Plot original data
+                            axes[0, 0].imshow(pet_slice, cmap='jet')
+                            axes[0, 0].set_title('PET')
+                            axes[0, 0].axis('off')
+                            
+                            axes[0, 1].imshow(ct_slice, cmap='jet')
+                            axes[0, 1].set_title('CT')
+                            axes[0, 1].axis('off')
+                            
+                            # Plot embeddings channels
+                            for ch in range(3):
+                                axes[1, ch].imshow(embeddings_norm[slice_idx, ch], cmap='jet')
+                                axes[1, ch].set_title(f'Embedding Ch{ch}')
+                                axes[1, ch].axis('off')
+                            
+                            # Save figure
+                            plt.tight_layout()
+                            vis_path = os.path.join(vis_dir, f"{hashname}_{orientation}_slice_{slice_idx:03d}.png")
+                            plt.savefig(vis_path, dpi=150, bbox_inches='tight')
+                            plt.close()
+                            
+                        print(f"Processed {hashname} {orientation}:")
+                        print(f"  Saved embeddings to: {output_path}")
+                        print(f"  Saved visualizations to: {vis_dir}")
+                        
+                    except Exception as e:
+                        print(f"Error processing {hashname} {orientation}: {str(e)}")
+                        
+            except Exception as e:
+                print(f"Error loading volumes for {hashname}: {str(e)}")
+
 # Example usage:
 if __name__ == "__main__":
     # Load data_div from JSON file
     with open("James_data_v3/cv_list.json", "r") as f:
         data_div = json.load(f)
     
-    # Collect shape information
+    # First collect and analyze shapes
     shape_info = collect_and_save_all_shapes(data_div)
-    
-    # Analyze shapes
     mismatches = analyze_shape_predictions(shape_info)
+    
+    # Then convert indices to embeddings and create visualizations
+    visualize_and_save_embeddings(data_div)
