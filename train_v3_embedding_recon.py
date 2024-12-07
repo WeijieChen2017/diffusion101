@@ -184,6 +184,19 @@ def analyze_shape_predictions(shape_info):
     
     return mismatches
 
+def get_embedding_dimensions(orientation, flattened, expected_shapes):
+    """
+    Get correct embedding dimensions based on the pre-computed expected shapes.
+    """
+    width = expected_shapes[orientation][1]   # Second dimension from expected shape
+    height = expected_shapes[orientation][2]  # Third dimension from expected shape
+    
+    # Verify the dimensions match the flattened size
+    if width * height != flattened:
+        raise ValueError(f"Computed dimensions {width}x{height} != flattened size {flattened}")
+    
+    return width, height
+
 def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4_weights_attn.npy"):
     """
     Convert indices to embeddings, normalize them, and create visualizations with PET/CT.
@@ -191,6 +204,9 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
     # Load VQ weights dictionary
     print(f"Loading VQ weights from {vq_weights_path}")
     vq_weights = np.load(vq_weights_path)  # Shape: (8192, 3)
+    
+    # First get shape information
+    shape_info = collect_and_save_all_shapes(data_div)
     
     # Create output directories
     output_dir = "data_inspection/embeddings"
@@ -201,27 +217,20 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
     # Process each case
     for cv_idx in range(5):
         for hashname in tqdm(data_div[f"cv{cv_idx}"], desc=f"Processing CV{cv_idx}"):
-            # Load PET and CT volumes
-            pet_path = f"James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz"
-            ct_path = f"James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz"
-            
             try:
-                pet_vol = nib.load(pet_path).get_fdata()
-                ct_vol = nib.load(ct_path).get_fdata()
+                expected_shapes = shape_info[hashname]["volume"]["expected_index_shape"]
                 
                 # Process each orientation
                 for orientation in ["axial", "sagittal", "coronal"]:
-                    # Load PET indices
+                    # Load PET and CT indices
                     pet_index_path = f"James_data_v3/index/{hashname}_x_{orientation}_ind.npy"
-                    # Load CT indices
                     ct_index_path = f"James_data_v3/index/{hashname}_y_{orientation}_ind.npy"
                     
                     try:
                         # Process PET indices
                         pet_indices = np.load(pet_index_path)
                         n_slices, flattened = pet_indices.shape
-                        width = int(np.sqrt(flattened))
-                        height = width
+                        width, height = get_embedding_dimensions(orientation, flattened, expected_shapes)
                         
                         # Process CT indices
                         ct_indices = np.load(ct_index_path)
