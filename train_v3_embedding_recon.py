@@ -242,7 +242,7 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                             fig, axes = plt.subplots(2, 3, figsize=(15, 8))
                             fig.suptitle(f"{hashname} - {orientation} - Slice {slice_idx}")
                             
-                            # Plot PET and CT
+                            # Get PET and CT slices based on orientation
                             if orientation == "axial":
                                 pet_slice = pet_vol[:, :, slice_idx]
                                 ct_slice = ct_vol[:, :, slice_idx]
@@ -253,20 +253,44 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                                 pet_slice = pet_vol[:, slice_idx, :]
                                 ct_slice = ct_vol[:, slice_idx, :]
                             
-                            # Plot original data
-                            axes[0, 0].imshow(pet_slice, cmap='jet')
+                            # Get embedding slices
+                            pet_emb_slice = embeddings_norm[slice_idx].transpose(1, 2, 0)  # (H, W, 3)
+                            
+                            # Plot PET row
+                            # Original PET (grayscale)
+                            axes[0, 0].imshow(pet_slice, cmap='gray')
                             axes[0, 0].set_title('PET')
                             axes[0, 0].axis('off')
                             
-                            axes[0, 1].imshow(ct_slice, cmap='jet')
-                            axes[0, 1].set_title('CT')
+                            # PET embedding (RGB)
+                            axes[0, 1].imshow(pet_emb_slice)
+                            axes[0, 1].set_title('PET Embedding')
                             axes[0, 1].axis('off')
                             
-                            # Plot embeddings channels
-                            for ch in range(3):
-                                axes[1, ch].imshow(embeddings_norm[slice_idx, ch], cmap='jet')
-                                axes[1, ch].set_title(f'Embedding Ch{ch}')
-                                axes[1, ch].axis('off')
+                            # PET embedding histogram
+                            axes[0, 2].hist(pet_emb_slice.ravel(), bins=50, color='blue', alpha=0.7)
+                            axes[0, 2].set_yscale('log')
+                            axes[0, 2].set_title('PET Embedding Distribution')
+                            axes[0, 2].set_xlabel('Value')
+                            axes[0, 2].set_ylabel('Count (log)')
+                            
+                            # Plot CT row
+                            # Original CT (grayscale)
+                            axes[1, 0].imshow(ct_slice, cmap='gray')
+                            axes[1, 0].set_title('CT')
+                            axes[1, 0].axis('off')
+                            
+                            # CT embedding (RGB)
+                            axes[1, 1].imshow(pet_emb_slice)  # Using same embedding for now
+                            axes[1, 1].set_title('CT Embedding')
+                            axes[1, 1].axis('off')
+                            
+                            # CT embedding histogram
+                            axes[1, 2].hist(pet_emb_slice.ravel(), bins=50, color='red', alpha=0.7)
+                            axes[1, 2].set_yscale('log')
+                            axes[1, 2].set_title('CT Embedding Distribution')
+                            axes[1, 2].set_xlabel('Value')
+                            axes[1, 2].set_ylabel('Count (log)')
                             
                             # Save figure
                             plt.tight_layout()
