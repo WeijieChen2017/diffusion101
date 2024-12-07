@@ -211,30 +211,41 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                 
                 # Process each orientation
                 for orientation in ["axial", "sagittal", "coronal"]:
-                    index_path = f"James_data_v3/index/{hashname}_x_{orientation}_ind.npy"
+                    # Load PET indices
+                    pet_index_path = f"James_data_v3/index/{hashname}_x_{orientation}_ind.npy"
+                    # Load CT indices
+                    ct_index_path = f"James_data_v3/index/{hashname}_y_{orientation}_ind.npy"
                     
                     try:
-                        # Load and process indices
-                        indices = np.load(index_path)  # Shape: (c, w*h)
-                        n_slices, flattened = indices.shape
+                        # Process PET indices
+                        pet_indices = np.load(pet_index_path)
+                        n_slices, flattened = pet_indices.shape
                         width = int(np.sqrt(flattened))
                         height = width
                         
-                        # Reshape indices and get embeddings
-                        indices_reshaped = indices.reshape(n_slices, width, height)
-                        flat_indices = indices_reshaped.flatten()
-                        embeddings = vq_weights[flat_indices].reshape(n_slices, width, height, 3)
-                        embeddings = embeddings.transpose(0, 3, 1, 2)
+                        # Process CT indices
+                        ct_indices = np.load(ct_index_path)
                         
-                        # Normalize embeddings from [-4, 4] to [0, 1]
-                        embeddings_norm = embeddings / 8.0 + 0.5
+                        # Get embeddings for both PET and CT
+                        # PET embeddings
+                        pet_indices_reshaped = pet_indices.reshape(n_slices, width, height)
+                        pet_embeddings = vq_weights[pet_indices_reshaped.flatten()].reshape(n_slices, width, height, 3)
+                        pet_embeddings = pet_embeddings.transpose(0, 3, 1, 2)
+                        pet_embeddings_norm = pet_embeddings / 8.0 + 0.5
+                        
+                        # CT embeddings
+                        ct_indices_reshaped = ct_indices.reshape(n_slices, width, height)
+                        ct_embeddings = vq_weights[ct_indices_reshaped.flatten()].reshape(n_slices, width, height, 3)
+                        ct_embeddings = ct_embeddings.transpose(0, 3, 1, 2)
+                        ct_embeddings_norm = ct_embeddings / 8.0 + 0.5
                         
                         # Save normalized embeddings
                         output_path = os.path.join(output_dir, f"{hashname}_{orientation}_embedding_norm.npz")
                         np.savez_compressed(
                             output_path,
-                            embedding=embeddings_norm,
-                            shape=embeddings_norm.shape
+                            pet_embedding=pet_embeddings_norm,
+                            ct_embedding=ct_embeddings_norm,
+                            shape=pet_embeddings_norm.shape
                         )
                         
                         # Create visualizations for each slice
@@ -254,7 +265,8 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                                 ct_slice = ct_vol[:, slice_idx, :]
                             
                             # Get embedding slices
-                            pet_emb_slice = embeddings_norm[slice_idx].transpose(1, 2, 0)  # (H, W, 3)
+                            pet_emb_slice = pet_embeddings_norm[slice_idx].transpose(1, 2, 0)  # (H, W, 3)
+                            ct_emb_slice = ct_embeddings_norm[slice_idx].transpose(1, 2, 0)  # (H, W, 3)
                             
                             # Plot PET row
                             # Original PET (grayscale)
@@ -268,11 +280,12 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                             axes[0, 1].axis('off')
                             
                             # PET embedding histogram
-                            axes[0, 2].hist(pet_emb_slice.ravel(), bins=50, color='blue', alpha=0.7)
+                            axes[0, 2].hist(pet_emb_slice.ravel(), bins=50, color='blue', alpha=0.7, range=(0, 1))
                             axes[0, 2].set_yscale('log')
                             axes[0, 2].set_title('PET Embedding Distribution')
                             axes[0, 2].set_xlabel('Value')
                             axes[0, 2].set_ylabel('Count (log)')
+                            axes[0, 2].set_xlim(0, 1)
                             
                             # Plot CT row
                             # Original CT (grayscale)
@@ -281,16 +294,17 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                             axes[1, 0].axis('off')
                             
                             # CT embedding (RGB)
-                            axes[1, 1].imshow(pet_emb_slice)  # Using same embedding for now
+                            axes[1, 1].imshow(ct_emb_slice)
                             axes[1, 1].set_title('CT Embedding')
                             axes[1, 1].axis('off')
                             
                             # CT embedding histogram
-                            axes[1, 2].hist(pet_emb_slice.ravel(), bins=50, color='red', alpha=0.7)
+                            axes[1, 2].hist(ct_emb_slice.ravel(), bins=50, color='red', alpha=0.7, range=(0, 1))
                             axes[1, 2].set_yscale('log')
                             axes[1, 2].set_title('CT Embedding Distribution')
                             axes[1, 2].set_xlabel('Value')
                             axes[1, 2].set_ylabel('Count (log)')
+                            axes[1, 2].set_xlim(0, 1)
                             
                             # Save figure
                             plt.tight_layout()
