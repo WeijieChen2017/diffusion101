@@ -203,7 +203,10 @@ def train_or_eval_or_test_the_batch_cond(
     batch_size_count = 0
     batch_x = torch.zeros((batch_size, 3, x_coronal.shape[2], x_coronal.shape[3])).to(device)
     batch_y = torch.zeros((batch_size, 3, x_coronal.shape[2], x_coronal.shape[3])).to(device)
-    
+    print(f"batch_x shape, {batch_x.shape}")
+    print(f"x_coronal shape, {x_coronal.shape}")
+
+
     for index in indices_list:
         batch_x[batch_size_count] = x_coronal[index]
         batch_y[batch_size_count] = y_coronal[index]
