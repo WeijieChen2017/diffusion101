@@ -113,9 +113,21 @@ def train_or_eval_or_test_the_batch_cond(
     x_sagittal = batch["x_sagittal"].squeeze(0).to(device)  # shape: (len_x, 3, h, w)
     y_sagittal = batch["y_sagittal"].squeeze(0).to(device)
 
+    # show all incoming shape
+    printlog(f"Incoming shapes:")
+    printlog(f"x_axial: {x_axial.shape}")
+    printlog(f"y_axial: {y_axial.shape}")
+    printlog(f"x_coronal: {x_coronal.shape}")
+    printlog(f"y_coronal: {y_coronal.shape}")
+    printlog(f"x_sagittal: {x_sagittal.shape}")
+    printlog(f"y_sagittal: {y_sagittal.shape}")
+
     # Ensure first dimension is multiple of 16 for each view
     required_multiple = 8
     
+    # show all incoming shape
+    
+
     # Pad axial view
     pad_z = (required_multiple - x_axial.shape[2] % required_multiple) % required_multiple
     if pad_z > 0:
