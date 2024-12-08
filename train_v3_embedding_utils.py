@@ -106,12 +106,12 @@ def train_or_eval_or_test_the_batch_cond(
         device=None
     ):
     # Extract data for all three views
-    x_axial = batch["x_axial"].squeeze(0).to(device)  # shape: (len_z, 3, h, w)
-    y_axial = batch["y_axial"].squeeze(0).to(device)
-    x_coronal = batch["x_coronal"].squeeze(0).to(device)  # shape: (len_y, 3, h, w)
-    y_coronal = batch["y_coronal"].squeeze(0).to(device)
-    x_sagittal = batch["x_sagittal"].squeeze(0).to(device)  # shape: (len_x, 3, h, w)
-    y_sagittal = batch["y_sagittal"].squeeze(0).to(device)
+    x_axial = batch["x_axial"].to(device)  # shape: (len_z, 3, h, w)
+    y_axial = batch["y_axial"].to(device)
+    x_coronal = batch["x_coronal"].to(device)  # shape: (len_y, 3, h, w)
+    y_coronal = batch["y_coronal"].to(device)
+    x_sagittal = batch["x_sagittal"].to(device)  # shape: (len_x, 3, h, w)
+    y_sagittal = batch["y_sagittal"].to(device)
 
     # show all incoming shape
     printlog(f"Incoming shapes:")
@@ -164,7 +164,7 @@ def train_or_eval_or_test_the_batch_cond(
     random.shuffle(indices_list)
     
     batch_size_count = 0
-    batch_x = torch.zeros((batch_size, 3, x_axial.shape[2], x_axial.shape[3])).to(device)
+    batch_x = torch.zeros((batch_size, 3, x_axial.shape[2], x_axial.shape[3])).to(device)  # (batch_size, 3, 64, 64)
     batch_y = torch.zeros((batch_size, 3, x_axial.shape[2], x_axial.shape[3])).to(device)
     
     for index in indices_list:
@@ -201,11 +201,11 @@ def train_or_eval_or_test_the_batch_cond(
     random.shuffle(indices_list)
     
     batch_size_count = 0
-    batch_x = torch.zeros((batch_size, 3, x_coronal.shape[2], x_coronal.shape[3])).to(device)
+    batch_x = torch.zeros((batch_size, 3, x_coronal.shape[2], x_coronal.shape[3])).to(device)  # (batch_size, 3, 120, 64)
     batch_y = torch.zeros((batch_size, 3, x_coronal.shape[2], x_coronal.shape[3])).to(device)
     
     for index in indices_list:
-        batch_x[batch_size_count] = x_coronal[index]
+        batch_x[batch_size_count] = x_coronal[index]  # Shape will be (3, 120, 64)
         batch_y[batch_size_count] = y_coronal[index]
 
         batch_size_count += 1
@@ -235,7 +235,7 @@ def train_or_eval_or_test_the_batch_cond(
     random.shuffle(indices_list)
     
     batch_size_count = 0
-    batch_x = torch.zeros((batch_size, 3, x_sagittal.shape[2], x_sagittal.shape[3])).to(device)
+    batch_x = torch.zeros((batch_size, 3, x_sagittal.shape[2], x_sagittal.shape[3])).to(device)  # (batch_size, 3, 120, 64)
     batch_y = torch.zeros((batch_size, 3, x_sagittal.shape[2], x_sagittal.shape[3])).to(device)
     
     for index in indices_list:
