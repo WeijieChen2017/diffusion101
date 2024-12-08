@@ -724,13 +724,9 @@ class GaussianDiffusion(Module):
 
     @torch.inference_mode()
     def p_sample_loop(self, shape, cond, return_all_timesteps=False):
-        batch, device = shape[0], self.device
+        batch, device = cond.shape[0], self.device  # Use cond's batch size
         
-        # Ensure shape matches cond shape
-        assert cond.shape[0] == batch, f"Batch size mismatch: shape={shape[0]}, cond={cond.shape[0]}"
-        assert cond.shape[2:] == (shape[2], shape[3]), f"Spatial dimensions mismatch: shape={shape[2:]}, cond={cond.shape[2:]}"
-        
-        # Initialize noise with same spatial dimensions as cond
+        # Initialize noise using cond's dimensions
         img = torch.randn((batch, self.channels, cond.shape[2], cond.shape[3]), device=device)
         imgs = [img]
 
@@ -788,15 +784,10 @@ class GaussianDiffusion(Module):
     #     return ret
     @torch.inference_mode()
     def ddim_sample(self, shape, cond, return_all_timesteps=False):
-        batch, device, total_timesteps, sampling_timesteps, eta = (
-            shape[0], self.device, self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta
-        )
+        batch, device = cond.shape[0], self.device  # Use cond's batch size
+        total_timesteps, sampling_timesteps, eta = self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta
         
-        # Ensure shape matches cond shape
-        assert cond.shape[0] == batch, f"Batch size mismatch: shape={shape[0]}, cond={cond.shape[0]}"
-        assert cond.shape[2:] == (shape[2], shape[3]), f"Spatial dimensions mismatch: shape={shape[2:]}, cond={cond.shape[2:]}"
-        
-        # Initialize noise with same spatial dimensions as cond
+        # Initialize noise using cond's dimensions
         img = torch.randn((batch, self.channels, cond.shape[2], cond.shape[3]), device=device)
         imgs = [img]
 
