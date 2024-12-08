@@ -7,7 +7,7 @@ from omegaconf import OmegaConf
 import torch.optim as optim
 from denoising_diffusion_pytorch import Unet, GaussianDiffusion
 
-from train_v2_vanilla_utils import prepare_dataset, printlog, test_diffusion_model_and_save_slices
+from train_v3_embedding_utils import prepare_dataset, printlog, test_diffusion_model_and_save_slices
 # from train_v1_vanilla_utils import load_inception_model
 from global_config import global_config, set_param, get_param
 
