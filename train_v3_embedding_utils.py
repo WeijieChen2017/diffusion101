@@ -114,22 +114,22 @@ def train_or_eval_or_test_the_batch_cond(
     y_sagittal = batch["y_sagittal"].squeeze(0).to(device)
 
     # Ensure first dimension is multiple of 16 for each view
-    required_multiple = 16
+    required_multiple = 8
     
     # Pad axial view
-    pad_z = (required_multiple - x_axial.shape[0] % required_multiple) % required_multiple
+    pad_z = (required_multiple - x_axial.shape[2] % required_multiple) % required_multiple
     if pad_z > 0:
         x_axial = torch.nn.functional.pad(x_axial, (0, 0, 0, 0, 0, 0, 0, pad_z), mode='constant', value=0)
         y_axial = torch.nn.functional.pad(y_axial, (0, 0, 0, 0, 0, 0, 0, pad_z), mode='constant', value=0)
     
     # Pad coronal view
-    pad_y = (required_multiple - x_coronal.shape[0] % required_multiple) % required_multiple
+    pad_y = (required_multiple - x_coronal.shape[2] % required_multiple) % required_multiple
     if pad_y > 0:
         x_coronal = torch.nn.functional.pad(x_coronal, (0, 0, 0, 0, 0, 0, 0, pad_y), mode='constant', value=0)
         y_coronal = torch.nn.functional.pad(y_coronal, (0, 0, 0, 0, 0, 0, 0, pad_y), mode='constant', value=0)
     
     # Pad sagittal view
-    pad_x = (required_multiple - x_sagittal.shape[0] % required_multiple) % required_multiple
+    pad_x = (required_multiple - x_sagittal.shape[2] % required_multiple) % required_multiple
     if pad_x > 0:
         x_sagittal = torch.nn.functional.pad(x_sagittal, (0, 0, 0, 0, 0, 0, 0, pad_x), mode='constant', value=0)
         y_sagittal = torch.nn.functional.pad(y_sagittal, (0, 0, 0, 0, 0, 0, 0, pad_x), mode='constant', value=0)
