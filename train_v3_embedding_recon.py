@@ -344,7 +344,7 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                         plt.close()
                         
                         print(f"Processed {hashname} {orientation}:")
-                        print(f"  Saved embeddings to: {output_path}")
+                        print(f"  Saved embeddings to: {output_path}, the shape is {pet_embeddings_norm.shape}")
                         print(f"  Saved distribution to: {dist_path}")
                         if output_viz:
                             print(f"  Saved visualizations to: {vis_dir}")
