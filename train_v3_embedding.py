@@ -29,7 +29,7 @@ with open(data_division_file, "r") as f:
     data_div = json.load(f)
 
 
-experiment_config = OmegaConf.load("train_v3_vanilla_config.yaml")
+experiment_config = OmegaConf.load("train_v3_embedding_config.yaml")
 print(experiment_config)
 for key in experiment_config.keys():
     set_param(key, experiment_config[key])
