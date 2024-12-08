@@ -240,22 +240,22 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                         pet_indices = np.load(pet_index_path)
                         n_slices, flattened = pet_indices.shape
                         width, height = get_embedding_dimensions(orientation, flattened, expected_shapes)
-                        # # exchange w, h
-                        # width, height = height, width
+                        # exchange w, h
+                        width, height = height, width
                         
                         # Process CT indices
                         ct_indices = np.load(ct_index_path)
                         
                         # Get embeddings for both PET and CT
                         # PET embeddings
-                        pet_indices_reshaped = pet_indices.reshape(n_slices, height, width)
-                        pet_embeddings = vq_weights[pet_indices_reshaped.flatten()].reshape(n_slices, height, width, 3)
+                        pet_indices_reshaped = pet_indices.reshape(n_slices, width, height)
+                        pet_embeddings = vq_weights[pet_indices_reshaped.flatten()].reshape(n_slices, width, height, 3)
                         pet_embeddings = pet_embeddings.transpose(0, 3, 1, 2)
                         pet_embeddings_norm = pet_embeddings / 10.0 + 0.5
                         
                         # CT embeddings
-                        ct_indices_reshaped = ct_indices.reshape(n_slices, height, width)
-                        ct_embeddings = vq_weights[ct_indices_reshaped.flatten()].reshape(n_slices, height, width, 3)
+                        ct_indices_reshaped = ct_indices.reshape(n_slices, width, height)
+                        ct_embeddings = vq_weights[ct_indices_reshaped.flatten()].reshape(n_slices, width, height, 3)
                         ct_embeddings = ct_embeddings.transpose(0, 3, 1, 2)
                         ct_embeddings_norm = ct_embeddings / 10.0 + 0.5
                         
