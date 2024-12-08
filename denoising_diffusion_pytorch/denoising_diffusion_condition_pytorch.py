@@ -725,28 +725,23 @@ class GaussianDiffusion(Module):
     @torch.inference_mode()
     def p_sample_loop(self, shape, cond, return_all_timesteps=False):
         batch, device = shape[0], self.device
-        # print(f"shape is  {shape}")
-
-        # Normalize cond
-        # cond = self.normalize(cond)
-
-        img = torch.randn(shape, device=device)
-        # img = torch.randn((batch, 3, shape[2], shape[3]), device=device)
+        
+        # Ensure shape matches cond shape
+        assert cond.shape[0] == batch, f"Batch size mismatch: shape={shape[0]}, cond={cond.shape[0]}"
+        assert cond.shape[2:] == (shape[2], shape[3]), f"Spatial dimensions mismatch: shape={shape[2:]}, cond={cond.shape[2:]}"
+        
+        # Initialize noise with same spatial dimensions as cond
+        img = torch.randn((batch, self.channels, cond.shape[2], cond.shape[3]), device=device)
         imgs = [img]
 
         x_start = None
 
         for t in tqdm(reversed(range(0, self.num_timesteps)), desc="sampling loop time step", total=self.num_timesteps):
             self_cond = x_start if self.self_condition else None
-            # Concatenate img and cond
-            # img_cond = torch.cat((img, cond), dim=1)
-            # print(f"img_cond shape {img_cond.shape}") # img_cond shape torch.Size([1, 6, 256, 256])
             img, x_start = self.p_sample(img, t, cond, self_cond)
-            # print(f"model output shape {img.shape}")
             imgs.append(img)
 
         ret = img if not return_all_timesteps else torch.stack(imgs, dim=1)
-
         ret = self.unnormalize(ret)
         return ret
 
@@ -793,25 +788,22 @@ class GaussianDiffusion(Module):
     #     return ret
     @torch.inference_mode()
     def ddim_sample(self, shape, cond, return_all_timesteps=False):
-        batch, device, total_timesteps, sampling_timesteps, eta, objective = (
-            shape[0], self.device, self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta, self.objective
+        batch, device, total_timesteps, sampling_timesteps, eta = (
+            shape[0], self.device, self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta
         )
-
-        # Normalize cond (if required, remove if normalization is already handled upstream)
-        cond = self.normalize(cond)
-
-        # Prepare time steps for DDIM
-        times = torch.linspace(0, total_timesteps - 1, steps=sampling_timesteps + 1)  # [0, 1, ..., T-1]
-        times = list(reversed(times.int().tolist()))
-        time_pairs = list(zip(times[:-1], times[1:]))  # [(T-1, T-2), ..., (1, 0)]
-
-        img = torch.randn(shape, device=device)  # Initialize latent variable
-        imgs = [img]  # Store intermediate results for debugging or visualization
+        
+        # Ensure shape matches cond shape
+        assert cond.shape[0] == batch, f"Batch size mismatch: shape={shape[0]}, cond={cond.shape[0]}"
+        assert cond.shape[2:] == (shape[2], shape[3]), f"Spatial dimensions mismatch: shape={shape[2:]}, cond={cond.shape[2:]}"
+        
+        # Initialize noise with same spatial dimensions as cond
+        img = torch.randn((batch, self.channels, cond.shape[2], cond.shape[3]), device=device)
+        imgs = [img]
 
         x_start = None
 
-        for time, time_next in tqdm(time_pairs, desc="sampling loop time step", total=sampling_timesteps):
-            time_cond = torch.full((batch,), time, device=device, dtype=torch.long)
+        for t in tqdm(reversed(range(0, self.num_timesteps)), desc="sampling loop time step", total=self.num_timesteps):
+            time_cond = torch.full((batch,), t, device=device, dtype=torch.long)
             self_cond = x_start if self.self_condition else None
 
             # Concatenate img and cond for the model input
@@ -827,26 +819,21 @@ class GaussianDiffusion(Module):
             # print(f"x_start shape {x_start.shape}")
             
 
-            if time_next < 0:
-                # Directly use x_start for the last step
-                img = x_start
-                imgs.append(img)
-                continue
+            if t > 0:
+                # Calculate alphas and auxiliary variables for DDIM updates
+                alpha = self.alphas_cumprod[t]
+                alpha_next = self.alphas_cumprod[t-1]
 
-            # Calculate alphas and auxiliary variables for DDIM updates
-            alpha = self.alphas_cumprod[time]
-            alpha_next = self.alphas_cumprod[time_next]
+                sigma = eta * ((1 - alpha / alpha_next) * (1 - alpha_next) / (1 - alpha)).sqrt()
+                c = (1 - alpha_next - sigma**2).sqrt()
 
-            sigma = eta * ((1 - alpha / alpha_next) * (1 - alpha_next) / (1 - alpha)).sqrt()
-            c = (1 - alpha_next - sigma**2).sqrt()
+                # noise = torch.randn_like(cond) if sigma > 0 else 0
+                # noise = torch.randn_like(img) if sigma > 0 else 0  # Add noise only if sigma > 0
+                img = x_start * alpha_next.sqrt() + c * pred_noise # + sigma * noise
 
-            # noise = torch.randn_like(cond) if sigma > 0 else 0
-            # noise = torch.randn_like(img) if sigma > 0 else 0  # Add noise only if sigma > 0
-            img = x_start * alpha_next.sqrt() + c * pred_noise # + sigma * noise
-
-            # DDIM update equation
-            # img = torch.cat((noise_channels, cond), dim=1)
-            # img = x_start * alpha_next.sqrt() + c * pred_noise + sigma * noise
+                # DDIM update equation
+                # img = torch.cat((noise_channels, cond), dim=1)
+                # img = x_start * alpha_next.sqrt() + c * pred_noise + sigma * noise
 
             imgs.append(img)
 

@@ -55,7 +55,7 @@ model = Unet(
 
 diffusion = GaussianDiffusion(
     model,
-    image_size = 256,
+    image_size = 64,
     timesteps = 1000,   # number of steps
     # loss_type = 'l1'    # L1 or L2
 ).to(device)
