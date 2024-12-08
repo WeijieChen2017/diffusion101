@@ -249,13 +249,13 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                         # Get embeddings for both PET and CT
                         # PET embeddings
                         pet_indices_reshaped = pet_indices.reshape(n_slices, height, width)
-                        pet_embeddings = vq_weights[pet_indices_reshaped.flatten()].reshape(n_slices, width, height, 3)
+                        pet_embeddings = vq_weights[pet_indices_reshaped.flatten()].reshape(n_slices, height, width, 3)
                         pet_embeddings = pet_embeddings.transpose(0, 3, 1, 2)
                         pet_embeddings_norm = pet_embeddings / 10.0 + 0.5
                         
                         # CT embeddings
                         ct_indices_reshaped = ct_indices.reshape(n_slices, height, width)
-                        ct_embeddings = vq_weights[ct_indices_reshaped.flatten()].reshape(n_slices, width, height, 3)
+                        ct_embeddings = vq_weights[ct_indices_reshaped.flatten()].reshape(n_slices, height, width, 3)
                         ct_embeddings = ct_embeddings.transpose(0, 3, 1, 2)
                         ct_embeddings_norm = ct_embeddings / 10.0 + 0.5
                         
