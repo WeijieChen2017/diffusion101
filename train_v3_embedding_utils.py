@@ -152,6 +152,24 @@ def train_or_eval_or_test_the_batch_cond(
         if batch_size_count < batch_size and index != indices_list_first[-1]:
             continue
         else:
+            # Apply random augmentations during training
+            if stage == "train":
+                # Random rotation: 0, 90, 180, or 270 degrees
+                k = random.choice([0, 1, 2, 3])
+                if k > 0:
+                    batch_x = torch.rot90(batch_x, k=k, dims=[-2, -1])
+                    batch_y = torch.rot90(batch_y, k=k, dims=[-2, -1])
+                
+                # Random horizontal flip (50% chance)
+                if random.random() < 0.5:
+                    batch_x = torch.flip(batch_x, dims=[-1])
+                    batch_y = torch.flip(batch_y, dims=[-1])
+                
+                # Random vertical flip (50% chance)
+                if random.random() < 0.5:
+                    batch_x = torch.flip(batch_x, dims=[-2])
+                    batch_y = torch.flip(batch_y, dims=[-2])
+
             case_loss_first += process_batch(batch_x, batch_y, stage, model, optimizer, device)
             batch_size_count = 0
 
@@ -330,10 +348,21 @@ def _save_data_division(root, train_path_list, val_path_list, test_path_list):
 
 def _create_transforms(input_modality, invlove_train, invlove_val, invlove_test):
     """Create transforms for each split."""
+    class LoadNpzEmbedding(monai.transforms.Transform):
+        def __call__(self, data):
+            for key in input_modality:
+                if key in data:
+                    npz_data = np.load(data[key])
+                    if key.startswith('x_'):
+                        data[key] = npz_data["pet_embedding"]
+                    else:  # y_ files
+                        data[key] = npz_data["ct_embedding"]
+            return data
+
     if invlove_train:
         train_transforms = Compose(
             [
-                LoadImaged(keys=input_modality, image_only=True),
+                LoadNpzEmbedding(),
                 EnsureTyped(keys=input_modality),
             ]
         )
@@ -341,14 +370,15 @@ def _create_transforms(input_modality, invlove_train, invlove_val, invlove_test)
     if invlove_val:
         val_transforms = Compose(
             [
-                LoadImaged(keys=input_modality, image_only=True),
+                LoadNpzEmbedding(),
                 EnsureTyped(keys=input_modality),
             ]
         )
+
     if invlove_test:
         test_transforms = Compose(
             [
-                LoadImaged(keys=input_modality, image_only=True),
+                LoadNpzEmbedding(),
                 EnsureTyped(keys=input_modality),
             ]
         )

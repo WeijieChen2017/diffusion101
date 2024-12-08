@@ -191,6 +191,9 @@ def get_embedding_dimensions(orientation, flattened, expected_shapes):
     width = expected_shapes[orientation][1]   # Second dimension from expected shape
     height = expected_shapes[orientation][2]  # Third dimension from expected shape
     
+    # exchange them
+    width, height=height , width
+
     # Verify the dimensions match the flattened size
     if width * height != flattened:
         raise ValueError(f"Computed dimensions {width}x{height} != flattened size {flattened}")
