@@ -51,22 +51,12 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
         Returns:
             quantized embedding of shape (3, h, w)
         """
-        # Reshape pred_embedding to (h*w, 3)
         h, w = pred_embedding.shape[1:]
         flat_pred = pred_embedding.permute(1, 2, 0).reshape(-1, 3)  # (h*w, 3)
-        
-        # Calculate distances to all codebook entries
         distances = torch.cdist(flat_pred, vq_weights)  # (h*w, 8192)
-        
-        # Find nearest neighbor indices
         nearest_indices = torch.argmin(distances, dim=1)  # (h*w,)
-        
-        # Get the corresponding embeddings
         quantized = vq_weights[nearest_indices]  # (h*w, 3)
-        
-        # Reshape back to original shape
         quantized = quantized.reshape(h, w, 3).permute(2, 0, 1)  # (3, h, w)
-        
         return quantized
 
     print("Starting testing...")
@@ -76,11 +66,11 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
         printlog(f"Processing case {idx_case + 1}/{len(data_loader)}")
 
         # Extract data for all three views
-        x_axial = batch["x_axial"].squeeze(0).to(device)  # shape: (len_z, 3, h, w)
+        x_axial = batch["x_axial"].squeeze(0).to(device)
         y_axial = batch["y_axial"].squeeze(0).to(device)
-        x_coronal = batch["x_coronal"].squeeze(0).to(device)  # shape: (len_y, 3, h, w)
+        x_coronal = batch["x_coronal"].squeeze(0).to(device)
         y_coronal = batch["y_coronal"].squeeze(0).to(device)
-        x_sagittal = batch["x_sagittal"].squeeze(0).to(device)  # shape: (len_x, 3, h, w)
+        x_sagittal = batch["x_sagittal"].squeeze(0).to(device)
         y_sagittal = batch["y_sagittal"].squeeze(0).to(device)
         filename = batch["filename"][0]
 
@@ -92,8 +82,8 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
             pad_h = (required_multiple - x.shape[2] % required_multiple) % required_multiple
             pad_w = (required_multiple - x.shape[3] % required_multiple) % required_multiple
             if pad_h > 0 or pad_w > 0:
-                x = torch.nn.functional.pad(x, (0, pad_w, 0, pad_h), mode='constant', value=0)
-                y = torch.nn.functional.pad(y, (0, pad_w, 0, pad_h), mode='constant', value=0)
+                x = F.pad(x, (0, pad_w, 0, pad_h), mode='constant', value=0)
+                y = F.pad(y, (0, pad_w, 0, pad_h), mode='constant', value=0)
 
         # Process each view
         for view_name, x, y in [
@@ -102,45 +92,48 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
             ("sagittal", x_sagittal, y_sagittal)
         ]:
             len_slices = x.shape[0]
+            original_h, original_w = x.shape[2] - pad_h, x.shape[3] - pad_w  # Store original dimensions
             
             # Process slices in batches
             for slice_start in range(1, len_slices - 1, batch_size):
-                # Calculate actual batch size for this iteration
                 current_batch_size = min(batch_size, len_slices - 1 - slice_start)
                 
-                # Create batch for model input
                 batch_x = torch.zeros((current_batch_size, 3, x.shape[2], x.shape[3])).to(device)
                 batch_y = torch.zeros((current_batch_size, 3, x.shape[2], x.shape[3])).to(device)
                 
-                # Fill the batches
                 for i in range(current_batch_size):
                     slice_idx = slice_start + i
                     batch_x[i] = x[slice_idx]
                     batch_y[i] = y[slice_idx]
 
                 # Generate predictions for the batch
-                pred_slices = model.sample(batch_size=current_batch_size, cond=batch_x)  # Shape: (batch_size, 3, h, w)
+                pred_slices = model.sample(batch_size=current_batch_size, cond=batch_x)
+                
+                # Remove padding from predictions immediately after sampling
+                if pad_h > 0 or pad_w > 0:
+                    pred_slices = pred_slices[:, :, :original_h, :original_w]
+                    batch_x = batch_x[:, :, :original_h, :original_w]
+                    batch_y = batch_y[:, :, :original_h, :original_w]
 
                 # Process and save each slice in the batch
                 for i in range(current_batch_size):
                     slice_idx = slice_start + i
                     
-                    # Get predictions and ground truth
-                    pred_slice = pred_slices[i]  # Shape: (3, h, w)
+                    pred_slice = pred_slices[i]
                     gt_slice = batch_y[i]
                     cond_slice = batch_x[i]
 
                     # Find nearest VQ embedding
                     vq_pred_slice = find_nearest_embedding(pred_slice)
 
-                    # Compute losses
+                    # Compute losses (now using unpadded tensors)
                     pred_loss = F.l1_loss(pred_slice, gt_slice, reduction="mean")
                     vq_loss = F.l1_loss(vq_pred_slice, gt_slice, reduction="mean")
                     
                     printlog(f"Case {idx_case + 1}/{num_case}, {view_name} Slice {slice_idx}/{len_slices}: "
                            f"Pred Loss = {pred_loss.item():.6f}, VQ Loss = {vq_loss.item():.6f}")
 
-                    # Save data
+                    # Save data (all tensors are already unpadded)
                     save_data = {
                         "cond_embedding": cond_slice.cpu().numpy(),
                         "gt_embedding": gt_slice.cpu().numpy(),
