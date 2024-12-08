@@ -192,7 +192,7 @@ def get_embedding_dimensions(orientation, flattened, expected_shapes):
     height = expected_shapes[orientation][2]  # Third dimension from expected shape
     
     # exchange them
-    width, height=height , width
+    # width, height = height, width
 
     # Verify the dimensions match the flattened size
     if width * height != flattened:
@@ -240,6 +240,8 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                         pet_indices = np.load(pet_index_path)
                         n_slices, flattened = pet_indices.shape
                         width, height = get_embedding_dimensions(orientation, flattened, expected_shapes)
+                        # exchange w, h
+                        width, height = height, width
                         
                         # Process CT indices
                         ct_indices = np.load(ct_index_path)
