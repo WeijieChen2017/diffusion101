@@ -20,8 +20,7 @@ data_division_file = "James_data_v3/cv_list.json"
 seeds = 729
 base_learning_rate = 1e-4
 num_frames = 5
-batch_size = 18
-sampling_timesteps = 50
+batch_size = 48
 
 set_param("cv", 0)
 set_param("num_frames", num_frames)
@@ -62,7 +61,7 @@ diffusion = GaussianDiffusion(
     model,
     image_size = 256,
     timesteps = 1000,   # number of steps
-    sampling_timesteps = sampling_timesteps, # for ddim sampling
+    # sampling_timesteps = sampling_timesteps, # for ddim sampling
     # loss_type = 'l1'    # L1 or L2
 ).to(device)
 
@@ -90,7 +89,7 @@ if os.path.exists(model_ckpt_path):
 vq_weights = np.load("James_data_v3/vq_f4_weights_attn.npy")  # You'll need to specify the correct path
 
 # Test the model and save results
-output_directory = root_dir+f"/test_results_ddim_batch_{batch_size}_step_{sampling_timesteps}"
+output_directory = root_dir+f"/test_results_ddpm_batch_{batch_size}"
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)
 test_diffusion_model_and_save_slices(
