@@ -114,13 +114,13 @@ def train_or_eval_or_test_the_batch_cond(
     y_sagittal = batch["y_sagittal"].squeeze(0).to(device)
 
     # show all incoming shape
-    printlog(f"Incoming shapes:")
-    printlog(f"x_axial: {x_axial.shape}")
-    printlog(f"y_axial: {y_axial.shape}")
-    printlog(f"x_coronal: {x_coronal.shape}")
-    printlog(f"y_coronal: {y_coronal.shape}")
-    printlog(f"x_sagittal: {x_sagittal.shape}")
-    printlog(f"y_sagittal: {y_sagittal.shape}")
+    # printlog(f"Incoming shapes:")
+    # printlog(f"x_axial: {x_axial.shape}")
+    # printlog(f"y_axial: {y_axial.shape}")
+    # printlog(f"x_coronal: {x_coronal.shape}")
+    # printlog(f"y_coronal: {y_coronal.shape}")
+    # printlog(f"x_sagittal: {x_sagittal.shape}")
+    # printlog(f"y_sagittal: {y_sagittal.shape}")
 
     # Ensure spatial dimensions (h, w) are multiple of 16 for each view
     required_multiple = 8
@@ -147,13 +147,13 @@ def train_or_eval_or_test_the_batch_cond(
         y_sagittal = torch.nn.functional.pad(y_sagittal, (0, pad_w, 0, pad_h), mode='constant', value=0)
 
     # show shapes after padding
-    printlog(f"Shapes after padding:")
-    printlog(f"x_axial: {x_axial.shape}")
-    printlog(f"y_axial: {y_axial.shape}")
-    printlog(f"x_coronal: {x_coronal.shape}")
-    printlog(f"y_coronal: {y_coronal.shape}")
-    printlog(f"x_sagittal: {x_sagittal.shape}")
-    printlog(f"y_sagittal: {y_sagittal.shape}")
+    # printlog(f"Shapes after padding:")
+    # printlog(f"x_axial: {x_axial.shape}")
+    # printlog(f"y_axial: {y_axial.shape}")
+    # printlog(f"x_coronal: {x_coronal.shape}")
+    # printlog(f"y_coronal: {y_coronal.shape}")
+    # printlog(f"x_sagittal: {x_sagittal.shape}")
+    # printlog(f"y_sagittal: {y_sagittal.shape}")
 
     case_loss_axial = 0.0
     case_loss_coronal = 0.0
@@ -168,9 +168,8 @@ def train_or_eval_or_test_the_batch_cond(
     batch_y = torch.zeros((batch_size, 3, x_axial.shape[2], x_axial.shape[3])).to(device)
     
     for index in indices_list:
-        # Fill PET conditioning - x_axial[index] shape is (3, h, w)
-        batch_x[batch_size_count] = x_axial[index]  # Current slice
-        batch_y[batch_size_count] = y_axial[index]  # Current slice
+        batch_x[batch_size_count] = x_axial[index]
+        batch_y[batch_size_count] = y_axial[index]
 
         batch_size_count += 1
 
@@ -178,35 +177,37 @@ def train_or_eval_or_test_the_batch_cond(
             continue
         else:
             if stage == "train":
+                aug_batch_x = batch_x.clone()
+                aug_batch_y = batch_y.clone()
+                
                 k = random.choice([0, 1, 2, 3])
                 if k > 0:
-                    batch_x = torch.rot90(batch_x, k=k, dims=[-2, -1])
-                    batch_y = torch.rot90(batch_y, k=k, dims=[-2, -1])
+                    aug_batch_x = torch.rot90(aug_batch_x, k=k, dims=[-2, -1])
+                    aug_batch_y = torch.rot90(aug_batch_y, k=k, dims=[-2, -1])
                 
                 if random.random() < 0.5:
-                    batch_x = torch.flip(batch_x, dims=[-1])
-                    batch_y = torch.flip(batch_y, dims=[-1])
+                    aug_batch_x = torch.flip(aug_batch_x, dims=[-1])
+                    aug_batch_y = torch.flip(aug_batch_y, dims=[-1])
                 
                 if random.random() < 0.5:
-                    batch_x = torch.flip(batch_x, dims=[-2])
-                    batch_y = torch.flip(batch_y, dims=[-2])
+                    aug_batch_x = torch.flip(aug_batch_x, dims=[-2])
+                    aug_batch_y = torch.flip(aug_batch_y, dims=[-2])
 
-            case_loss_axial += process_batch(batch_x, batch_y, stage, model, optimizer, device)
+                case_loss_axial += process_batch(aug_batch_x, aug_batch_y, stage, model, optimizer, device)
+            else:
+                case_loss_axial += process_batch(batch_x, batch_y, stage, model, optimizer, device)
             batch_size_count = 0
 
     case_loss_axial = case_loss_axial / (len(indices_list) // batch_size + 1)
 
     # Process coronal view
-    indices_list = [i for i in range(1, x_coronal.shape[0]-1)]  # range over len_y
+    indices_list = [i for i in range(1, x_coronal.shape[0]-1)]
     random.shuffle(indices_list)
     
     batch_size_count = 0
     batch_x = torch.zeros((batch_size, 3, x_coronal.shape[2], x_coronal.shape[3])).to(device)
     batch_y = torch.zeros((batch_size, 3, x_coronal.shape[2], x_coronal.shape[3])).to(device)
-    print(f"batch_x shape, {batch_x.shape}")
-    print(f"x_coronal shape, {x_coronal.shape}")
-
-
+    
     for index in indices_list:
         batch_x[batch_size_count] = x_coronal[index]
         batch_y[batch_size_count] = y_coronal[index]
@@ -217,24 +218,29 @@ def train_or_eval_or_test_the_batch_cond(
             continue
         else:
             if stage == "train":
+                aug_batch_x = batch_x.clone()
+                aug_batch_y = batch_y.clone()
+                
                 k = random.choice([0, 1, 2, 3])
                 if k > 0:
-                    batch_x = torch.rot90(batch_x, k=k, dims=[-2, -1])
-                    batch_y = torch.rot90(batch_y, k=k, dims=[-2, -1])
+                    aug_batch_x = torch.rot90(aug_batch_x, k=k, dims=[-2, -1])
+                    aug_batch_y = torch.rot90(aug_batch_y, k=k, dims=[-2, -1])
                 if random.random() < 0.5:
-                    batch_x = torch.flip(batch_x, dims=[-1])
-                    batch_y = torch.flip(batch_y, dims=[-1])
+                    aug_batch_x = torch.flip(aug_batch_x, dims=[-1])
+                    aug_batch_y = torch.flip(aug_batch_y, dims=[-1])
                 if random.random() < 0.5:
-                    batch_x = torch.flip(batch_x, dims=[-2])
-                    batch_y = torch.flip(batch_y, dims=[-2])
+                    aug_batch_x = torch.flip(aug_batch_x, dims=[-2])
+                    aug_batch_y = torch.flip(aug_batch_y, dims=[-2])
 
-            case_loss_coronal += process_batch(batch_x, batch_y, stage, model, optimizer, device)
+                case_loss_coronal += process_batch(aug_batch_x, aug_batch_y, stage, model, optimizer, device)
+            else:
+                case_loss_coronal += process_batch(batch_x, batch_y, stage, model, optimizer, device)
             batch_size_count = 0
             
     case_loss_coronal = case_loss_coronal / (len(indices_list) // batch_size + 1)
 
     # Process sagittal view
-    indices_list = [i for i in range(1, x_sagittal.shape[0]-1)]  # range over len_x
+    indices_list = [i for i in range(1, x_sagittal.shape[0]-1)]
     random.shuffle(indices_list)
     
     batch_size_count = 0
@@ -251,18 +257,23 @@ def train_or_eval_or_test_the_batch_cond(
             continue
         else:
             if stage == "train":
+                aug_batch_x = batch_x.clone()
+                aug_batch_y = batch_y.clone()
+                
                 k = random.choice([0, 1, 2, 3])
                 if k > 0:
-                    batch_x = torch.rot90(batch_x, k=k, dims=[-2, -1])
-                    batch_y = torch.rot90(batch_y, k=k, dims=[-2, -1])
+                    aug_batch_x = torch.rot90(aug_batch_x, k=k, dims=[-2, -1])
+                    aug_batch_y = torch.rot90(aug_batch_y, k=k, dims=[-2, -1])
                 if random.random() < 0.5:
-                    batch_x = torch.flip(batch_x, dims=[-1])
-                    batch_y = torch.flip(batch_y, dims=[-1])
+                    aug_batch_x = torch.flip(aug_batch_x, dims=[-1])
+                    aug_batch_y = torch.flip(aug_batch_y, dims=[-1])
                 if random.random() < 0.5:
-                    batch_x = torch.flip(batch_x, dims=[-2])
-                    batch_y = torch.flip(batch_y, dims=[-2])
+                    aug_batch_x = torch.flip(aug_batch_x, dims=[-2])
+                    aug_batch_y = torch.flip(aug_batch_y, dims=[-2])
 
-            case_loss_sagittal += process_batch(batch_x, batch_y, stage, model, optimizer, device)
+                case_loss_sagittal += process_batch(aug_batch_x, aug_batch_y, stage, model, optimizer, device)
+            else:
+                case_loss_sagittal += process_batch(batch_x, batch_y, stage, model, optimizer, device)
             batch_size_count = 0
             
     case_loss_sagittal = case_loss_sagittal / (len(indices_list) // batch_size + 1)
