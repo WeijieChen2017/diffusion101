@@ -122,29 +122,38 @@ def train_or_eval_or_test_the_batch_cond(
     printlog(f"x_sagittal: {x_sagittal.shape}")
     printlog(f"y_sagittal: {y_sagittal.shape}")
 
-    # Ensure first dimension is multiple of 16 for each view
+    # Ensure spatial dimensions (h, w) are multiple of 16 for each view
     required_multiple = 8
     
-    # show all incoming shape
-    
-
     # Pad axial view
-    pad_z = (required_multiple - x_axial.shape[2] % required_multiple) % required_multiple
-    if pad_z > 0:
-        x_axial = torch.nn.functional.pad(x_axial, (0, 0, 0, 0, 0, 0, 0, pad_z), mode='constant', value=0)
-        y_axial = torch.nn.functional.pad(y_axial, (0, 0, 0, 0, 0, 0, 0, pad_z), mode='constant', value=0)
+    pad_h = (required_multiple - x_axial.shape[2] % required_multiple) % required_multiple
+    pad_w = (required_multiple - x_axial.shape[3] % required_multiple) % required_multiple
+    if pad_h > 0 or pad_w > 0:
+        x_axial = torch.nn.functional.pad(x_axial, (0, pad_w, 0, pad_h), mode='constant', value=0)
+        y_axial = torch.nn.functional.pad(y_axial, (0, pad_w, 0, pad_h), mode='constant', value=0)
     
     # Pad coronal view
-    pad_y = (required_multiple - x_coronal.shape[2] % required_multiple) % required_multiple
-    if pad_y > 0:
-        x_coronal = torch.nn.functional.pad(x_coronal, (0, 0, 0, 0, 0, 0, 0, pad_y), mode='constant', value=0)
-        y_coronal = torch.nn.functional.pad(y_coronal, (0, 0, 0, 0, 0, 0, 0, pad_y), mode='constant', value=0)
+    pad_h = (required_multiple - x_coronal.shape[2] % required_multiple) % required_multiple
+    pad_w = (required_multiple - x_coronal.shape[3] % required_multiple) % required_multiple
+    if pad_h > 0 or pad_w > 0:
+        x_coronal = torch.nn.functional.pad(x_coronal, (0, pad_w, 0, pad_h), mode='constant', value=0)
+        y_coronal = torch.nn.functional.pad(y_coronal, (0, pad_w, 0, pad_h), mode='constant', value=0)
     
     # Pad sagittal view
-    pad_x = (required_multiple - x_sagittal.shape[2] % required_multiple) % required_multiple
-    if pad_x > 0:
-        x_sagittal = torch.nn.functional.pad(x_sagittal, (0, 0, 0, 0, 0, 0, 0, pad_x), mode='constant', value=0)
-        y_sagittal = torch.nn.functional.pad(y_sagittal, (0, 0, 0, 0, 0, 0, 0, pad_x), mode='constant', value=0)
+    pad_h = (required_multiple - x_sagittal.shape[2] % required_multiple) % required_multiple
+    pad_w = (required_multiple - x_sagittal.shape[3] % required_multiple) % required_multiple
+    if pad_h > 0 or pad_w > 0:
+        x_sagittal = torch.nn.functional.pad(x_sagittal, (0, pad_w, 0, pad_h), mode='constant', value=0)
+        y_sagittal = torch.nn.functional.pad(y_sagittal, (0, pad_w, 0, pad_h), mode='constant', value=0)
+
+    # show shapes after padding
+    printlog(f"Shapes after padding:")
+    printlog(f"x_axial: {x_axial.shape}")
+    printlog(f"y_axial: {y_axial.shape}")
+    printlog(f"x_coronal: {x_coronal.shape}")
+    printlog(f"y_coronal: {y_coronal.shape}")
+    printlog(f"x_sagittal: {x_sagittal.shape}")
+    printlog(f"y_sagittal: {y_sagittal.shape}")
 
     case_loss_axial = 0.0
     case_loss_coronal = 0.0
