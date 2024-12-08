@@ -104,139 +104,145 @@ def train_or_eval_or_test_the_batch_cond(
         optimizer=None, 
         device=None
     ):
+    # Extract data for all three views
+    x_axial = batch["x_axial"].squeeze(0).to(device)  # shape: (len_z, 3, h, w)
+    y_axial = batch["y_axial"].squeeze(0).to(device)
+    x_coronal = batch["x_coronal"].squeeze(0).to(device)  # shape: (len_y, 3, h, w)
+    y_coronal = batch["y_coronal"].squeeze(0).to(device)
+    x_sagittal = batch["x_sagittal"].squeeze(0).to(device)  # shape: (len_x, 3, h, w)
+    y_sagittal = batch["y_sagittal"].squeeze(0).to(device)
 
-    pet = batch["PET"] # 1, z, 256, 256
-    ct = batch["CT"] # 1, z, 256, 256
-    body = batch["BODY"]
-    body = body > 0
-    
-    # Ensure first dimension (z) is multiple of 16
+    # Ensure first dimension is multiple of 16 for each view
     required_multiple = 16
-    pad_z = (required_multiple - pet.shape[1] % required_multiple) % required_multiple
+    
+    # Pad axial view
+    pad_z = (required_multiple - x_axial.shape[0] % required_multiple) % required_multiple
     if pad_z > 0:
-        pet = torch.nn.functional.pad(pet, (0, 0, 0, 0, 0, pad_z, 0, 0), mode='constant', value=0)
-        ct = torch.nn.functional.pad(ct, (0, 0, 0, 0, 0, pad_z, 0, 0), mode='constant', value=0)
-        body = torch.nn.functional.pad(body, (0, 0, 0, 0, 0, pad_z, 0, 0), mode='constant', value=0)
+        x_axial = torch.nn.functional.pad(x_axial, (0, 0, 0, 0, 0, 0, 0, pad_z), mode='constant', value=0)
+        y_axial = torch.nn.functional.pad(y_axial, (0, 0, 0, 0, 0, 0, 0, pad_z), mode='constant', value=0)
+    
+    # Pad coronal view
+    pad_y = (required_multiple - x_coronal.shape[0] % required_multiple) % required_multiple
+    if pad_y > 0:
+        x_coronal = torch.nn.functional.pad(x_coronal, (0, 0, 0, 0, 0, 0, 0, pad_y), mode='constant', value=0)
+        y_coronal = torch.nn.functional.pad(y_coronal, (0, 0, 0, 0, 0, 0, 0, pad_y), mode='constant', value=0)
+    
+    # Pad sagittal view
+    pad_x = (required_multiple - x_sagittal.shape[0] % required_multiple) % required_multiple
+    if pad_x > 0:
+        x_sagittal = torch.nn.functional.pad(x_sagittal, (0, 0, 0, 0, 0, 0, 0, pad_x), mode='constant', value=0)
+        y_sagittal = torch.nn.functional.pad(y_sagittal, (0, 0, 0, 0, 0, 0, 0, pad_x), mode='constant', value=0)
 
-    len_z = pet.shape[1]
-    batch_per_eval = get_param("train_param")["batch_per_eval"]
-    num_frames = get_param("num_frames")
-    root_dir = get_param("root")
+    case_loss_axial = 0.0
+    case_loss_coronal = 0.0
+    case_loss_sagittal = 0.0
 
-    case_loss_first = 0.0
-    case_loss_second = 0.0
-    case_loss_third = 0.0
-
-    # First dimension (z-axis)
-    indices_list_first = [i for i in range(1, ct.shape[1]-1)]
-    random.shuffle(indices_list_first)
+    # Process axial view
+    indices_list = [i for i in range(1, x_axial.shape[0]-1)]  # range over len_z
+    random.shuffle(indices_list)
     
     batch_size_count = 0
-    batch_x = torch.zeros((batch_size, 3, ct.shape[2], ct.shape[3]))
-    batch_y = torch.zeros((batch_size, 3, ct.shape[2], ct.shape[3]))
+    batch_x = torch.zeros((batch_size, 3, x_axial.shape[2], x_axial.shape[3])).to(device)
+    batch_y = torch.zeros((batch_size, 3, x_axial.shape[2], x_axial.shape[3])).to(device)
     
-    # Process first dimension
-    for index in indices_list_first:
-        # Fill PET conditioning
-        batch_x[batch_size_count, 0, :, :] = pet[:, index-1, :, :]
-        batch_x[batch_size_count, 1, :, :] = pet[:, index, :, :]
-        batch_x[batch_size_count, 2, :, :] = pet[:, index+1, :, :]
-
-        # Fill CT target
-        batch_y[batch_size_count, 0, :, :] = ct[:, index-1, :, :]
-        batch_y[batch_size_count, 1, :, :] = ct[:, index, :, :]
-        batch_y[batch_size_count, 2, :, :] = ct[:, index+1, :, :]
+    for index in indices_list:
+        # Fill PET conditioning - x_axial[index] shape is (3, h, w)
+        batch_x[batch_size_count] = x_axial[index]  # Current slice
+        batch_y[batch_size_count] = y_axial[index]  # Current slice
 
         batch_size_count += 1
 
-        if batch_size_count < batch_size and index != indices_list_first[-1]:
+        if batch_size_count < batch_size and index != indices_list[-1]:
             continue
         else:
-            # Apply random augmentations during training
             if stage == "train":
-                # Random rotation: 0, 90, 180, or 270 degrees
                 k = random.choice([0, 1, 2, 3])
                 if k > 0:
                     batch_x = torch.rot90(batch_x, k=k, dims=[-2, -1])
                     batch_y = torch.rot90(batch_y, k=k, dims=[-2, -1])
                 
-                # Random horizontal flip (50% chance)
                 if random.random() < 0.5:
                     batch_x = torch.flip(batch_x, dims=[-1])
                     batch_y = torch.flip(batch_y, dims=[-1])
                 
-                # Random vertical flip (50% chance)
                 if random.random() < 0.5:
                     batch_x = torch.flip(batch_x, dims=[-2])
                     batch_y = torch.flip(batch_y, dims=[-2])
 
-            case_loss_first += process_batch(batch_x, batch_y, stage, model, optimizer, device)
+            case_loss_axial += process_batch(batch_x, batch_y, stage, model, optimizer, device)
             batch_size_count = 0
 
-    case_loss_first = case_loss_first / (len(indices_list_first) // batch_size + 1)
+    case_loss_axial = case_loss_axial / (len(indices_list) // batch_size + 1)
 
-    # Second dimension (y-axis)
-    indices_list_second = [i for i in range(1, ct.shape[2]-1)]
-    random.shuffle(indices_list_second)
+    # Process coronal view
+    indices_list = [i for i in range(1, x_coronal.shape[0]-1)]  # range over len_y
+    random.shuffle(indices_list)
     
     batch_size_count = 0
-    batch_x = torch.zeros((batch_size, 3, ct.shape[1], ct.shape[3]))
-    batch_y = torch.zeros((batch_size, 3, ct.shape[1], ct.shape[3]))
+    batch_x = torch.zeros((batch_size, 3, x_coronal.shape[2], x_coronal.shape[3])).to(device)
+    batch_y = torch.zeros((batch_size, 3, x_coronal.shape[2], x_coronal.shape[3])).to(device)
     
-    for index in indices_list_second:
-        # Get slices and permute to correct orientation
-        pet_slices = pet[:, :, index-1:index+2, :].squeeze(0)  # z, 3, x
-        ct_slices = ct[:, :, index-1:index+2, :].squeeze(0)    # z, 3, x
-        
-        # Permute to get correct orientation
-        pet_slices = pet_slices.permute(1, 0, 2)  # 3, z, x
-        ct_slices = ct_slices.permute(1, 0, 2)    # 3, z, x
-        
-        batch_x[batch_size_count] = pet_slices
-        batch_y[batch_size_count] = ct_slices
-        
+    for index in indices_list:
+        batch_x[batch_size_count] = x_coronal[index]
+        batch_y[batch_size_count] = y_coronal[index]
+
         batch_size_count += 1
-        
-        if batch_size_count < batch_size and index != indices_list_second[-1]:
+
+        if batch_size_count < batch_size and index != indices_list[-1]:
             continue
         else:
-            # print(f"batch_x shape {batch_x.shape}, batch_y shape {batch_y.shape}")
-            case_loss_second += process_batch(batch_x, batch_y, stage, model, optimizer, device)
+            if stage == "train":
+                k = random.choice([0, 1, 2, 3])
+                if k > 0:
+                    batch_x = torch.rot90(batch_x, k=k, dims=[-2, -1])
+                    batch_y = torch.rot90(batch_y, k=k, dims=[-2, -1])
+                if random.random() < 0.5:
+                    batch_x = torch.flip(batch_x, dims=[-1])
+                    batch_y = torch.flip(batch_y, dims=[-1])
+                if random.random() < 0.5:
+                    batch_x = torch.flip(batch_x, dims=[-2])
+                    batch_y = torch.flip(batch_y, dims=[-2])
+
+            case_loss_coronal += process_batch(batch_x, batch_y, stage, model, optimizer, device)
             batch_size_count = 0
             
-    case_loss_second = case_loss_second / (len(indices_list_second) // batch_size + 1)
+    case_loss_coronal = case_loss_coronal / (len(indices_list) // batch_size + 1)
 
-    # Third dimension (x-axis)
-    indices_list_third = [i for i in range(1, ct.shape[3]-1)]
-    random.shuffle(indices_list_third)
+    # Process sagittal view
+    indices_list = [i for i in range(1, x_sagittal.shape[0]-1)]  # range over len_x
+    random.shuffle(indices_list)
     
     batch_size_count = 0
-    batch_x = torch.zeros((batch_size, 3, ct.shape[1], ct.shape[2]))
-    batch_y = torch.zeros((batch_size, 3, ct.shape[1], ct.shape[2]))
+    batch_x = torch.zeros((batch_size, 3, x_sagittal.shape[2], x_sagittal.shape[3])).to(device)
+    batch_y = torch.zeros((batch_size, 3, x_sagittal.shape[2], x_sagittal.shape[3])).to(device)
     
-    for index in indices_list_third:
-        # Get slices and permute to correct orientation
-        pet_slices = pet[:, :, :, index-1:index+2].squeeze(0)  # z, y, 3
-        ct_slices = ct[:, :, :, index-1:index+2].squeeze(0)    # z, y, 3
-        
-        # Permute to get correct orientation
-        pet_slices = pet_slices.permute(2, 0, 1)  # 3, z, y
-        ct_slices = ct_slices.permute(2, 0, 1)    # 3, z, y
-        
-        batch_x[batch_size_count] = pet_slices
-        batch_y[batch_size_count] = ct_slices
-        
+    for index in indices_list:
+        batch_x[batch_size_count] = x_sagittal[index]
+        batch_y[batch_size_count] = y_sagittal[index]
+
         batch_size_count += 1
-        
-        if batch_size_count < batch_size and index != indices_list_third[-1]:
+
+        if batch_size_count < batch_size and index != indices_list[-1]:
             continue
         else:
-            case_loss_third += process_batch(batch_x, batch_y, stage, model, optimizer, device)
+            if stage == "train":
+                k = random.choice([0, 1, 2, 3])
+                if k > 0:
+                    batch_x = torch.rot90(batch_x, k=k, dims=[-2, -1])
+                    batch_y = torch.rot90(batch_y, k=k, dims=[-2, -1])
+                if random.random() < 0.5:
+                    batch_x = torch.flip(batch_x, dims=[-1])
+                    batch_y = torch.flip(batch_y, dims=[-1])
+                if random.random() < 0.5:
+                    batch_x = torch.flip(batch_x, dims=[-2])
+                    batch_y = torch.flip(batch_y, dims=[-2])
+
+            case_loss_sagittal += process_batch(batch_x, batch_y, stage, model, optimizer, device)
             batch_size_count = 0
             
-    case_loss_third = case_loss_third / (len(indices_list_third) // batch_size + 1)
+    case_loss_sagittal = case_loss_sagittal / (len(indices_list) // batch_size + 1)
 
-    return case_loss_first, case_loss_second, case_loss_third
+    return case_loss_axial, case_loss_coronal, case_loss_sagittal
 
 def process_batch(batch_x, batch_y, stage, model, optimizer, device):
     batch_x = batch_x.to(device)
@@ -273,7 +279,7 @@ def prepare_dataset(data_div, invlove_train=False, invlove_val=False, invlove_te
     _save_data_division(root, train_path_list, val_path_list, test_path_list)
     
     # Create transforms and datasets
-    input_modality = ["x_axial", "y_axial", "x_coronal", "y_coronal", "x_sagittal", "y_sagittal"]
+    input_modality = ["axial", "coronal", "sagittal"]
     transforms = _create_transforms(input_modality, invlove_train, invlove_val, invlove_test)
     
     # Create dataloaders
@@ -305,12 +311,9 @@ def _construct_path_lists(train_list, val_list, test_list):
     """Construct file path lists for each split."""
     def _create_paths(hashname):
         return {
-            "x_axial": f"James_data_v3/index/{hashname}_x_axial_ind.npy",
-            "y_axial": f"James_data_v3/index/{hashname}_y_axial_ind.npy",
-            "x_coronal": f"James_data_v3/index/{hashname}_x_coronal_ind.npy",
-            "y_coronal": f"James_data_v3/index/{hashname}_y_coronal_ind.npy",
-            "x_sagittal": f"James_data_v3/index/{hashname}_x_sagittal_ind.npy",
-            "y_sagittal": f"James_data_v3/index/{hashname}_y_sagittal_ind.npy",
+            "axial": f"James_data_v3/embeddings/{hashname}_axial_embedding_norm.npz",
+            "coronal": f"James_data_v3/embeddings/{hashname}_coronal_embedding_norm.npz",
+            "sagittal": f"James_data_v3/embeddings/{hashname}_sagittal_embedding_norm.npz",
             "filename": hashname,
         }
     
@@ -350,94 +353,79 @@ def _create_transforms(input_modality, invlove_train, invlove_val, invlove_test)
     """Create transforms for each split."""
     class LoadNpzEmbedding(monai.transforms.Transform):
         def __call__(self, data):
-            for key in input_modality:
-                if key in data:
-                    npz_data = np.load(data[key])
-                    if key.startswith('x_'):
-                        data[key] = npz_data["pet_embedding"]
-                    else:  # y_ files
-                        data[key] = npz_data["ct_embedding"]
+            # Load each orientation's NPZ file and split into x_ and y_ data
+            for orientation in ["axial", "coronal", "sagittal"]:
+                if orientation in data:
+                    npz_data = np.load(data[orientation])
+                    
+                    # Create x_ and y_ keys for this orientation
+                    x_key = f"x_{orientation}"
+                    y_key = f"y_{orientation}"
+                    
+                    # Load PET embedding into x_ and CT embedding into y_
+                    data[x_key] = npz_data["pet_embedding"]  # shape: (n_slices, 3, h, w)
+                    data[y_key] = npz_data["ct_embedding"]  # shape: (n_slices, 3, h, w)
+                    
+                    # Verify shapes match
+                    expected_shape = tuple(npz_data["shape"])
+                    assert data[x_key].shape == expected_shape, f"Shape mismatch for {x_key}"
+                    assert data[y_key].shape == expected_shape, f"Shape mismatch for {y_key}"
+                    
             return data
 
-    if invlove_train:
-        train_transforms = Compose(
-            [
-                LoadNpzEmbedding(),
-                EnsureTyped(keys=input_modality),
-            ]
-        )
+    transforms_list = [
+        LoadNpzEmbedding(),
+        EnsureTyped(keys=["x_axial", "y_axial", "x_coronal", "y_coronal", "x_sagittal", "y_sagittal"]),
+    ]
 
-    if invlove_val:
-        val_transforms = Compose(
-            [
-                LoadNpzEmbedding(),
-                EnsureTyped(keys=input_modality),
-            ]
-        )
-
-    if invlove_test:
-        test_transforms = Compose(
-            [
-                LoadNpzEmbedding(),
-                EnsureTyped(keys=input_modality),
-            ]
-        )
+    transforms = Compose(transforms_list)
 
     if invlove_train:
         train_ds = CacheDataset(
             data=train_path_list,
-            transform=train_transforms,
+            transform=transforms,
             cache_rate=get_param("data_param")["dataset"]["train"]["cache_rate"],
             num_workers=get_param("data_param")["dataset"]["train"]["num_workers"],
         )
+        train_loader = DataLoader(
+            train_ds, 
+            batch_size=1,  # Keep batch_size=1 as we handle batching in train_or_eval_or_test_the_batch_cond
+            shuffle=True,
+            num_workers=get_param("data_param")["dataloader"]["train"]["num_workers"],
+        )
+    else:
+        train_loader = None
 
     if invlove_val:
         val_ds = CacheDataset(
             data=val_path_list,
-            transform=val_transforms, 
+            transform=transforms,
             cache_rate=get_param("data_param")["dataset"]["val"]["cache_rate"],
             num_workers=get_param("data_param")["dataset"]["val"]["num_workers"],
         )
-
-    if invlove_test:
-        test_ds = CacheDataset(
-            data=test_path_list,
-            transform=test_transforms,
-            cache_rate=get_param("data_param")["dataset"]["test"]["cache_rate"],
-            num_workers=get_param("data_param")["dataset"]["test"]["num_workers"],
-        )
-
-    if invlove_train:
-        train_loader = DataLoader(
-            train_ds, 
-            batch_size=1,
-            shuffle=True,
-            num_workers=get_param("data_param")["dataloader"]["train"]["num_workers"],
-        )
-
-    if invlove_val:
         val_loader = DataLoader(
             val_ds, 
             batch_size=1,
             shuffle=False,
             num_workers=get_param("data_param")["dataloader"]["val"]["num_workers"],
         )
+    else:
+        val_loader = None
 
     if invlove_test:
+        test_ds = CacheDataset(
+            data=test_path_list,
+            transform=transforms,
+            cache_rate=get_param("data_param")["dataset"]["test"]["cache_rate"],
+            num_workers=get_param("data_param")["dataset"]["test"]["num_workers"],
+        )
         test_loader = DataLoader(
             test_ds,
             batch_size=1,
             shuffle=False,
             num_workers=get_param("data_param")["dataloader"]["test"]["num_workers"],
         )
-
-    if not invlove_train:
-        train_loader = None
-    
-    if not invlove_val:
-        val_loader = None
-
-    if not invlove_test:
+    else:
         test_loader = None
-    
+
     return train_loader, val_loader, test_loader
