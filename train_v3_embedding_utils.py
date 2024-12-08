@@ -282,18 +282,57 @@ def prepare_dataset(data_div, invlove_train=False, invlove_val=False, invlove_te
     # Create transforms and datasets
     input_modality = ["axial", "coronal", "sagittal"]
     transforms = _create_transforms(input_modality, invlove_train, invlove_val, invlove_test)
-    
-    # Create dataloaders
-    loaders = _create_dataloaders(
-        transforms,
-        path_lists,
-        invlove_train,
-        invlove_val,
-        invlove_test
-    )
-    
-    return loaders
 
+    if invlove_train:
+        train_ds = CacheDataset(
+            data=train_path_list,
+            transform=transforms,
+            cache_rate=get_param("data_param")["dataset"]["train"]["cache_rate"],
+            num_workers=get_param("data_param")["dataset"]["train"]["num_workers"],
+        )
+        train_loader = DataLoader(
+            train_ds, 
+            batch_size=1,  # Keep batch_size=1 as we handle batching in train_or_eval_or_test_the_batch_cond
+            shuffle=True,
+            num_workers=get_param("data_param")["dataloader"]["train"]["num_workers"],
+        )
+    else:
+        train_loader = None
+
+    if invlove_val:
+        val_ds = CacheDataset(
+            data=val_path_list,
+            transform=transforms,
+            cache_rate=get_param("data_param")["dataset"]["val"]["cache_rate"],
+            num_workers=get_param("data_param")["dataset"]["val"]["num_workers"],
+        )
+        val_loader = DataLoader(
+            val_ds, 
+            batch_size=1,
+            shuffle=False,
+            num_workers=get_param("data_param")["dataloader"]["val"]["num_workers"],
+        )
+    else:
+        val_loader = None
+
+    if invlove_test:
+        test_ds = CacheDataset(
+            data=test_path_list,
+            transform=transforms,
+            cache_rate=get_param("data_param")["dataset"]["test"]["cache_rate"],
+            num_workers=get_param("data_param")["dataset"]["test"]["num_workers"],
+        )
+        test_loader = DataLoader(
+            test_ds,
+            batch_size=1,
+            shuffle=False,
+            num_workers=get_param("data_param")["dataloader"]["test"]["num_workers"],
+        )
+    else:
+        test_loader = None
+
+    return train_loader, val_loader, test_loader
+    
 def _calculate_cv_splits(cv, data_div):
     """Calculate cross-validation splits."""
     cv_test = cv
@@ -380,53 +419,4 @@ def _create_transforms(input_modality, invlove_train, invlove_val, invlove_test)
     ]
 
     transforms = Compose(transforms_list)
-
-    if invlove_train:
-        train_ds = CacheDataset(
-            data=train_path_list,
-            transform=transforms,
-            cache_rate=get_param("data_param")["dataset"]["train"]["cache_rate"],
-            num_workers=get_param("data_param")["dataset"]["train"]["num_workers"],
-        )
-        train_loader = DataLoader(
-            train_ds, 
-            batch_size=1,  # Keep batch_size=1 as we handle batching in train_or_eval_or_test_the_batch_cond
-            shuffle=True,
-            num_workers=get_param("data_param")["dataloader"]["train"]["num_workers"],
-        )
-    else:
-        train_loader = None
-
-    if invlove_val:
-        val_ds = CacheDataset(
-            data=val_path_list,
-            transform=transforms,
-            cache_rate=get_param("data_param")["dataset"]["val"]["cache_rate"],
-            num_workers=get_param("data_param")["dataset"]["val"]["num_workers"],
-        )
-        val_loader = DataLoader(
-            val_ds, 
-            batch_size=1,
-            shuffle=False,
-            num_workers=get_param("data_param")["dataloader"]["val"]["num_workers"],
-        )
-    else:
-        val_loader = None
-
-    if invlove_test:
-        test_ds = CacheDataset(
-            data=test_path_list,
-            transform=transforms,
-            cache_rate=get_param("data_param")["dataset"]["test"]["cache_rate"],
-            num_workers=get_param("data_param")["dataset"]["test"]["num_workers"],
-        )
-        test_loader = DataLoader(
-            test_ds,
-            batch_size=1,
-            shuffle=False,
-            num_workers=get_param("data_param")["dataloader"]["test"]["num_workers"],
-        )
-    else:
-        test_loader = None
-
-    return train_loader, val_loader, test_loader
+    return transforms
