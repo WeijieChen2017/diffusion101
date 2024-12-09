@@ -13,14 +13,15 @@ from global_config import global_config, set_param, get_param
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<< running setting
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-root_dir = "projects/v1_vanilla_pet_cond"
+# root_dir = "projects/v1_vanilla_pet_cond"
+root_dit = "projects/v2_img_petCond_acs_cv{cv_folds}"
 os.path.exists(root_dir) or os.makedirs(root_dir)
 data_division_file = "James_data_v3/cv_list.json"
 seeds = 729
 base_learning_rate = 1e-4
 num_frames = 5
 batch_size = 18
-sampling_timesteps = 50
+# sampling_timesteps = 50
 
 set_param("cv", 0)
 set_param("num_frames", num_frames)
@@ -33,7 +34,7 @@ with open(data_division_file, "r") as f:
     data_div = json.load(f)
 
 
-experiment_config = OmegaConf.load("train_v1_vanilla_config.yaml")
+experiment_config = OmegaConf.load("train_v2_vanilla_config.yaml")
 print(experiment_config)
 for key in experiment_config.keys():
     set_param(key, experiment_config[key])
@@ -61,7 +62,7 @@ diffusion = GaussianDiffusion(
     model,
     image_size = 256,
     timesteps = 1000,   # number of steps
-    sampling_timesteps = sampling_timesteps, # for ddim sampling
+    # sampling_timesteps = sampling_timesteps, # for ddim sampling
     # loss_type = 'l1'    # L1 or L2
 ).to(device)
 
@@ -87,8 +88,8 @@ if os.path.exists(model_ckpt_path):
 
 
 # Test the model and save results
-output_directory = root_dir+f"/test_results_ddim_batch_{batch_size}_step_{sampling_timesteps}"
-# output_directory = root_dir+f"/test_results_ddpm"
+# output_directory = root_dir+f"/test_results_ddim_batch_{batch_size}_step_{sampling_timesteps}"
+output_directory = root_dir+f"/test_results_ddpm_batch_{batch_size}"
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)
 test_diffusion_model_and_save_slices(
