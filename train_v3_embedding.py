@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from denoising_diffusion_pytorch import Unet, GaussianDiffusion
 
-from train_v3_embedding_utils import prepare_dataset, train_or_eval_or_test_the_batch_cond, printlog
+from train_v3_embedding_utils import prepare_dataset, train_or_eval_or_test_the_batch_cond, printlog, get_loss_function
 # from train_v1_vanilla_utils import load_inception_model
 from global_config import global_config, set_param, get_param
 
@@ -151,31 +151,3 @@ for idx_epoch in range(epoch):
         }, os.path.join(root_dir, f"epoch_{idx_epoch}.pth"))
         printlog(f"Model saved at epoch {idx_epoch}")
 
-def get_loss_function(loss_type):
-    """
-    Get the loss function based on the config setting.
-    Args:
-        loss_type: str, one of "L1", "L2", or "COS"
-    Returns:
-        loss_fn: callable, the loss function
-    """
-    if loss_type == "L2":
-        return F.mse_loss
-    elif loss_type == "L1":
-        return F.l1_loss
-    elif loss_type == "COS":
-        def cosine_loss(input, target, reduction='none'):
-            # Normalize the vectors
-            input_normalized = F.normalize(input.flatten(2), dim=2)
-            target_normalized = F.normalize(target.flatten(2), dim=2)
-            # Compute cosine similarity (1 - cos_sim for loss)
-            cos_sim = 1 - (input_normalized * target_normalized).sum(dim=2)
-            if reduction == 'none':
-                return cos_sim
-            elif reduction == 'mean':
-                return cos_sim.mean()
-            else:
-                raise ValueError(f"Unsupported reduction mode: {reduction}")
-        return cosine_loss
-    else:
-        raise ValueError(f"Unsupported loss type: {loss_type}")
