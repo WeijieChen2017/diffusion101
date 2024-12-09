@@ -52,6 +52,14 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
         pet = batch["PET"].to(device)  # Shape: (1, z, h, w)
         ct = batch["CT"].to(device)  # Ground truth CT
         
+        # Ensure all dimensions are divisible by 8
+        def pad_to_multiple(tensor, multiple=8):
+            pad_dims = []
+            for dim in tensor.shape[-2:]:  # Only pad spatial dimensions
+                pad_needed = (multiple - dim % multiple) % multiple
+                pad_dims = [pad_needed//2, pad_needed - pad_needed//2] + pad_dims
+            return F.pad(tensor, pad_dims, mode='constant', value=0) if any(pad_dims) else tensor
+
         # Process each view - include batch dimension (0) in permutations
         views = {
             'coronal': {'data': pet.permute(0, 2, 1, 3), 'dir': coronal_dir, 'dims': (0, 2, 1, 3)},  # b, h, z, w
@@ -69,22 +77,31 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
             # Process slices in batches
             for slice_start in range(0, len_slices, batch_size):
                 current_batch_size = min(batch_size, len_slices - slice_start)
-                cond = torch.zeros((current_batch_size, 3, pet_view.shape[2], pet_view.shape[3])).to(device)
+                
+                # Get the shape after potential padding
+                sample_slice = pet_view[:, slice_start:slice_start+1, :, :]
+                padded_sample = pad_to_multiple(sample_slice)
+                padded_h, padded_w = padded_sample.shape[-2:]
+                
+                cond = torch.zeros((current_batch_size, 3, padded_h, padded_w)).to(device)
 
                 # Fill the conditioning tensor for each slice in the batch
                 for i in range(current_batch_size):
                     slice_idx = slice_start + i
                     
                     if slice_idx == 0:  # First slice
-                        cond[i, 0:2, :, :] = pet_view[:, 0:1, :, :].repeat(1, 2, 1, 1)
-                        cond[i, 2, :, :] = pet_view[:, 1, :, :]
+                        slice_data = pad_to_multiple(pet_view[:, 0:2, :, :])
+                        cond[i, 0:2, :, :] = slice_data[:, 0:1, :, :].repeat(1, 2, 1, 1)
+                        cond[i, 2, :, :] = slice_data[:, 1, :, :]
                     elif slice_idx == len_slices - 1:  # Last slice
-                        cond[i, 0, :, :] = pet_view[:, slice_idx-1, :, :]
-                        cond[i, 1:3, :, :] = pet_view[:, -1:, :, :].repeat(1, 2, 1, 1)
+                        slice_data = pad_to_multiple(pet_view[:, slice_idx-1:slice_idx+1, :, :])
+                        cond[i, 0, :, :] = slice_data[:, 0, :, :]
+                        cond[i, 1:3, :, :] = slice_data[:, -1:, :, :].repeat(1, 2, 1, 1)
                     else:  # Normal case
-                        cond[i, 0, :, :] = pet_view[:, slice_idx-1, :, :]
-                        cond[i, 1, :, :] = pet_view[:, slice_idx, :, :]
-                        cond[i, 2, :, :] = pet_view[:, slice_idx+1, :, :]
+                        slice_data = pad_to_multiple(pet_view[:, slice_idx-1:slice_idx+2, :, :])
+                        cond[i, 0, :, :] = slice_data[:, 0, :, :]
+                        cond[i, 1, :, :] = slice_data[:, 1, :, :]
+                        cond[i, 2, :, :] = slice_data[:, 2, :, :]
 
                 # Generate predictions for the batch
                 pred_slices = model.sample(batch_size=current_batch_size, cond=cond)
@@ -93,11 +110,14 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
                 for i in range(current_batch_size):
                     slice_idx = slice_start + i
                     
+                    # Pad CT slice for comparison
+                    ct_slice = pad_to_multiple(ct_view[:, slice_idx:slice_idx+1, :, :])
+                    
                     pred_slice = pred_slices[i]
                     pred_slice_clipped = torch.clamp(pred_slice[1, :, :], min=-1, max=1)
                     pred_slice_normalized = (pred_slice_clipped + 1) / 2.0
-                    ct_slice_normalized = (ct_view[:, slice_idx, :, :] + 1) / 2.0
-                    pet_slice = pet_view[:, slice_idx, :, :].cpu().numpy()
+                    ct_slice_normalized = (ct_slice.squeeze(1) + 1) / 2.0
+                    pet_slice = pad_to_multiple(pet_view[:, slice_idx:slice_idx+1, :, :]).cpu().numpy()
 
                     # Compute MAE loss
                     slice_mae = F.l1_loss(pred_slice_normalized, ct_slice_normalized, reduction="mean") * 4000
