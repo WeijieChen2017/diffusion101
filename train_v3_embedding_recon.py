@@ -208,9 +208,11 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
         vq_weights_path: Path to VQ weights file
         output_viz: Whether to output slice-by-slice visualizations (default: False)
     """
-    # Load VQ weights dictionary
+    # Load VQ weights dictionary and normalize to unit sphere
     print(f"Loading VQ weights from {vq_weights_path}")
     vq_weights = np.load(vq_weights_path)  # Shape: (8192, 3)
+    # Normalize each vector to unit length
+    vq_weights = vq_weights / np.sqrt(np.sum(vq_weights**2, axis=1, keepdims=True))
     
     # First get shape information
     shape_info = collect_and_save_all_shapes(data_div)
@@ -251,13 +253,13 @@ def visualize_and_save_embeddings(data_div, vq_weights_path="James_data_v3/vq_f4
                         pet_indices_reshaped = pet_indices.reshape(n_slices, width, height)
                         pet_embeddings = vq_weights[pet_indices_reshaped.flatten()].reshape(n_slices, width, height, 3)
                         pet_embeddings = pet_embeddings.transpose(0, 3, 1, 2)
-                        pet_embeddings_norm = pet_embeddings / 10.0 + 0.5
+                        # pet_embeddings_norm = pet_embeddings / 10.0 + 0.5
                         
                         # CT embeddings
                         ct_indices_reshaped = ct_indices.reshape(n_slices, width, height)
                         ct_embeddings = vq_weights[ct_indices_reshaped.flatten()].reshape(n_slices, width, height, 3)
                         ct_embeddings = ct_embeddings.transpose(0, 3, 1, 2)
-                        ct_embeddings_norm = ct_embeddings / 10.0 + 0.5
+                        # ct_embeddings_norm = ct_embeddings / 10.0 + 0.5
                         
                         # Save normalized embeddings
                         output_path = os.path.join(output_dir, f"{hashname}_{orientation}_embedding_norm.npz")
