@@ -491,7 +491,7 @@ class GaussianDiffusion(Module):
         offset_noise_strength = 0.,  # https://www.crosslabs.org/blog/diffusion-with-offset-noise
         min_snr_loss_weight = False, # https://arxiv.org/abs/2303.09556
         min_snr_gamma = 5,
-        immiscible = False
+        immiscible = False,
     ):
         super().__init__()
         # assert not (type(self) == GaussianDiffusion and model.channels != model.out_dim)
@@ -890,13 +890,12 @@ class GaussianDiffusion(Module):
             extract(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape) * noise
         )
 
-    def p_losses(self, x_start, t, cond, noise = None, offset_noise_strength = None):
+    def p_losses(self, x_start, t, cond, noise = None, offset_noise_strength = None, loss_fn = F.mse_loss):
         b, c, h, w = x_start.shape
 
         noise = default(noise, lambda: torch.randn_like(x_start))
 
         # offset noise - https://www.crosslabs.org/blog/diffusion-with-offset-noise
-
         offset_noise_strength = default(offset_noise_strength, self.offset_noise_strength)
 
         if offset_noise_strength > 0.:
@@ -904,14 +903,10 @@ class GaussianDiffusion(Module):
             noise += offset_noise_strength * rearrange(offset_noise, 'b c -> b c 1 1')
 
         # noise sample
-
         x = self.q_sample(x_start = x_start, t = t, noise = noise)
-        # print(f"shape of x: {x.shape}")
 
         # if doing self-conditioning, 50% of the time, predict x_start from current set of times
         # and condition with unet with that
-        # this technique will slow down training by 25%, but seems to lower FID significantly
-
         x_self_cond = None
         if self.self_condition and random() < 0.5:
             with torch.no_grad():
@@ -919,11 +914,9 @@ class GaussianDiffusion(Module):
                 x_self_cond.detach_()
 
         # concatenate noisy input and cond with the same shape b, c, h, w
-        # concatenate at c dim
         x = torch.cat((x, cond), dim = 1)
 
         # predict and take gradient step
-
         model_out = self.model(x, t, x_self_cond)
 
         if self.objective == 'pred_noise':
@@ -936,20 +929,19 @@ class GaussianDiffusion(Module):
         else:
             raise ValueError(f'unknown objective {self.objective}')
 
-        loss = F.mse_loss(model_out, target, reduction = 'none')
+        loss = loss_fn(model_out, target, reduction = 'none')
         loss = reduce(loss, 'b ... -> b', 'mean')
 
         loss = loss * extract(self.loss_weight, t, loss.shape)
         return loss.mean()
 
-    def forward(self, img, cond, *args, **kwargs):
+    def forward(self, img, cond, *args, loss_fn = F.mse_loss, **kwargs):
         b, c, h, w, device, img_size, = *img.shape, img.device, self.image_size
-        # assert h == img_size[0] and w == img_size[1], f'height and width of image must be {img_size}'
         t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
 
         img = self.normalize(img)
         cond = self.normalize(cond)
-        return self.p_losses(img, t, cond, *args, **kwargs)
+        return self.p_losses(img, t, cond, *args, loss_fn=loss_fn, **kwargs)
 
 # dataset classes
 

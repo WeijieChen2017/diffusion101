@@ -2,6 +2,7 @@ import os
 import json
 import torch
 from omegaconf import OmegaConf
+import torch.nn.functional as F
 
 import torch.optim as optim
 from denoising_diffusion_pytorch import Unet, GaussianDiffusion
@@ -11,9 +12,15 @@ from train_v3_embedding_utils import prepare_dataset, train_or_eval_or_test_the_
 from global_config import global_config, set_param, get_param
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<< running setting
+experiment_config = OmegaConf.load("train_v3_embedding_config.yaml")
+print(experiment_config)
+for key in experiment_config.keys():
+    set_param(key, experiment_config[key])
+
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 cv_folds = 0
-root_dir = f"projects/v3_emb_petCond_acs_cv{cv_folds}"
+loss_type = get_param("train_param")["loss_type"]
+root_dir = f"projects/v3_emb_petCond_acs_cv{cv_folds}_{loss_type}"
 os.path.exists(root_dir) or os.makedirs(root_dir)
 data_division_file = "James_data_v3/cv_list.json"
 seeds = 729
@@ -27,12 +34,6 @@ set_param("log_txt_path", os.path.join(root_dir, "log_train.txt"))
 # load data data division
 with open(data_division_file, "r") as f:
     data_div = json.load(f)
-
-
-experiment_config = OmegaConf.load("train_v3_embedding_config.yaml")
-print(experiment_config)
-for key in experiment_config.keys():
-    set_param(key, experiment_config[key])
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<< prepare data loader, inceptionV3, and mode
 train_loader, val_loader, _ = prepare_dataset(
@@ -55,15 +56,19 @@ model = Unet(
 
 diffusion = GaussianDiffusion(
     model,
-    image_size = 64,
+    image_size = 256,
     timesteps = 1000,   # number of steps
     # loss_type = 'l1'    # L1 or L2
 ).to(device)
 
 optimizer = optim.AdamW(model.parameters(), lr=base_learning_rate)
 
+# After loading the model and before the training loop
+loss_fn = get_loss_function(get_param("train_param")["loss_type"])
+
 # Training and validation loop
 best_val_loss = float("inf")
+best_val_epoch = 0
 epoch = get_param("train_param")["epoch"]
 for idx_epoch in range(epoch):
 
@@ -85,6 +90,7 @@ for idx_epoch in range(epoch):
             model=diffusion,
             optimizer=optimizer,
             device=device,
+            loss_fn=loss_fn,
         )
         loss_1st += cl_1
         loss_2nd += cl_2
@@ -111,6 +117,7 @@ for idx_epoch in range(epoch):
             stage="eval",
             model=diffusion,
             device=device,
+            loss_fn=loss_fn,
         )
         loss_1st += cl_1
         loss_2nd += cl_2
@@ -122,9 +129,11 @@ for idx_epoch in range(epoch):
     loss_3rd /= len(val_loader)
     avg_loss = (loss_1st + loss_2nd + loss_3rd) / 3
     printlog(f"<Val> Epoch [{idx_epoch}]/[{epoch}], Loss 1st {loss_1st:.6f}, Loss 2nd {loss_2nd:.6f}, Loss 3rd {loss_3rd:.6f}, Avg Loss {avg_loss:.6f}")
+    printlog(f"The best val loss is {avg_loss:.6f} at epoch {best_val_epoch}")
     
     if avg_loss < best_val_loss:
         best_val_loss = avg_loss
+        best_val_epoch = idx_epoch
         torch.save({
             "state_dict": diffusion.state_dict(),
             "optimizer": optimizer.state_dict(),
@@ -141,3 +150,32 @@ for idx_epoch in range(epoch):
             "loss": avg_loss,
         }, os.path.join(root_dir, f"epoch_{idx_epoch}.pth"))
         printlog(f"Model saved at epoch {idx_epoch}")
+
+def get_loss_function(loss_type):
+    """
+    Get the loss function based on the config setting.
+    Args:
+        loss_type: str, one of "L1", "L2", or "COS"
+    Returns:
+        loss_fn: callable, the loss function
+    """
+    if loss_type == "L2":
+        return F.mse_loss
+    elif loss_type == "L1":
+        return F.l1_loss
+    elif loss_type == "COS":
+        def cosine_loss(input, target, reduction='none'):
+            # Normalize the vectors
+            input_normalized = F.normalize(input.flatten(2), dim=2)
+            target_normalized = F.normalize(target.flatten(2), dim=2)
+            # Compute cosine similarity (1 - cos_sim for loss)
+            cos_sim = 1 - (input_normalized * target_normalized).sum(dim=2)
+            if reduction == 'none':
+                return cos_sim
+            elif reduction == 'mean':
+                return cos_sim.mean()
+            else:
+                raise ValueError(f"Unsupported reduction mode: {reduction}")
+        return cosine_loss
+    else:
+        raise ValueError(f"Unsupported loss type: {loss_type}")

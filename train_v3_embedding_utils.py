@@ -159,7 +159,8 @@ def train_or_eval_or_test_the_batch_cond(
         batch_size, 
         stage, model, 
         optimizer=None, 
-        device=None
+        device=None,
+        loss_fn=F.mse_loss
     ):
     # Extract data for all three views
     x_axial = batch["x_axial"].squeeze(0).to(device)  # shape: (len_z, 3, h, w)
@@ -216,7 +217,7 @@ def train_or_eval_or_test_the_batch_cond(
     case_loss_sagittal = 0.0
 
     # Process axial view
-    indices_list = [i for i in range(1, x_axial.shape[0]-1)]  # range over len_z
+    indices_list = [i for i in range(0, x_axial.shape[0])]
     random.shuffle(indices_list)
     
     batch_size_count = 0
@@ -249,15 +250,15 @@ def train_or_eval_or_test_the_batch_cond(
                     aug_batch_x = torch.flip(aug_batch_x, dims=[-2])
                     aug_batch_y = torch.flip(aug_batch_y, dims=[-2])
 
-                case_loss_axial += process_batch(aug_batch_x, aug_batch_y, stage, model, optimizer, device)
+                case_loss_axial += process_batch(aug_batch_x, aug_batch_y, stage, model, optimizer, device, loss_fn)
             else:
-                case_loss_axial += process_batch(batch_x, batch_y, stage, model, optimizer, device)
+                case_loss_axial += process_batch(batch_x, batch_y, stage, model, optimizer, device, loss_fn)
             batch_size_count = 0
 
     case_loss_axial = case_loss_axial / (len(indices_list) // batch_size + 1)
 
     # Process coronal view
-    indices_list = [i for i in range(1, x_coronal.shape[0]-1)]
+    indices_list = [i for i in range(0, x_coronal.shape[0])]
     random.shuffle(indices_list)
     
     batch_size_count = 0
@@ -288,15 +289,15 @@ def train_or_eval_or_test_the_batch_cond(
                     aug_batch_x = torch.flip(aug_batch_x, dims=[-2])
                     aug_batch_y = torch.flip(aug_batch_y, dims=[-2])
 
-                case_loss_coronal += process_batch(aug_batch_x, aug_batch_y, stage, model, optimizer, device)
+                case_loss_coronal += process_batch(aug_batch_x, aug_batch_y, stage, model, optimizer, device, loss_fn)
             else:
-                case_loss_coronal += process_batch(batch_x, batch_y, stage, model, optimizer, device)
+                case_loss_coronal += process_batch(batch_x, batch_y, stage, model, optimizer, device, loss_fn)
             batch_size_count = 0
             
     case_loss_coronal = case_loss_coronal / (len(indices_list) // batch_size + 1)
 
     # Process sagittal view
-    indices_list = [i for i in range(1, x_sagittal.shape[0]-1)]
+    indices_list = [i for i in range(0, x_sagittal.shape[0])]
     random.shuffle(indices_list)
     
     batch_size_count = 0
@@ -327,28 +328,28 @@ def train_or_eval_or_test_the_batch_cond(
                     aug_batch_x = torch.flip(aug_batch_x, dims=[-2])
                     aug_batch_y = torch.flip(aug_batch_y, dims=[-2])
 
-                case_loss_sagittal += process_batch(aug_batch_x, aug_batch_y, stage, model, optimizer, device)
+                case_loss_sagittal += process_batch(aug_batch_x, aug_batch_y, stage, model, optimizer, device, loss_fn)
             else:
-                case_loss_sagittal += process_batch(batch_x, batch_y, stage, model, optimizer, device)
+                case_loss_sagittal += process_batch(batch_x, batch_y, stage, model, optimizer, device, loss_fn)
             batch_size_count = 0
             
     case_loss_sagittal = case_loss_sagittal / (len(indices_list) // batch_size + 1)
 
     return case_loss_axial, case_loss_coronal, case_loss_sagittal
 
-def process_batch(batch_x, batch_y, stage, model, optimizer, device):
+def process_batch(batch_x, batch_y, stage, model, optimizer, device, loss_fn=F.mse_loss):
     batch_x = batch_x.to(device)
     batch_y = batch_y.to(device)
     
     if stage == "train":
         optimizer.zero_grad()
-        loss = model(img=batch_y, cond=batch_x)
+        loss = model(img=batch_y, cond=batch_x, loss_fn=loss_fn)
         loss.backward()
         optimizer.step()
         return loss.item()
     elif stage == "eval" or stage == "test":
         with torch.no_grad():
-            loss = model(img=batch_y, cond=batch_x)
+            loss = model(img=batch_y, cond=batch_x, loss_fn=loss_fn)
             return loss.item()
 
 def prepare_dataset(data_div, invlove_train=False, invlove_val=False, invlove_test=False):
