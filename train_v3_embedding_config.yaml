@@ -21,7 +21,7 @@ train_param:
   save_per_epoch: 10
   batch_per_eval: 10
   epoch: 100
-  loss_fn: "COS"
+  loss_type: "COS"
   train_stage:
     batch_size: 48
   val_stage:
