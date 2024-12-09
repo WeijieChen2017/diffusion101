@@ -75,16 +75,16 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
         filename = batch["filename"][0]
 
         # Print original shapes
-        printlog(f"Original shapes:")
-        printlog(f"x_axial: {x_axial.shape}")
-        printlog(f"x_coronal: {x_coronal.shape}")
-        printlog(f"x_sagittal: {x_sagittal.shape}")
+        # printlog(f"Original shapes:")
+        # printlog(f"x_axial: {x_axial.shape}")
+        # printlog(f"x_coronal: {x_coronal.shape}")
+        # printlog(f"x_sagittal: {x_sagittal.shape}")
 
         # Process each view
         for view_name, x, y in [
+            ("axial", x_axial, y_axial),
             ("coronal", x_coronal, y_coronal),
             ("sagittal", x_sagittal, y_sagittal),
-            ("axial", x_axial, y_axial),
         ]:
             len_slices = x.shape[0]
             
@@ -101,10 +101,10 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
                 x = F.pad(x, (0, pad_w, 0, pad_h), mode='constant', value=0)
                 y = F.pad(y, (0, pad_w, 0, pad_h), mode='constant', value=0)
                 
-                printlog(f"{view_name} view dimensions:")
-                printlog(f"Original shape: ({original_h}, {original_w})")
-                printlog(f"Padded shape: {x.shape}")
-                printlog(f"Padding added: height={pad_h}, width={pad_w}")
+                # printlog(f"{view_name} view dimensions:")
+                # printlog(f"Original shape: ({original_h}, {original_w})")
+                # printlog(f"Padded shape: {x.shape}")
+                # printlog(f"Padding added: height={pad_h}, width={pad_w}")
             
             # Process slices in batches
             for slice_start in range(1, len_slices - 1, batch_size):
