@@ -17,6 +17,9 @@ import pandas as pd
 
 from train_v3_embedding_decode_utils import nnVQModel
 
+# Set device explicitly to CUDA:0
+device = torch.device("cuda:0")
+
 model_step1_params = {
     "VQ_NAME": "f4",
     "n_embed": 8192,
