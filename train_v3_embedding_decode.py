@@ -57,6 +57,9 @@ if os.path.exists(model_pretrain_weights):
 else:
     print(f"Warning: Pretrained weights file '{model_pretrain_weights}' not found. Using randomly initialized weights.")
 
+# Send model to cuda
+nnmodel.to(device)
+
 # Load data division file
 with open(data_div_file, "r") as f:
     data_div = json.load(f)
