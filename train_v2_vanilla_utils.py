@@ -36,10 +36,10 @@ def printlog(message):
 def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir, batch_size=8):
     model.eval()
     # Create separate directories for each view
-    axial_dir = os.path.join(output_dir, "axial")
-    sagittal_dir = os.path.join(output_dir, "sagittal")
     coronal_dir = os.path.join(output_dir, "coronal")
-    for dir_path in [axial_dir, sagittal_dir, coronal_dir]:
+    sagittal_dir = os.path.join(output_dir, "sagittal")
+    axial_dir = os.path.join(output_dir, "axial")
+    for dir_path in [coronal_dir, sagittal_dir, axial_dir]:
         os.makedirs(dir_path, exist_ok=True)
 
     print("Starting testing...")
@@ -52,11 +52,11 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
         pet = batch["PET"].to(device)  # Shape: (1, z, h, w)
         ct = batch["CT"].to(device)  # Ground truth CT
         
-        # Process each view
+        # Process each view - include batch dimension (0) in permutations
         views = {
-            'axial': {'data': pet, 'dir': axial_dir, 'dims': (1, 2, 3)},  # z, h, w
-            'coronal': {'data': pet.permute(0, 2, 1, 3), 'dir': coronal_dir, 'dims': (1, 2, 3)},  # h, z, w
-            'sagittal': {'data': pet.permute(0, 3, 1, 2), 'dir': sagittal_dir, 'dims': (1, 2, 3)}  # w, z, h
+            'coronal': {'data': pet.permute(0, 2, 1, 3), 'dir': coronal_dir, 'dims': (0, 2, 1, 3)},  # b, h, z, w
+            'sagittal': {'data': pet.permute(0, 3, 1, 2), 'dir': sagittal_dir, 'dims': (0, 3, 1, 2)},  # b, w, z, h
+            'axial': {'data': pet, 'dir': axial_dir, 'dims': (0, 1, 2, 3)}  # b, z, h, w
         }
 
         for view_name, view_info in views.items():
