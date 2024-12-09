@@ -64,6 +64,7 @@ optimizer = optim.AdamW(model.parameters(), lr=base_learning_rate)
 
 # Training and validation loop
 best_val_loss = float("inf")
+best_val_epoch = 0
 epoch = get_param("train_param")["epoch"]
 for idx_epoch in range(epoch):
 
@@ -122,9 +123,11 @@ for idx_epoch in range(epoch):
     loss_3rd /= len(val_loader)
     avg_loss = (loss_1st + loss_2nd + loss_3rd) / 3
     printlog(f"<Val> Epoch [{idx_epoch}]/[{epoch}], Loss 1st {loss_1st:.6f}, Loss 2nd {loss_2nd:.6f}, Loss 3rd {loss_3rd:.6f}, Avg Loss {avg_loss:.6f}")
+    printlog(f"Current best val loss is {best_val_loss:.6f}, at epoch {idx_epoch}")
     
     if avg_loss < best_val_loss:
         best_val_loss = avg_loss
+        best_val_epoch = idx_epoch
         torch.save({
             "state_dict": diffusion.state_dict(),
             "optimizer": optimizer.state_dict(),
