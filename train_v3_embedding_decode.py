@@ -138,9 +138,9 @@ with torch.no_grad():
                 vq_pred_emb = torch.from_numpy(data['vq_pred_embedding']).unsqueeze(0).to(device)
                 
                 # Denormalize by multiplying by 5
-                gt_emb = gt_emb * 5
-                pred_emb = pred_emb * 5
-                vq_pred_emb = vq_pred_emb * 5
+                gt_emb = (gt_emb - 0.5) * 10
+                pred_emb = (pred_emb - 0.5) * 10
+                vq_pred_emb = (vq_pred_emb - 0.5) * 10
                 
                 # Decode embeddings
                 gt_dec = nnmodel.decode(gt_emb)[:, 1:2]  # Take middle channel
