@@ -80,37 +80,32 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
         printlog(f"x_coronal: {x_coronal.shape}")
         printlog(f"x_sagittal: {x_sagittal.shape}")
 
-        # Ensure spatial dimensions are multiple of 8
-        required_multiple = 8
-        
-        # Pad each view if needed
-        for x, y in [(x_axial, y_axial), (x_coronal, y_coronal), (x_sagittal, y_sagittal)]:
+        # Process each view
+        for view_name, x, y in [
+            ("coronal", x_coronal, y_coronal),
+            ("sagittal", x_sagittal, y_sagittal),
+            ("axial", x_axial, y_axial),
+        ]:
+            len_slices = x.shape[0]
+            
+            # Calculate padding
+            required_multiple = 8
             pad_h = (required_multiple - x.shape[2] % required_multiple) % required_multiple
             pad_w = (required_multiple - x.shape[3] % required_multiple) % required_multiple
+            
+            # Store original dimensions before padding
+            original_h, original_w = x.shape[2], x.shape[3]
+            
+            # Apply padding if needed
             if pad_h > 0 or pad_w > 0:
                 x = F.pad(x, (0, pad_w, 0, pad_h), mode='constant', value=0)
                 y = F.pad(y, (0, pad_w, 0, pad_h), mode='constant', value=0)
-
-        # Print shapes after padding
-        printlog(f"Shapes after padding:")
-        printlog(f"x_axial: {x_axial.shape}")
-        printlog(f"x_coronal: {x_coronal.shape}")
-        printlog(f"x_sagittal: {x_sagittal.shape}")
-
-        # Process each view
-        for view_name, x, y in [
-            ("axial", x_axial, y_axial),
-            ("coronal", x_coronal, y_coronal),
-            ("sagittal", x_sagittal, y_sagittal)
-        ]:
-            len_slices = x.shape[0]
-            original_h, original_w = x.shape[2] - pad_h, x.shape[3] - pad_w  # Store original dimensions
+                
+                printlog(f"{view_name} view dimensions:")
+                printlog(f"Original shape: ({original_h}, {original_w})")
+                printlog(f"Padded shape: {x.shape}")
+                printlog(f"Padding added: height={pad_h}, width={pad_w}")
             
-            # Print dimensions for each view before processing
-            printlog(f"{view_name} view dimensions:")
-            printlog(f"Padded shape: {x.shape}")
-            printlog(f"Original shape (to restore): ({original_h}, {original_w})")
-
             # Process slices in batches
             for slice_start in range(1, len_slices - 1, batch_size):
                 current_batch_size = min(batch_size, len_slices - 1 - slice_start)
@@ -126,7 +121,7 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
                 # Generate predictions for the batch
                 pred_slices = model.sample(batch_size=current_batch_size, cond=batch_x)
                 
-                # Remove padding from predictions immediately after sampling
+                # Remove padding from predictions and inputs
                 if pad_h > 0 or pad_w > 0:
                     pred_slices = pred_slices[:, :, :original_h, :original_w]
                     batch_x = batch_x[:, :, :original_h, :original_w]
