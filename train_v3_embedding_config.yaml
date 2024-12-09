@@ -20,7 +20,7 @@ train_param:
   embedding_scale: 8
   save_per_epoch: 10
   batch_per_eval: 10
-  epoch: 100
+  epoch: 1000
   loss_type: "L2"
   train_stage:
     batch_size: 48
