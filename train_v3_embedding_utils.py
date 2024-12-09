@@ -1,26 +1,17 @@
-import argparse, os, sys, glob
-from omegaconf import OmegaConf
-from PIL import Image
-from tqdm import tqdm
-import numpy as np
-import torch
+import os
+import time
 import json
 import random
+import numpy as np
+import torch
+import torch.nn.functional as F
 import monai
-
 from monai.transforms import (
-    Compose, 
-    LoadImaged, 
-    EnsureChannelFirstd,
+    Compose,
     EnsureTyped,
 )
-import torch.nn.functional as F
-
-import time
 from monai.data import CacheDataset, DataLoader
-from global_config import global_config, set_param, get_param
-# take the psnr as the metric from skimage
-from skimage.metrics import peak_signal_noise_ratio as psnr
+from global_config import set_param, get_param
 
 def printlog(message):
     log_txt_path = get_param("log_txt_path")
