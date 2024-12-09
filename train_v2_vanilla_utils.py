@@ -35,7 +35,12 @@ def printlog(message):
 @torch.inference_mode()
 def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir, batch_size=8):
     model.eval()
-    os.makedirs(output_dir, exist_ok=True)
+    # Create separate directories for each view
+    axial_dir = os.path.join(output_dir, "axial")
+    sagittal_dir = os.path.join(output_dir, "sagittal")
+    coronal_dir = os.path.join(output_dir, "coronal")
+    for dir_path in [axial_dir, sagittal_dir, coronal_dir]:
+        os.makedirs(dir_path, exist_ok=True)
 
     print("Starting testing...")
     num_case = len(data_loader)
@@ -44,56 +49,76 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
         printlog(f"Processing case {idx_case + 1}/{len(data_loader)}")
 
         filenames = batch["filename"]
-        pet = batch["PET"].to(device)  # Shape: (1, z, 256, 256)
-        ct = batch["CT"].to(device)  # Ground truth CT, Shape: (1, z, 256, 256)
-        len_z = pet.shape[1]  # Number of slices along the z-axis
+        pet = batch["PET"].to(device)  # Shape: (1, z, h, w)
+        ct = batch["CT"].to(device)  # Ground truth CT
+        
+        # Process each view
+        views = {
+            'axial': {'data': pet, 'dir': axial_dir, 'dims': (1, 2, 3)},  # z, h, w
+            'coronal': {'data': pet.permute(0, 2, 1, 3), 'dir': coronal_dir, 'dims': (1, 2, 3)},  # h, z, w
+            'sagittal': {'data': pet.permute(0, 3, 1, 2), 'dir': sagittal_dir, 'dims': (1, 2, 3)}  # w, z, h
+        }
 
-        # Process slices in batches
-        for z_start in range(1, len_z - 1, batch_size):
-            # Calculate actual batch size for this iteration
-            current_batch_size = min(batch_size, len_z - 1 - z_start)
-            
-            # Create batch for model input
-            cond = torch.zeros((current_batch_size, 3, pet.shape[2], pet.shape[3])).to(device)
-            
-            # Fill the conditioning tensor for each slice in the batch
-            for i in range(current_batch_size):
-                z = z_start + i
-                cond[i, 0, :, :] = pet[:, z - 1, :, :]
-                cond[i, 1, :, :] = pet[:, z, :, :]
-                cond[i, 2, :, :] = pet[:, z + 1, :, :]
+        for view_name, view_info in views.items():
+            pet_view = view_info['data']
+            ct_view = ct.permute(*view_info['dims']) if view_name != 'axial' else ct
+            len_slices = pet_view.shape[1]
 
-            # Generate predictions for the batch
-            pred_slices = model.sample(batch_size=current_batch_size, cond=cond)  # Shape: (batch_size, 3, h, w)
+            printlog(f"Processing {view_name} view for case {idx_case + 1}")
 
-            # Process and save each slice in the batch
-            for i in range(current_batch_size):
-                z = z_start + i
-                
-                # Select middle slice prediction
-                pred_slice = pred_slices[i]  # Shape: (3, h, w)
-                pred_slice_clipped = torch.clamp(pred_slice[1, :, :], min=-1, max=1)
-                pred_slice_normalized = (pred_slice_clipped + 1) / 2.0
-                ct_slice_normalized = (ct[:, z, :, :] + 1) / 2.0
-                pet_slice = pet[:, z, :, :].cpu().numpy()
+            # Process slices in batches
+            for slice_start in range(0, len_slices, batch_size):
+                current_batch_size = min(batch_size, len_slices - slice_start)
+                cond = torch.zeros((current_batch_size, 3, pet_view.shape[2], pet_view.shape[3])).to(device)
 
-                # Compute MAE loss with a factor of 4000
-                slice_mae = F.l1_loss(pred_slice_normalized, ct_slice_normalized, reduction="mean") * 4000
-                printlog(f"Case {idx_case + 1}/{num_case}, Slice {z}/{len_z}: MAE = {slice_mae.item():.6f}")
+                # Fill the conditioning tensor for each slice in the batch
+                for i in range(current_batch_size):
+                    slice_idx = slice_start + i
+                    
+                    if slice_idx == 0:  # First slice
+                        cond[i, 0:2, :, :] = pet_view[:, 0:1, :, :].repeat(1, 2, 1, 1)
+                        cond[i, 2, :, :] = pet_view[:, 1, :, :]
+                    elif slice_idx == len_slices - 1:  # Last slice
+                        cond[i, 0, :, :] = pet_view[:, slice_idx-1, :, :]
+                        cond[i, 1:3, :, :] = pet_view[:, -1:, :, :].repeat(1, 2, 1, 1)
+                    else:  # Normal case
+                        cond[i, 0, :, :] = pet_view[:, slice_idx-1, :, :]
+                        cond[i, 1, :, :] = pet_view[:, slice_idx, :, :]
+                        cond[i, 2, :, :] = pet_view[:, slice_idx+1, :, :]
 
-                # Save data for this slice
-                save_data = {
-                    "PET": pet_slice,
-                    "CT": ct_slice_normalized.cpu().numpy(),
-                    "Pred_CT": pred_slice_normalized.cpu().numpy(),
-                    "MAE": slice_mae.item()
-                }
-                save_path = os.path.join(output_dir, f"{filenames[0]}_case_{idx_case + 1}_slice_{z}.npz")
-                np.savez_compressed(save_path, **save_data)
+                # Generate predictions for the batch
+                pred_slices = model.sample(batch_size=current_batch_size, cond=cond)
 
-                printlog(f"Saved slice {z} for case {idx_case + 1} to {save_path} at MAE {slice_mae.item()}")
+                # Process and save each slice in the batch
+                for i in range(current_batch_size):
+                    slice_idx = slice_start + i
+                    
+                    pred_slice = pred_slices[i]
+                    pred_slice_clipped = torch.clamp(pred_slice[1, :, :], min=-1, max=1)
+                    pred_slice_normalized = (pred_slice_clipped + 1) / 2.0
+                    ct_slice_normalized = (ct_view[:, slice_idx, :, :] + 1) / 2.0
+                    pet_slice = pet_view[:, slice_idx, :, :].cpu().numpy()
 
-    printlog("Testing and saving completed.")
+                    # Compute MAE loss
+                    slice_mae = F.l1_loss(pred_slice_normalized, ct_slice_normalized, reduction="mean") * 4000
+                    printlog(f"Case {idx_case + 1}/{num_case}, {view_name} Slice {slice_idx}/{len_slices}: MAE = {slice_mae.item():.6f}")
+
+                    # Save data for this slice
+                    save_data = {
+                        "PET": pet_slice,
+                        "CT": ct_slice_normalized.cpu().numpy(),
+                        "Pred_CT": pred_slice_normalized.cpu().numpy(),
+                        "MAE": slice_mae.item()
+                    }
+                    save_path = os.path.join(
+                        view_info['dir'], 
+                        f"{filenames[0]}_case_{idx_case + 1}_{view_name}_slice_{slice_idx}.npz"
+                    )
+                    np.savez_compressed(save_path, **save_data)
+
+                    printlog(f"Saved {view_name} slice {slice_idx} for case {idx_case + 1} to {save_path}")
+
+    printlog("Testing and saving completed for all views.")
 
 
 
