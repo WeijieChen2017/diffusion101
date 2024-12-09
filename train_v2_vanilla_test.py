@@ -12,7 +12,7 @@ from train_v2_vanilla_utils import prepare_dataset, printlog, test_diffusion_mod
 from global_config import global_config, set_param, get_param
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<< running setting
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
 # root_dir = "projects/v1_vanilla_pet_cond"
 root_dit = "projects/v2_img_petCond_acs_cv{cv_folds}"
 os.path.exists(root_dir) or os.makedirs(root_dir)
