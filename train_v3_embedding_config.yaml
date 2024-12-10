@@ -23,8 +23,8 @@ train_param:
   epoch: 1000
   loss_type: "COS"
   train_stage:
-    batch_size: 48
+    batch_size: 64
   val_stage:
-    batch_size: 48
+    batch_size: 64
   test_stage:
-    batch_size: 48
+    batch_size: 64
