@@ -89,7 +89,7 @@ if os.path.exists(model_ckpt_path):
 vq_weights = np.load("James_data_v3/vq_f4_weights_attn.npy")  # You'll need to specify the correct path
 
 # Test the model and save results
-output_directory = root_dir+f"/test_results_ddpm_batch_{batch_size}"
+output_directory = root_dir+f"/test_results_ddpm_batch_{batch_size}_noClip"
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)
 test_diffusion_model_and_save_slices(
