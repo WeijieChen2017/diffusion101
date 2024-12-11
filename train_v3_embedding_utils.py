@@ -54,23 +54,35 @@ def printlog(message):
         f.write("\n")
 
 @torch.inference_mode()
-def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device, output_dir, vq_weights=None, batch_size=8):
+def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device, output_dir, vq_weights, batch_size=8):
     """
     Args:
         data_loader: DataLoader object
         model: the diffusion model
         device: torch device
         output_dir: directory to save outputs
-        vq_weights: optional VQ codebook weights
+        vq_weights: torch.Tensor of shape (8192, 3), the VQ codebook
         batch_size: batch size for processing
     """
     model.eval()
-    # Create separate directories for each view
-    coronal_dir = os.path.join(output_dir, "coronal")
-    sagittal_dir = os.path.join(output_dir, "sagittal")
-    axial_dir = os.path.join(output_dir, "axial")
-    for dir_path in [coronal_dir, sagittal_dir, axial_dir]:
-        os.makedirs(dir_path, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+    vq_weights = torch.from_numpy(vq_weights).to(device)  # (8192, 3)
+
+    def find_nearest_embedding(pred_embedding):
+        """
+        Find the nearest VQ embedding for each pixel position
+        Args:
+            pred_embedding: tensor of shape (3, h, w)
+        Returns:
+            quantized embedding of shape (3, h, w)
+        """
+        h, w = pred_embedding.shape[1:]
+        flat_pred = pred_embedding.permute(1, 2, 0).reshape(-1, 3)  # (h*w, 3)
+        distances = torch.cdist(flat_pred, vq_weights)  # (h*w, 8192)
+        nearest_indices = torch.argmin(distances, dim=1)  # (h*w,)
+        quantized = vq_weights[nearest_indices]  # (h*w, 3)
+        quantized = quantized.reshape(h, w, 3).permute(2, 0, 1)  # (3, h, w)
+        return quantized
 
     print("Starting testing...")
     num_case = len(data_loader)
@@ -92,9 +104,9 @@ def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device,
 
         # Process each view - include batch dimension (0) in permutations
         views = {
-            'coronal': {'data': pet.permute(0, 2, 1, 3), 'dir': coronal_dir, 'dims': (0, 2, 1, 3)},  # b, h, z, w
-            'sagittal': {'data': pet.permute(0, 3, 1, 2), 'dir': sagittal_dir, 'dims': (0, 3, 1, 2)},  # b, w, z, h
-            'axial': {'data': pet, 'dir': axial_dir, 'dims': (0, 1, 2, 3)}  # b, z, h, w
+            'coronal': {'data': pet.permute(0, 2, 1, 3), 'dims': (0, 2, 1, 3)},  # b, h, z, w
+            'sagittal': {'data': pet.permute(0, 3, 1, 2), 'dims': (0, 3, 1, 2)},  # b, w, z, h
+            'axial': {'data': pet, 'dims': (0, 1, 2, 3)}  # b, z, h, w
         }
 
         for view_name, view_info in views.items():
@@ -136,7 +148,7 @@ def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device,
                 # Generate predictions for the batch
                 pred_slices = model.sample(batch_size=current_batch_size, cond=cond)
 
-                # Normalize predictions and dictionary weights
+                # Normalize predictions
                 def normalize(tensor):
                     norm = torch.sqrt((tensor ** 2).sum(dim=1, keepdim=True))
                     return tensor / norm
@@ -156,6 +168,9 @@ def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device,
                     ct_slice_normalized = (ct_slice.squeeze(1) + 1) / 2.0
                     pet_slice = pad_to_multiple(pet_view[:, slice_idx:slice_idx+1, :, :]).cpu().numpy()
 
+                    # Find nearest VQ embedding
+                    vq_pred_slice = find_nearest_embedding(pred_slice)
+
                     # Compute cosine similarity
                     cosine_sim = F.cosine_similarity(pred_slice_normalized.flatten(), ct_slice_normalized.flatten(), dim=0)
                     printlog(f"Case {idx_case + 1}/{num_case}, {view_name} Slice {slice_idx}/{len_slices}: Cosine Similarity = {cosine_sim.item():.6f}")
@@ -165,10 +180,11 @@ def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device,
                         "PET": pet_slice,
                         "CT": ct_slice_normalized.cpu().numpy(),
                         "Pred_CT": pred_slice_normalized.cpu().numpy(),
+                        "VQ_Pred_CT": vq_pred_slice.cpu().numpy(),
                         "Cosine_Similarity": cosine_sim.item()
                     }
                     save_path = os.path.join(
-                        view_info['dir'], 
+                        output_dir, 
                         f"{filenames[0]}_case_{idx_case + 1}_{view_name}_slice_{slice_idx}.npz"
                     )
                     np.savez_compressed(save_path, **save_data)
