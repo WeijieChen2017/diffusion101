@@ -69,10 +69,12 @@ diffusion = GaussianDiffusion(
 model_ckpt_path = root_dir+"/best.pth"
 if os.path.exists(model_ckpt_path):
     printlog(f"Loading model from {model_ckpt_path}")
-    checkpoint = torch.load(model_ckpt_path)
+    # Load checkpoint to CPU first
+    checkpoint = torch.load(model_ckpt_path, map_location='cpu')
     ckpt_keys = checkpoint["state_dict"].keys()
-    # show all checkpoint keys
-    # printlog(f"Checkpoint keys, {ckpt_keys}")
+    # Transfer model to device first
+    diffusion = diffusion.to(device)
+    # Then load state dict
     diffusion.load_state_dict(checkpoint["state_dict"])
     best_val_loss = checkpoint["loss"]
     printlog(f"Loaded model from {model_ckpt_path}, with the average val loss {best_val_loss:.6f}.")
