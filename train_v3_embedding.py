@@ -17,10 +17,10 @@ print(experiment_config)
 for key in experiment_config.keys():
     set_param(key, experiment_config[key])
 
-device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
-cv_folds = 3
+device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+cv_folds = 0
 loss_type = get_param("train_param")["loss_type"]
-root_dir = f"projects/v3_emb_petCond_acs_cv{cv_folds}_{loss_type}"
+root_dir = f"projects/v3_emb_petCond_acs_cv{cv_folds}_{loss_type}_sphere"
 os.path.exists(root_dir) or os.makedirs(root_dir)
 data_division_file = "James_data_v3/cv_list.json"
 seeds = 729

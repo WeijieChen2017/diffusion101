@@ -341,10 +341,34 @@ def train_or_eval_or_test_the_batch_cond(
     # Extract data for all three views
     x_axial = batch["x_axial"].squeeze(0).to(device)  # shape: (len_z, 3, h, w)
     y_axial = batch["y_axial"].squeeze(0).to(device)
-    x_coronal = batch["x_coronal"].squeeze(0).to(device)  # shape: (len_y, 3, h, w)
+    x_coronal = batch["x_coronal"].squeeze(0).to(device)
     y_coronal = batch["y_coronal"].squeeze(0).to(device)
-    x_sagittal = batch["x_sagittal"].squeeze(0).to(device)  # shape: (len_x, 3, h, w)
+    x_sagittal = batch["x_sagittal"].squeeze(0).to(device)
     y_sagittal = batch["y_sagittal"].squeeze(0).to(device)
+
+    def normalize_to_unit_sphere(x):
+        """Normalize each 1x3 vector to unit length.
+        Args:
+            x: tensor of shape (slices, 3, h, w)
+        Returns:
+            normalized tensor of same shape
+        """
+        # Reshape to (slices*h*w, 3)
+        orig_shape = x.shape
+        x_flat = x.permute(0, 2, 3, 1).reshape(-1, 3)
+        # Normalize each vector to unit length
+        x_norm = F.normalize(x_flat, p=2, dim=1)
+        # Reshape back
+        x_norm = x_norm.reshape(orig_shape[0], orig_shape[2], orig_shape[3], 3).permute(0, 3, 1, 2)
+        return x_norm
+
+    # Normalize all inputs and targets to unit sphere
+    x_axial = normalize_to_unit_sphere(x_axial)
+    y_axial = normalize_to_unit_sphere(y_axial)
+    x_coronal = normalize_to_unit_sphere(x_coronal)
+    y_coronal = normalize_to_unit_sphere(y_coronal)
+    x_sagittal = normalize_to_unit_sphere(x_sagittal)
+    y_sagittal = normalize_to_unit_sphere(y_sagittal)
 
     # show all incoming shape
     # printlog(f"Incoming shapes:")
