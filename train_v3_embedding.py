@@ -137,7 +137,7 @@ for idx_epoch in range(epoch):
     loss_3rd /= len(val_loader)
     avg_loss = (loss_1st + loss_2nd + loss_3rd) / 3
     printlog(f"<Val> Epoch [{idx_epoch}]/[{epoch}], Loss 1st {loss_1st:.6f}, Loss 2nd {loss_2nd:.6f}, Loss 3rd {loss_3rd:.6f}, Avg Loss {avg_loss:.6f}")
-    printlog(f"The best val loss is {avg_loss:.6f} at epoch {best_val_epoch}")
+    printlog(f"The best val loss is {best_val_loss:.6f} at epoch {best_val_epoch}")
     
     if avg_loss < best_val_loss:
         best_val_loss = avg_loss
