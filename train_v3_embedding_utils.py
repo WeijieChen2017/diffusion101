@@ -54,7 +54,16 @@ def printlog(message):
         f.write("\n")
 
 @torch.inference_mode()
-def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device, output_dir, batch_size=8):
+def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device, output_dir, vq_weights=None, batch_size=8):
+    """
+    Args:
+        data_loader: DataLoader object
+        model: the diffusion model
+        device: torch device
+        output_dir: directory to save outputs
+        vq_weights: optional VQ codebook weights
+        batch_size: batch size for processing
+    """
     model.eval()
     # Create separate directories for each view
     coronal_dir = os.path.join(output_dir, "coronal")
