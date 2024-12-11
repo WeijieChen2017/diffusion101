@@ -22,8 +22,11 @@ for key in experiment_config.keys():
 # 5 - cv1
 # 6 - cv2
 
-device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
-cv_folds = 2
+# GPU2
+# 0 - cv3
+# 1 - cv4
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+cv_folds = 3
 loss_type = get_param("train_param")["loss_type"]
 root_dir = f"projects/v3_emb_petCond_acs_cv{cv_folds}_{loss_type}_sphere"
 os.path.exists(root_dir) or os.makedirs(root_dir)
