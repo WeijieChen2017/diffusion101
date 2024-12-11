@@ -57,20 +57,18 @@ def printlog(message):
 def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device, output_dir, vq_weights, batch_size=8):
     """
     Args:
-        data_loader: DataLoader object
-        model: the diffusion model
-        device: torch device
-        output_dir: directory to save outputs
         vq_weights: torch.Tensor of shape (8192, 3), the VQ codebook
-        batch_size: batch size for processing
     """
     model.eval()
     os.makedirs(output_dir, exist_ok=True)
+    
+    # Normalize VQ weights to unit vectors
     vq_weights = torch.from_numpy(vq_weights).to(device)  # (8192, 3)
+    vq_weights = F.normalize(vq_weights, p=2, dim=1)  # normalize each 1x3 vector
 
-    def find_nearest_embedding(pred_embedding):
+    def find_nearest_embedding_cosine(pred_embedding):
         """
-        Find the nearest VQ embedding for each pixel position
+        Find the nearest VQ embedding using cosine similarity
         Args:
             pred_embedding: tensor of shape (3, h, w)
         Returns:
@@ -78,11 +76,38 @@ def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device,
         """
         h, w = pred_embedding.shape[1:]
         flat_pred = pred_embedding.permute(1, 2, 0).reshape(-1, 3)  # (h*w, 3)
-        distances = torch.cdist(flat_pred, vq_weights)  # (h*w, 8192)
-        nearest_indices = torch.argmin(distances, dim=1)  # (h*w,)
+        
+        # Normalize prediction vectors
+        flat_pred = F.normalize(flat_pred, p=2, dim=1)  # normalize each 1x3 vector
+        
+        # Compute cosine similarity (dot product of normalized vectors)
+        similarities = torch.mm(flat_pred, vq_weights.t())  # (h*w, 8192)
+        
+        # Find most similar vectors
+        nearest_indices = torch.argmax(similarities, dim=1)  # (h*w,)
         quantized = vq_weights[nearest_indices]  # (h*w, 3)
         quantized = quantized.reshape(h, w, 3).permute(2, 0, 1)  # (3, h, w)
         return quantized
+
+    def compute_cosine_similarity(pred, target):
+        """
+        Compute mean cosine similarity between prediction and target
+        Args:
+            pred, target: tensors of shape (3, h, w)
+        Returns:
+            mean cosine similarity (scalar)
+        """
+        # Reshape to (h*w, 3)
+        pred_flat = pred.permute(1, 2, 0).reshape(-1, 3)
+        target_flat = target.permute(1, 2, 0).reshape(-1, 3)
+        
+        # Normalize vectors
+        pred_norm = F.normalize(pred_flat, p=2, dim=1)
+        target_norm = F.normalize(target_flat, p=2, dim=1)
+        
+        # Compute cosine similarity
+        cos_sim = (pred_norm * target_norm).sum(dim=1)  # (h*w,)
+        return cos_sim.mean()
 
     print("Starting testing...")
     num_case = len(data_loader)
@@ -90,111 +115,90 @@ def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device,
     for idx_case, batch in enumerate(data_loader):
         printlog(f"Processing case {idx_case + 1}/{len(data_loader)}")
 
-        filenames = batch["filename"]
-        pet = batch["PET"].to(device)  # Shape: (1, z, h, w)
-        ct = batch["CT"].to(device)  # Ground truth CT
-        
-        # Ensure all dimensions are divisible by 8
-        def pad_to_multiple(tensor, multiple=8):
-            pad_dims = []
-            for dim in tensor.shape[-2:]:  # Only pad spatial dimensions
-                pad_needed = (multiple - dim % multiple) % multiple
-                pad_dims = [pad_needed//2, pad_needed - pad_needed//2] + pad_dims
-            return F.pad(tensor, pad_dims, mode='constant', value=0) if any(pad_dims) else tensor
+        # Extract data for all three views
+        x_axial = batch["x_axial"].squeeze(0).to(device)
+        y_axial = batch["y_axial"].squeeze(0).to(device)
+        x_coronal = batch["x_coronal"].squeeze(0).to(device)
+        y_coronal = batch["y_coronal"].squeeze(0).to(device)
+        x_sagittal = batch["x_sagittal"].squeeze(0).to(device)
+        y_sagittal = batch["y_sagittal"].squeeze(0).to(device)
+        filename = batch["filename"][0]
 
-        # Process each view - include batch dimension (0) in permutations
-        views = {
-            'coronal': {'data': pet.permute(0, 2, 1, 3), 'dims': (0, 2, 1, 3)},  # b, h, z, w
-            'sagittal': {'data': pet.permute(0, 3, 1, 2), 'dims': (0, 3, 1, 2)},  # b, w, z, h
-            'axial': {'data': pet, 'dims': (0, 1, 2, 3)}  # b, z, h, w
-        }
-
-        for view_name, view_info in views.items():
-            pet_view = view_info['data']
-            ct_view = ct.permute(*view_info['dims']) if view_name != 'axial' else ct
-            len_slices = pet_view.shape[1]
-
-            printlog(f"Processing {view_name} view for case {idx_case + 1}")
-
+        # Process each view
+        for view_name, x, y in [
+            ("axial", x_axial, y_axial),
+            ("coronal", x_coronal, y_coronal),
+            ("sagittal", x_sagittal, y_sagittal),
+        ]:
+            len_slices = x.shape[0]
+            
+            # Calculate padding
+            required_multiple = 8
+            pad_h = (required_multiple - x.shape[2] % required_multiple) % required_multiple
+            pad_w = (required_multiple - x.shape[3] % required_multiple) % required_multiple
+            
+            # Store original dimensions before padding
+            original_h, original_w = x.shape[2], x.shape[3]
+            
+            # Apply padding if needed
+            if pad_h > 0 or pad_w > 0:
+                x = F.pad(x, (0, pad_w, 0, pad_h), mode='constant', value=0)
+                y = F.pad(y, (0, pad_w, 0, pad_h), mode='constant', value=0)
+            
             # Process slices in batches
-            for slice_start in range(0, len_slices, batch_size):
-                current_batch_size = min(batch_size, len_slices - slice_start)
+            for slice_start in range(1, len_slices - 1, batch_size):
+                current_batch_size = min(batch_size, len_slices - 1 - slice_start)
                 
-                # Get the shape after potential padding
-                sample_slice = pet_view[:, slice_start:slice_start+1, :, :]
-                padded_sample = pad_to_multiple(sample_slice)
-                padded_h, padded_w = padded_sample.shape[-2:]
+                batch_x = torch.zeros((current_batch_size, 3, x.shape[2], x.shape[3])).to(device)
+                batch_y = torch.zeros((current_batch_size, 3, x.shape[2], x.shape[3])).to(device)
                 
-                cond = torch.zeros((current_batch_size, 3, padded_h, padded_w)).to(device)
-
-                # Fill the conditioning tensor for each slice in the batch
                 for i in range(current_batch_size):
                     slice_idx = slice_start + i
-                    
-                    if slice_idx == 0:  # First slice
-                        slice_data = pad_to_multiple(pet_view[:, 0:2, :, :])
-                        cond[i, 0:2, :, :] = slice_data[:, 0:1, :, :].repeat(1, 2, 1, 1)
-                        cond[i, 2, :, :] = slice_data[:, 1, :, :]
-                    elif slice_idx == len_slices - 1:  # Last slice
-                        slice_data = pad_to_multiple(pet_view[:, slice_idx-1:slice_idx+1, :, :])
-                        cond[i, 0, :, :] = slice_data[:, 0, :, :]
-                        cond[i, 1:3, :, :] = slice_data[:, -1:, :, :].repeat(1, 2, 1, 1)
-                    else:  # Normal case
-                        slice_data = pad_to_multiple(pet_view[:, slice_idx-1:slice_idx+2, :, :])
-                        cond[i, 0, :, :] = slice_data[:, 0, :, :]
-                        cond[i, 1, :, :] = slice_data[:, 1, :, :]
-                        cond[i, 2, :, :] = slice_data[:, 2, :, :]
+                    batch_x[i] = x[slice_idx]
+                    batch_y[i] = y[slice_idx]
 
                 # Generate predictions for the batch
-                pred_slices = model.sample(batch_size=current_batch_size, cond=cond)
-
-                # Normalize predictions
-                def normalize(tensor):
-                    norm = torch.sqrt((tensor ** 2).sum(dim=1, keepdim=True))
-                    return tensor / norm
-
-                pred_slices = normalize(pred_slices)
+                pred_slices = model.sample(batch_size=current_batch_size, cond=batch_x)
+                
+                # Remove padding from predictions and inputs
+                if pad_h > 0 or pad_w > 0:
+                    pred_slices = pred_slices[:, :, :original_h, :original_w]
+                    batch_x = batch_x[:, :, :original_h, :original_w]
+                    batch_y = batch_y[:, :, :original_h, :original_w]
 
                 # Process and save each slice in the batch
                 for i in range(current_batch_size):
                     slice_idx = slice_start + i
                     
-                    # Pad CT slice for comparison
-                    ct_slice = pad_to_multiple(ct_view[:, slice_idx:slice_idx+1, :, :])
-                    
                     pred_slice = pred_slices[i]
-                    pred_slice_clipped = torch.clamp(pred_slice[1, :, :], min=-1, max=1)
-                    pred_slice_normalized = (pred_slice_clipped + 1) / 2.0
-                    ct_slice_normalized = (ct_slice.squeeze(1) + 1) / 2.0
-                    pet_slice = pad_to_multiple(pet_view[:, slice_idx:slice_idx+1, :, :]).cpu().numpy()
+                    gt_slice = batch_y[i]
+                    cond_slice = batch_x[i]
 
-                    # Find nearest VQ embedding
-                    vq_pred_slice = find_nearest_embedding(pred_slice)
+                    # Find nearest VQ embedding using cosine similarity
+                    vq_pred_slice = find_nearest_embedding_cosine(pred_slice)
 
-                    # Compute cosine similarity
-                    cosine_sim = F.cosine_similarity(pred_slice_normalized.flatten(), ct_slice_normalized.flatten(), dim=0)
-                    printlog(f"Case {idx_case + 1}/{num_case}, {view_name} Slice {slice_idx}/{len_slices}: Cosine Similarity = {cosine_sim.item():.6f}")
+                    # Compute cosine similarities
+                    pred_sim = compute_cosine_similarity(pred_slice, gt_slice)
+                    vq_sim = compute_cosine_similarity(vq_pred_slice, gt_slice)
+                    
+                    printlog(f"Case {idx_case + 1}/{num_case}, {view_name} Slice {slice_idx}/{len_slices}: "
+                           f"Pred Similarity = {pred_sim.item():.6f}, VQ Similarity = {vq_sim.item():.6f}")
 
-                    # Save data for this slice
+                    # Save data (all tensors are already unpadded)
                     save_data = {
-                        "PET": pet_slice,
-                        "CT": ct_slice_normalized.cpu().numpy(),
-                        "Pred_CT": pred_slice_normalized.cpu().numpy(),
-                        "VQ_Pred_CT": vq_pred_slice.cpu().numpy(),
-                        "Cosine_Similarity": cosine_sim.item()
+                        "cond_embedding": cond_slice.cpu().numpy(),
+                        "gt_embedding": gt_slice.cpu().numpy(),
+                        "pred_embedding": pred_slice.cpu().numpy(),
+                        "vq_pred_embedding": vq_pred_slice.cpu().numpy(),
+                        "pred_similarity": pred_sim.item(),
+                        "vq_similarity": vq_sim.item()
                     }
-                    save_path = os.path.join(
-                        output_dir, 
-                        f"{filenames[0]}_case_{idx_case + 1}_{view_name}_slice_{slice_idx}.npz"
-                    )
+                    save_path = os.path.join(output_dir, f"{filename}_case_{idx_case + 1}_{view_name}_slice_{slice_idx}.npz")
                     np.savez_compressed(save_path, **save_data)
 
                     printlog(f"Saved {view_name} slice {slice_idx} for case {idx_case + 1} to {save_path}")
 
-    printlog("Testing and saving completed for all views.")
-
-
-
+    printlog("Testing and saving completed.")
 
 @torch.inference_mode()
 def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir, vq_weights, batch_size=8):
