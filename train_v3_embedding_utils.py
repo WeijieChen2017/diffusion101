@@ -66,6 +66,22 @@ def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device,
     vq_weights = torch.from_numpy(vq_weights).to(device)  # (8192, 3)
     vq_weights = F.normalize(vq_weights, p=2, dim=1)  # normalize each 1x3 vector
 
+    def normalize_to_unit_sphere(x):
+        """Normalize each 1x3 vector to unit length.
+        Args:
+            x: tensor of shape (slices, 3, h, w) or (batch, 3, h, w)
+        Returns:
+            normalized tensor of same shape
+        """
+        # Reshape to (...*h*w, 3)
+        orig_shape = x.shape
+        x_flat = x.permute(0, 2, 3, 1).reshape(-1, 3)
+        # Normalize each vector to unit length
+        x_norm = F.normalize(x_flat, p=2, dim=1)
+        # Reshape back
+        x_norm = x_norm.reshape(orig_shape[0], orig_shape[2], orig_shape[3], 3).permute(0, 3, 1, 2)
+        return x_norm
+
     def find_nearest_embedding_cosine(pred_embedding):
         """
         Find the nearest VQ embedding using cosine similarity
@@ -115,13 +131,13 @@ def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device,
     for idx_case, batch in enumerate(data_loader):
         printlog(f"Processing case {idx_case + 1}/{len(data_loader)}")
 
-        # Extract data for all three views
-        x_axial = batch["x_axial"].squeeze(0).to(device)
-        y_axial = batch["y_axial"].squeeze(0).to(device)
-        x_coronal = batch["x_coronal"].squeeze(0).to(device)
-        y_coronal = batch["y_coronal"].squeeze(0).to(device)
-        x_sagittal = batch["x_sagittal"].squeeze(0).to(device)
-        y_sagittal = batch["y_sagittal"].squeeze(0).to(device)
+        # Extract and normalize data for all three views
+        x_axial = normalize_to_unit_sphere(batch["x_axial"].squeeze(0).to(device))
+        y_axial = normalize_to_unit_sphere(batch["y_axial"].squeeze(0).to(device))
+        x_coronal = normalize_to_unit_sphere(batch["x_coronal"].squeeze(0).to(device))
+        y_coronal = normalize_to_unit_sphere(batch["y_coronal"].squeeze(0).to(device))
+        x_sagittal = normalize_to_unit_sphere(batch["x_sagittal"].squeeze(0).to(device))
+        y_sagittal = normalize_to_unit_sphere(batch["y_sagittal"].squeeze(0).to(device))
         filename = batch["filename"][0]
 
         # Process each view

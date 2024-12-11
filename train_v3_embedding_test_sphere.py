@@ -13,14 +13,15 @@ from global_config import global_config, set_param, get_param
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<< running setting
 device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
-cv_folds = 2
-root_dir = f"projects/v3_img_petCond_acs_cv{cv_folds}"
+cv_folds = 0
+# root_dir = f"projects/v3_img_petCond_acs_cv{cv_folds}"
+root_dir = f"projects/v3_emb_petCond_acs_cv{cv_folds}_COS_sphere"
 os.path.exists(root_dir) or os.makedirs(root_dir)
 data_division_file = "James_data_v3/cv_list.json"
 seeds = 729
 base_learning_rate = 1e-4
 num_frames = 5
-batch_size = 128
+batch_size = 32
 
 set_param("cv", 0)
 set_param("num_frames", num_frames)
