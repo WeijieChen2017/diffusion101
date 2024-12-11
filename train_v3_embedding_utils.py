@@ -53,6 +53,123 @@ def printlog(message):
         f.write(message)
         f.write("\n")
 
+@torch.inference_mode()
+def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device, output_dir, batch_size=8):
+    model.eval()
+    # Create separate directories for each view
+    coronal_dir = os.path.join(output_dir, "coronal")
+    sagittal_dir = os.path.join(output_dir, "sagittal")
+    axial_dir = os.path.join(output_dir, "axial")
+    for dir_path in [coronal_dir, sagittal_dir, axial_dir]:
+        os.makedirs(dir_path, exist_ok=True)
+
+    print("Starting testing...")
+    num_case = len(data_loader)
+
+    for idx_case, batch in enumerate(data_loader):
+        printlog(f"Processing case {idx_case + 1}/{len(data_loader)}")
+
+        filenames = batch["filename"]
+        pet = batch["PET"].to(device)  # Shape: (1, z, h, w)
+        ct = batch["CT"].to(device)  # Ground truth CT
+        
+        # Ensure all dimensions are divisible by 8
+        def pad_to_multiple(tensor, multiple=8):
+            pad_dims = []
+            for dim in tensor.shape[-2:]:  # Only pad spatial dimensions
+                pad_needed = (multiple - dim % multiple) % multiple
+                pad_dims = [pad_needed//2, pad_needed - pad_needed//2] + pad_dims
+            return F.pad(tensor, pad_dims, mode='constant', value=0) if any(pad_dims) else tensor
+
+        # Process each view - include batch dimension (0) in permutations
+        views = {
+            'coronal': {'data': pet.permute(0, 2, 1, 3), 'dir': coronal_dir, 'dims': (0, 2, 1, 3)},  # b, h, z, w
+            'sagittal': {'data': pet.permute(0, 3, 1, 2), 'dir': sagittal_dir, 'dims': (0, 3, 1, 2)},  # b, w, z, h
+            'axial': {'data': pet, 'dir': axial_dir, 'dims': (0, 1, 2, 3)}  # b, z, h, w
+        }
+
+        for view_name, view_info in views.items():
+            pet_view = view_info['data']
+            ct_view = ct.permute(*view_info['dims']) if view_name != 'axial' else ct
+            len_slices = pet_view.shape[1]
+
+            printlog(f"Processing {view_name} view for case {idx_case + 1}")
+
+            # Process slices in batches
+            for slice_start in range(0, len_slices, batch_size):
+                current_batch_size = min(batch_size, len_slices - slice_start)
+                
+                # Get the shape after potential padding
+                sample_slice = pet_view[:, slice_start:slice_start+1, :, :]
+                padded_sample = pad_to_multiple(sample_slice)
+                padded_h, padded_w = padded_sample.shape[-2:]
+                
+                cond = torch.zeros((current_batch_size, 3, padded_h, padded_w)).to(device)
+
+                # Fill the conditioning tensor for each slice in the batch
+                for i in range(current_batch_size):
+                    slice_idx = slice_start + i
+                    
+                    if slice_idx == 0:  # First slice
+                        slice_data = pad_to_multiple(pet_view[:, 0:2, :, :])
+                        cond[i, 0:2, :, :] = slice_data[:, 0:1, :, :].repeat(1, 2, 1, 1)
+                        cond[i, 2, :, :] = slice_data[:, 1, :, :]
+                    elif slice_idx == len_slices - 1:  # Last slice
+                        slice_data = pad_to_multiple(pet_view[:, slice_idx-1:slice_idx+1, :, :])
+                        cond[i, 0, :, :] = slice_data[:, 0, :, :]
+                        cond[i, 1:3, :, :] = slice_data[:, -1:, :, :].repeat(1, 2, 1, 1)
+                    else:  # Normal case
+                        slice_data = pad_to_multiple(pet_view[:, slice_idx-1:slice_idx+2, :, :])
+                        cond[i, 0, :, :] = slice_data[:, 0, :, :]
+                        cond[i, 1, :, :] = slice_data[:, 1, :, :]
+                        cond[i, 2, :, :] = slice_data[:, 2, :, :]
+
+                # Generate predictions for the batch
+                pred_slices = model.sample(batch_size=current_batch_size, cond=cond)
+
+                # Normalize predictions and dictionary weights
+                def normalize(tensor):
+                    norm = torch.sqrt((tensor ** 2).sum(dim=1, keepdim=True))
+                    return tensor / norm
+
+                pred_slices = normalize(pred_slices)
+
+                # Process and save each slice in the batch
+                for i in range(current_batch_size):
+                    slice_idx = slice_start + i
+                    
+                    # Pad CT slice for comparison
+                    ct_slice = pad_to_multiple(ct_view[:, slice_idx:slice_idx+1, :, :])
+                    
+                    pred_slice = pred_slices[i]
+                    pred_slice_clipped = torch.clamp(pred_slice[1, :, :], min=-1, max=1)
+                    pred_slice_normalized = (pred_slice_clipped + 1) / 2.0
+                    ct_slice_normalized = (ct_slice.squeeze(1) + 1) / 2.0
+                    pet_slice = pad_to_multiple(pet_view[:, slice_idx:slice_idx+1, :, :]).cpu().numpy()
+
+                    # Compute cosine similarity
+                    cosine_sim = F.cosine_similarity(pred_slice_normalized.flatten(), ct_slice_normalized.flatten(), dim=0)
+                    printlog(f"Case {idx_case + 1}/{num_case}, {view_name} Slice {slice_idx}/{len_slices}: Cosine Similarity = {cosine_sim.item():.6f}")
+
+                    # Save data for this slice
+                    save_data = {
+                        "PET": pet_slice,
+                        "CT": ct_slice_normalized.cpu().numpy(),
+                        "Pred_CT": pred_slice_normalized.cpu().numpy(),
+                        "Cosine_Similarity": cosine_sim.item()
+                    }
+                    save_path = os.path.join(
+                        view_info['dir'], 
+                        f"{filenames[0]}_case_{idx_case + 1}_{view_name}_slice_{slice_idx}.npz"
+                    )
+                    np.savez_compressed(save_path, **save_data)
+
+                    printlog(f"Saved {view_name} slice {slice_idx} for case {idx_case + 1} to {save_path}")
+
+    printlog("Testing and saving completed for all views.")
+
+
+
 
 @torch.inference_mode()
 def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir, vq_weights, batch_size=8):

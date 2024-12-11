@@ -33,7 +33,7 @@ def printlog(message):
 
 
 @torch.inference_mode()
-def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir, batch_size=8):
+def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device, output_dir, batch_size=8):
     model.eval()
     # Create separate directories for each view
     coronal_dir = os.path.join(output_dir, "coronal")
@@ -106,6 +106,13 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
                 # Generate predictions for the batch
                 pred_slices = model.sample(batch_size=current_batch_size, cond=cond)
 
+                # Normalize predictions and dictionary weights
+                def normalize(tensor):
+                    norm = torch.sqrt((tensor ** 2).sum(dim=1, keepdim=True))
+                    return tensor / norm
+
+                pred_slices = normalize(pred_slices)
+
                 # Process and save each slice in the batch
                 for i in range(current_batch_size):
                     slice_idx = slice_start + i
@@ -119,16 +126,16 @@ def test_diffusion_model_and_save_slices(data_loader, model, device, output_dir,
                     ct_slice_normalized = (ct_slice.squeeze(1) + 1) / 2.0
                     pet_slice = pad_to_multiple(pet_view[:, slice_idx:slice_idx+1, :, :]).cpu().numpy()
 
-                    # Compute MAE loss
-                    slice_mae = F.l1_loss(pred_slice_normalized, ct_slice_normalized, reduction="mean") * 4000
-                    printlog(f"Case {idx_case + 1}/{num_case}, {view_name} Slice {slice_idx}/{len_slices}: MAE = {slice_mae.item():.6f}")
+                    # Compute cosine similarity
+                    cosine_sim = F.cosine_similarity(pred_slice_normalized.flatten(), ct_slice_normalized.flatten(), dim=0)
+                    printlog(f"Case {idx_case + 1}/{num_case}, {view_name} Slice {slice_idx}/{len_slices}: Cosine Similarity = {cosine_sim.item():.6f}")
 
                     # Save data for this slice
                     save_data = {
                         "PET": pet_slice,
                         "CT": ct_slice_normalized.cpu().numpy(),
                         "Pred_CT": pred_slice_normalized.cpu().numpy(),
-                        "MAE": slice_mae.item()
+                        "Cosine_Similarity": cosine_sim.item()
                     }
                     save_path = os.path.join(
                         view_info['dir'], 
