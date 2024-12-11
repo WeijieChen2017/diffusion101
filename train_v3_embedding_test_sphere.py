@@ -12,7 +12,7 @@ from train_v3_embedding_utils import prepare_dataset, printlog, test_diffusion_m
 from global_config import global_config, set_param, get_param
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<< running setting
-device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 cv_folds = 0
 # root_dir = f"projects/v3_img_petCond_acs_cv{cv_folds}"
 root_dir = f"projects/v3_emb_petCond_acs_cv{cv_folds}_COS_sphere"
