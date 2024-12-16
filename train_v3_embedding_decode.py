@@ -150,13 +150,13 @@ with torch.no_grad():
                 # Load and normalize gt_embedding
                 gt_emb_normalized = torch.from_numpy(data['gt_embedding']).to(device)
                 
-                print(pred_emb_normalized.shape, gt_emb_normalized.shape)
+                # print(pred_emb_normalized.shape, gt_emb_normalized.shape)
                 # Find nearest neighbors in the normalized VQ codebook for both pred and gt
                 pred_emb_flat = pred_emb_normalized.permute(1, 2, 0).reshape(-1, 3)  # Reshape to (4096, 3)
                 gt_emb_flat = gt_emb_normalized.permute(1, 2, 0).reshape(-1, 3)  # Reshape to (4096, 3)
                 
-                print(pred_emb_flat.shape, gt_emb_flat.shape)
-                print(vq_weights_normalized.shape)
+                # print(pred_emb_flat.shape, gt_emb_flat.shape)
+                # print(vq_weights_normalized.shape)
 
                 pred_distances = torch.cdist(pred_emb_flat, vq_weights_normalized)
                 gt_distances = torch.cdist(gt_emb_flat, vq_weights_normalized)
@@ -195,7 +195,9 @@ with torch.no_grad():
                     output_filename,
                     gt_decoded=gt_dec.cpu().numpy(),
                     pred_decoded=pred_dec.cpu().numpy(),
-                    pred_mae=pred_loss.item()
+                    pred_mae=pred_loss.item(),
+                    pred_emb=pred_emb.squeeze().cpu().numpy()  # Add pred_emb to saved outputs
+                    gt_emb=gt_emb.squeeze().cpu().numpy()
                 )
             
             # Calculate average loss for this view
