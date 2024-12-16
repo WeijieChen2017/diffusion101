@@ -72,7 +72,7 @@ with torch.no_grad():
     
     # Store both normalized and original weights
     original_vq_weights = vq_weights.clone()
-    nnmodel.quantize.embedding.weight.data = vq_weights_normalized
+    # nnmodel.quantize.embedding.weight.data = vq_weights_normalized
 
 # Load data division file
 with open(data_div_file, "r") as f:
