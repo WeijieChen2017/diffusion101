@@ -196,8 +196,8 @@ with torch.no_grad():
                     gt_decoded=gt_dec.cpu().numpy(),
                     pred_decoded=pred_dec.cpu().numpy(),
                     pred_mae=pred_loss.item(),
-                    pred_emb=pred_emb.squeeze().cpu().numpy()  # Add pred_emb to saved outputs
-                    gt_emb=gt_emb.squeeze().cpu().numpy()
+                    pred_emb=pred_emb.squeeze().cpu().numpy(),  # Add pred_emb to saved outputs
+                    gt_emb=gt_emb.squeeze().cpu().numpy(),
                 )
             
             # Calculate average loss for this view
