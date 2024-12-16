@@ -150,6 +150,7 @@ with torch.no_grad():
                 # Load and normalize gt_embedding
                 gt_emb_normalized = torch.from_numpy(data['gt_embedding']).to(device)
                 
+                print(pred_emb_normalized.shape, gt_emb_normalized.shape)
                 # Find nearest neighbors in the normalized VQ codebook for both pred and gt
                 pred_emb_flat = pred_emb_normalized.view(-1, pred_emb_normalized.size(-1))
                 gt_emb_flat = gt_emb_normalized.view(-1, gt_emb_normalized.size(-1))
