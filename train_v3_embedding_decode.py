@@ -60,11 +60,13 @@ else:
 # Send model to cuda
 nnmodel.to(device)
 
-# After loading the model, normalize the VQ weights to unit sphere
+# After loading the model and before normalizing the weights
+# Load VQ weights
+vq_weights = np.load("James_data_v3/vq_f4_weights_attn.npy")  # You'll need to specify the correct path
+vq_weights = torch.from_numpy(vq_weights).to(device)
+
+# After loading the VQ weights, normalize them to unit sphere
 with torch.no_grad():
-    # Get the embedding weights
-    vq_weights = nnmodel.quantize.embedding.weight.data
-    
     # Normalize to unit sphere
     vq_weights_normalized = F.normalize(vq_weights, p=2, dim=1)
     
