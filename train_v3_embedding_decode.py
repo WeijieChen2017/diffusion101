@@ -1,5 +1,5 @@
 cv = 0
-root_dir = f"projects/v3_img_petCond_acs_cv{cv}_COS_sphere/"
+root_dir = f"projects/v3_emb_petCond_acs_cv{cv}_COS_sphere/"
 results_folder = root_dir+"test_results_ddpm_batch_32_noClip/"
 model_pretrain_weights = "vq_f4.pth"
 data_div_file = root_dir+"data_division.json"
