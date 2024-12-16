@@ -154,6 +154,10 @@ with torch.no_grad():
                 pred_emb_flat = pred_emb_normalized.view(-1, pred_emb_normalized.size(-1))
                 gt_emb_flat = gt_emb_normalized.view(-1, gt_emb_normalized.size(-1))
                 
+                print(pred_emb_flat.shape, gt_emb_flat.shape)
+                print(vq_weights_normalized.shape)
+
+
                 pred_distances = torch.cdist(pred_emb_flat, vq_weights_normalized)
                 gt_distances = torch.cdist(gt_emb_flat, vq_weights_normalized)
                 
