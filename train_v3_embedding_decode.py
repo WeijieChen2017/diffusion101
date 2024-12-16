@@ -1,6 +1,6 @@
 cv = 0
-root_dir = f"projects/v3_img_petCond_acs_cv{cv}/"
-results_folder = root_dir+"test_results_ddpm_batch_128/"
+root_dir = f"projects/v3_img_petCond_acs_cv{cv}_COS_sphere/"
+results_folder = root_dir+"test_results_ddpm_batch_32_noClip/"
 model_pretrain_weights = "vq_f4.pth"
 data_div_file = root_dir+"data_division.json"
 test_case_idx = 1  # -1 means process all cases, 1 means only first case
@@ -59,6 +59,18 @@ else:
 
 # Send model to cuda
 nnmodel.to(device)
+
+# After loading the model, normalize the VQ weights to unit sphere
+with torch.no_grad():
+    # Get the embedding weights
+    vq_weights = nnmodel.quantize.embedding.weight.data
+    
+    # Normalize to unit sphere
+    vq_weights_normalized = F.normalize(vq_weights, p=2, dim=1)
+    
+    # Store both normalized and original weights
+    original_vq_weights = vq_weights.clone()
+    nnmodel.quantize.embedding.weight.data = vq_weights_normalized
 
 # Load data division file
 with open(data_div_file, "r") as f:
@@ -120,10 +132,8 @@ results_data = []
 # Process each case
 with torch.no_grad():
     for case_name in case_data:
-        print(f"\nProcessing case: {case_name}")
         for view in ["axial", "coronal", "sagittal"]:
             total_pred_loss = 0.0
-            total_vq_pred_loss = 0.0
             num_slices = len(case_data[case_name][view])
             
             print(f"  View: {view}")
@@ -132,33 +142,47 @@ with torch.no_grad():
                 # Load NPZ file
                 data = np.load(slice_path)
                 
-                # Convert numpy arrays to PyTorch tensors and add batch dimension
-                gt_emb = torch.from_numpy(data['gt_embedding']).unsqueeze(0).to(device)
-                pred_emb = torch.from_numpy(data['pred_embedding']).unsqueeze(0).to(device)
-                vq_pred_emb = torch.from_numpy(data['vq_pred_embedding']).unsqueeze(0).to(device)
+                # Load the normalized pred_embedding
+                pred_emb_normalized = torch.from_numpy(data['pred_embedding']).to(device)
+                
+                # Load and normalize gt_embedding
+                gt_emb_normalized = torch.from_numpy(data['gt_embedding']).to(device)
+                
+                # Find nearest neighbors in the normalized VQ codebook for both pred and gt
+                pred_emb_flat = pred_emb_normalized.view(-1, pred_emb_normalized.size(-1))
+                gt_emb_flat = gt_emb_normalized.view(-1, gt_emb_normalized.size(-1))
+                
+                pred_distances = torch.cdist(pred_emb_flat, vq_weights_normalized)
+                gt_distances = torch.cdist(gt_emb_flat, vq_weights_normalized)
+                
+                pred_indices = torch.argmin(pred_distances, dim=1)
+                gt_indices = torch.argmin(gt_distances, dim=1)
+                
+                # Get the original (un-normalized) embeddings using these indices
+                pred_emb = original_vq_weights[pred_indices].view(pred_emb_normalized.shape)
+                gt_emb = original_vq_weights[gt_indices].view(gt_emb_normalized.shape)
+                
+                # Add batch dimension
+                pred_emb = pred_emb.unsqueeze(0)
+                gt_emb = gt_emb.unsqueeze(0)
                 
                 # Denormalize by multiplying by 5
-                gt_emb = (gt_emb - 0.5) * 10
-                pred_emb = (pred_emb - 0.5) * 10
-                vq_pred_emb = (vq_pred_emb - 0.5) * 10
+                # gt_emb = (gt_emb - 0.5) * 10
+                # pred_emb = (pred_emb - 0.5) * 10
                 
                 # Decode embeddings
                 gt_dec = nnmodel.decode(gt_emb)[:, 1:2]  # Take middle channel
                 pred_dec = nnmodel.decode(pred_emb)[:, 1:2]
-                vq_pred_dec = nnmodel.decode(vq_pred_emb)[:, 1:2]
                 
                 # Squeeze tensors for loss computation
                 gt_dec = gt_dec.squeeze()
                 pred_dec = pred_dec.squeeze()
-                vq_pred_dec = vq_pred_dec.squeeze()
                 
-                # Compute L1 losses and scale to MAE (*4000)
+                # Compute L1 loss and scale to MAE (*4000)
                 pred_loss = F.l1_loss(gt_dec, pred_dec) * 4000
-                vq_pred_loss = F.l1_loss(gt_dec, vq_pred_dec) * 4000
                 
-                # Accumulate losses
+                # Accumulate loss
                 total_pred_loss += pred_loss.item()
-                total_vq_pred_loss += vq_pred_loss.item()
                 
                 # Create output filename based on input filename
                 base_filename = os.path.basename(slice_path)
@@ -169,26 +193,21 @@ with torch.no_grad():
                     output_filename,
                     gt_decoded=gt_dec.cpu().numpy(),
                     pred_decoded=pred_dec.cpu().numpy(),
-                    vq_pred_decoded=vq_pred_dec.cpu().numpy(),
-                    pred_mae=pred_loss.item(),
-                    vq_pred_mae=vq_pred_loss.item()
+                    pred_mae=pred_loss.item()
                 )
             
-            # Calculate average losses for this view
+            # Calculate average loss for this view
             avg_pred_loss = total_pred_loss / num_slices
-            avg_vq_pred_loss = total_vq_pred_loss / num_slices
             
             # Store results
             results_data.append({
                 'Case': case_name,
                 'View': view,
                 'Num Slices': num_slices,
-                'Pred MAE': avg_pred_loss,
-                'VQ Pred MAE': avg_vq_pred_loss
+                'Pred MAE': avg_pred_loss
             })
             
             print(f"    Average Pred MAE: {avg_pred_loss:.6f}")
-            print(f"    Average VQ Pred MAE: {avg_vq_pred_loss:.6f}")
             print(f"    Total slices processed: {num_slices}")
 
 # Create DataFrame and save to Excel
@@ -197,8 +216,7 @@ df = pd.DataFrame(results_data)
 # Calculate overall statistics
 overall_stats = pd.DataFrame({
     'Metric': ['Overall Average', 'Std Dev'],
-    'Pred MAE': [df['Pred MAE'].mean(), df['Pred MAE'].std()],
-    'VQ Pred MAE': [df['VQ Pred MAE'].mean(), df['VQ Pred MAE'].std()]
+    'Pred MAE': [df['Pred MAE'].mean(), df['Pred MAE'].std()]
 })
 
 # Create Excel writer object
@@ -212,8 +230,7 @@ with pd.ExcelWriter(excel_path) as writer:
     
     # Write view-wise statistics
     view_stats = df.groupby('View').agg({
-        'Pred MAE': ['mean', 'std'],
-        'VQ Pred MAE': ['mean', 'std']
+        'Pred MAE': ['mean', 'std']
     }).round(6)
     view_stats.to_excel(writer, sheet_name='View Statistics')
 
