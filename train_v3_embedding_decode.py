@@ -152,12 +152,11 @@ with torch.no_grad():
                 
                 print(pred_emb_normalized.shape, gt_emb_normalized.shape)
                 # Find nearest neighbors in the normalized VQ codebook for both pred and gt
-                pred_emb_flat = pred_emb_normalized.view(-1, pred_emb_normalized.size(-1))
-                gt_emb_flat = gt_emb_normalized.view(-1, gt_emb_normalized.size(-1))
+                pred_emb_flat = pred_emb_normalized.permute(1, 2, 0).reshape(-1, 3)  # Reshape to (4096, 3)
+                gt_emb_flat = gt_emb_normalized.permute(1, 2, 0).reshape(-1, 3)  # Reshape to (4096, 3)
                 
                 print(pred_emb_flat.shape, gt_emb_flat.shape)
                 print(vq_weights_normalized.shape)
-
 
                 pred_distances = torch.cdist(pred_emb_flat, vq_weights_normalized)
                 gt_distances = torch.cdist(gt_emb_flat, vq_weights_normalized)
@@ -166,16 +165,12 @@ with torch.no_grad():
                 gt_indices = torch.argmin(gt_distances, dim=1)
                 
                 # Get the original (un-normalized) embeddings using these indices
-                pred_emb = original_vq_weights[pred_indices].view(pred_emb_normalized.shape)
-                gt_emb = original_vq_weights[gt_indices].view(gt_emb_normalized.shape)
+                pred_emb = original_vq_weights[pred_indices].view(64, 64, 3).permute(2, 0, 1)  # Reshape back to (3, 64, 64)
+                gt_emb = original_vq_weights[gt_indices].view(64, 64, 3).permute(2, 0, 1)  # Reshape back to (3, 64, 64)
                 
                 # Add batch dimension
                 pred_emb = pred_emb.unsqueeze(0)
                 gt_emb = gt_emb.unsqueeze(0)
-                
-                # Denormalize by multiplying by 5
-                # gt_emb = (gt_emb - 0.5) * 10
-                # pred_emb = (pred_emb - 0.5) * 10
                 
                 # Decode embeddings
                 gt_dec = nnmodel.decode(gt_emb)[:, 1:2]  # Take middle channel
