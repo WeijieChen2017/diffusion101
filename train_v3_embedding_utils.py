@@ -162,7 +162,7 @@ def test_diffusion_model_unit_sphere_and_save_slices(data_loader, model, device,
                 y = F.pad(y, (0, pad_w, 0, pad_h), mode='constant', value=0)
             
             # Process slices in batches
-            for slice_start in range(1, len_slices - 1, batch_size):
+            for slice_start in range(0, len_slices, batch_size):
                 current_batch_size = min(batch_size, len_slices - 1 - slice_start)
                 
                 batch_x = torch.zeros((current_batch_size, 3, x.shape[2], x.shape[3])).to(device)
