@@ -164,9 +164,5 @@ def create_data_loader(
         )
         
         return_dict["test_loader"] = test_loader
-    
-    # print all return keys
-    for key in return_dict.keys():
-        print(key)
 
     return return_dict

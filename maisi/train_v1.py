@@ -141,8 +141,8 @@ def main():
         return_test=False,
     )
     data_division_dict = return_dict["data_division_dict"]
-    data_loader_train = data_division_dict["train_loader"]
-    data_loader_val = data_division_dict["val_loader"]
+    data_loader_train = return_dict["train_loader"]
+    data_loader_val = return_dict["val_loader"]
     # data_loader_test = data_division_dict["test_loader"]
 
     # save the data_division_dict to the project directory
