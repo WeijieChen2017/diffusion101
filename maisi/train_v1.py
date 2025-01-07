@@ -192,9 +192,11 @@ def main():
     for epoch in range(args.epochs):
         autoencoder.train()
         train_loss = 0.0
-        for i, data in enumerate(data_loader_train):
+        for i, batch in enumerate(data_loader_train):
             # in the data loader, the input is a tuple of (input, label, mask)
-            data_PET, data_CT, data_mask = data
+            data_PET = batch["PET"]
+            data_CT = batch["CT"]
+            data_mask = batch["BODY"]
             # print the data shape of all three data
             print("data_PET shape: ", data_PET.shape)
             print("data_CT shape: ", data_CT.shape)
@@ -212,8 +214,10 @@ def main():
         autoencoder.eval()
         val_loss = 0.0
         with torch.no_grad():
-            for i, data in enumerate(data_loader_val):
-                data_PET, data_CT, data_mask = data
+            for i, batch in enumerate(data_loader_val):
+                data_PET = batch["PET"]
+                data_CT = batch["CT"]
+                data_mask = batch["BODY"]
                 outputs = autoencoder(data_PET.to(device))
                 loss = loss_fn(outputs[0], data_CT.to(device))
                 loss = loss * data_mask.to(device)
