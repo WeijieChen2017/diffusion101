@@ -46,23 +46,23 @@ def create_data_loader(
 
     for hashname in train_list:
         train_path_list.append({
-            "PET": f"James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz",
-            "CT": f"James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz",
-            "BODY": f"James_data_v3/mask/mask_body_contour_{hashname}.nii.gz",
+            "PET": f"../James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz",
+            "CT": f"../James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz",
+            "BODY": f"../James_data_v3/mask/mask_body_contour_{hashname}.nii.gz",
         })
     
     for hashname in val_list:
         val_path_list.append({
-            "PET": f"James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz",
-            "CT": f"James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz",
-            "BODY": f"James_data_v3/mask/mask_body_contour_{hashname}.nii.gz",
+            "PET": f"../James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz",
+            "CT": f"../James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz",
+            "BODY": f"../James_data_v3/mask/mask_body_contour_{hashname}.nii.gz",
         })
 
     for hashname in test_list:
         test_path_list.append({
-            "PET": f"James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz",
-            "CT": f"James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz",
-            "BODY": f"James_data_v3/mask/mask_body_contour_{hashname}.nii.gz",
+            "PET": f"../James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz",
+            "CT": f"../James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz",
+            "BODY": f"../James_data_v3/mask/mask_body_contour_{hashname}.nii.gz",
         })
 
     # construct the divison 
