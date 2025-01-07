@@ -72,7 +72,7 @@ def create_data_loader(
         "test": test_path_list,
     }
 
-    input_modality = ["PET", "CT", "BODY"]
+    input_modality = ["PET", "CT"]
     return_dict = {
         "input_modality": input_modality,
         "data_division_dict": data_division_dict,
