@@ -200,18 +200,18 @@ def main():
         train_loss = 0.0
         for i, batch in enumerate(data_loader_train):
             # in the data loader, the input is a tuple of (input, label, mask)
-            data_PET = batch["PET"]
-            data_CT = batch["CT"]
-            data_mask = batch["BODY"]
+            data_PET = batch["PET"].float().to(device)
+            data_CT = batch["CT"].float().to(device)
+            data_mask = batch["BODY"].bool().to(device)
             # print the data shape of all three data
             print("data_PET shape: ", data_PET.shape)
             print("data_CT shape: ", data_CT.shape)
             print("data_mask shape: ", data_mask.shape)
             optimizer.zero_grad()
-            outputs = autoencoder(data_PET.to(device))
-            loss = loss_fn(outputs[0], data_CT.to(device))
-            # apply the mask
-            loss = loss * data_mask.to(device)
+            outputs = autoencoder(data_PET)
+            loss = loss_fn(outputs[0], data_CT)
+            # apply the boolean mask to the loss
+            loss = loss * data_mask
             loss.backward()
             optimizer.step()
             train_loss += loss.item() * 4000 # for denormalization
@@ -221,13 +221,13 @@ def main():
         val_loss = 0.0
         with torch.no_grad():
             for i, batch in enumerate(data_loader_val):
-                data_PET = batch["PET"]
-                data_CT = batch["CT"]
-                data_mask = batch["BODY"]
-                outputs = autoencoder(data_PET.to(device))
-                loss = loss_fn(outputs[0], data_CT.to(device))
-                loss = loss * data_mask.to(device)
-                val_loss += loss.item() * 4000 # for denormalization
+                data_PET = batch["PET"].float().to(device)
+                data_CT = batch["CT"].float().to(device)
+                data_mask = batch["BODY"].bool().to(device)
+                outputs = autoencoder(data_PET)
+                loss = loss_fn(outputs[0], data_CT)
+                loss = loss * data_mask
+                val_loss += loss.item() * 4000
             val_loss /= len(data_loader_val)
 
         log_str = f"Epoch {epoch+1}/{args.epochs}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Best Val Loss: {best_val_loss:.4f} at epoch {best_val_epoch}."
