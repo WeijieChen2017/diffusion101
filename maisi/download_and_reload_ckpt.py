@@ -78,7 +78,7 @@ autoencoder.load_state_dict(checkpoint_autoencoder)
 
 # create a 128*128*128 random tensors in the shape of 1*1*128*128*128
 
-random_tensor = torch.randn(1, 1, 256, 256, 128).to(device).float()
+random_tensor = torch.randn(1, 1, 256, 256, 64).to(device).float()
 print(random_tensor.shape)
 
 # Cast the input tensor to half precision (float16)
