@@ -108,6 +108,8 @@ def main():
     parser.add_argument("--dim_z", type=int, default=32, help="Image dimension z.")
     # get the training epochs, default is 300
     parser.add_argument("--epochs", type=int, default=300, help="Number of training epochs.")
+    # get the batchsize
+    parser.add_argument("--batchsize", type=int, default=1, help="Batch size.")
     # get the loss function, default is "mae"
     parser.add_argument("--loss", type=str, default="mae", help="Loss function.")
     # get the random GPU index, default is 4
@@ -145,6 +147,7 @@ def main():
         return_val=True,
         return_test=False,
         output_size=(args.dim_x, args.dim_y, args.dim_z),
+        batchsize=args.batchsize,
     )
     data_division_dict = return_dict["data_division_dict"]
     data_loader_train = return_dict["train_loader"]
@@ -204,9 +207,9 @@ def main():
             data_CT = batch["CT"].to(device).type(torch.float16)
             data_mask = batch["BODY"].to(device).type(torch.float16)
             # print the data shape of all three data
-            print("data_PET shape: ", data_PET.shape)
-            print("data_CT shape: ", data_CT.shape)
-            print("data_mask shape: ", data_mask.shape)
+            print("data_PET shape: ", data_PET.shape, data_PET.dtype)
+            print("data_CT shape: ", data_CT.shape, data_CT.dtype)
+            print("data_mask shape: ", data_mask.shape, data_mask.dtype)
             optimizer.zero_grad()
             outputs = autoencoder(data_PET)
             loss = loss_fn(outputs[0], data_CT)

@@ -18,6 +18,7 @@ def create_data_loader(
         return_val=True, 
         return_test=True, 
         output_size=(256, 256, 32),
+        batchsize=1,
     ):
     
     if data_div_json is None:
@@ -99,7 +100,7 @@ def create_data_loader(
 
         train_loader = DataLoader(
             train_ds,
-            batch_size=1,
+            batch_size=batchsize,
             shuffle=True,
             num_workers=4,
         )
@@ -126,7 +127,7 @@ def create_data_loader(
 
         val_loader = DataLoader(
             val_ds,
-            batch_size=1,
+            batch_size=batchsize,
             shuffle=False,
             num_workers=4,
         )
@@ -153,7 +154,7 @@ def create_data_loader(
 
         test_loader = DataLoader(
             test_ds,
-            batch_size=1,
+            batch_size=batchsize,
             shuffle=False,
             num_workers=4,
         )
