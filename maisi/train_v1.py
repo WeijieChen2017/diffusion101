@@ -110,11 +110,10 @@ def main():
     parser.add_argument("--gpu", type=int, default=4, help="GPU index.")
     # set the random seed for reproducibility
     parser.add_argument("--seed", type=int, default=729, help="Random seed.")
-
-    # apply the random seed
-    torch.manual_seed(args.seed)
     
     args = parser.parse_args()
+    # apply the random seed
+    torch.manual_seed(args.seed)
 
     # combine the above arguments into a single project name
     project_name = f"cv{args.cv_index}_ \
