@@ -73,7 +73,7 @@ def create_data_loader(
         "test": test_path_list,
     }
 
-    input_modality = ["PET", "CT"]
+    input_modality = ["PET", "CT", "BODY"]
     return_dict = {
         "input_modality": input_modality,
         "data_division_dict": data_division_dict,
@@ -86,7 +86,7 @@ def create_data_loader(
             [
                 LoadImaged(keys=input_modality, image_only=True),
                 EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
-                CenterSpatialCropd(keys=input_modality, roi_size=output_size),
+                # CenterSpatialCropd(keys=input_modality, roi_size=output_size),
                 # ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
                 RandFlipd(keys=input_modality, prob=0.5),
                 RandRotate90d(keys=input_modality, prob=0.5),
@@ -116,7 +116,7 @@ def create_data_loader(
             [
                 LoadImaged(keys=input_modality, image_only=True),
                 EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
-                CenterSpatialCropd(keys=input_modality, roi_size=output_size),
+                # CenterSpatialCropd(keys=input_modality, roi_size=output_size),
                 # ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
             ]
         )
@@ -144,7 +144,7 @@ def create_data_loader(
             [
                 LoadImaged(keys=input_modality, image_only=True),
                 EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
-                CenterSpatialCropd(keys=input_modality, roi_size=output_size),
+                # CenterSpatialCropd(keys=input_modality, roi_size=output_size),
                 # ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
             ]
         )
