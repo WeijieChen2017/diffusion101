@@ -220,7 +220,8 @@ def main():
                 outputs, _, _ = autoencoder(data_PET)
                 loss = loss_fn(outputs, data_CT)
                 loss = loss * data_mask
-                
+                loss = loss.mean()  # Ensure loss is a scalar
+
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
