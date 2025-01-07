@@ -17,7 +17,7 @@ files = [
 
 for file in files:
     file["path"] = file["path"] if "datasets/" not in file["path"] else os.path.join(root_dir, file["path"])
-    # download_url(url=file["url"], filepath=file["path"])
+    download_url(url=file["url"], filepath=file["path"])
 
 print("Downloaded files:")
 for file in files:
