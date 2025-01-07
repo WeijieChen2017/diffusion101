@@ -71,8 +71,6 @@ def download_and_reload_ckpt(directory=None):
     latent_shape = [args.latent_channels, args.output_size[0] // 4, args.output_size[1] // 4, args.output_size[2] // 4]
     print("Network definition and inference inputs have been loaded.")
 
-    # device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
-
     autoencoder = define_instance(args, "autoencoder_def")
     checkpoint_autoencoder = torch.load(args.trained_autoencoder_path, weights_only=True)
     autoencoder.load_state_dict(checkpoint_autoencoder)
@@ -108,6 +106,8 @@ def main():
     parser.add_argument("--epochs", type=int, default=300, help="Number of training epochs.")
     # get the loss function, default is "mae"
     parser.add_argument("--loss", type=str, default="mae", help="Loss function.")
+    # get the random GPU index, default is 4
+    parser.add_argument("--gpu", type=int, default=4, help="GPU index.")
     # set the random seed for reproducibility
     parser.add_argument("--seed", type=int, default=729, help="Random seed.")
 
@@ -117,7 +117,10 @@ def main():
     args = parser.parse_args()
 
     # combine the above arguments into a single project name
-    project_name = f"cv{args.cv_index}_train_encoder{args.train_encoder}_train_decoder{args.train_decoder}_z{args.z_width}_epochs{args.epochs}"
+    project_name = f"cv{args.cv_index}_ \
+    Enc{args.train_encoder}_Dec{args.train_decoder}_ \
+    z{args.z_width}_epochs{args.epochs}_Loss{args.loss}_seed{args.seed}"
+
     # get the project directory
     project_dir = os.path.join(root_dir, project_name)
     # create the project directory
@@ -125,6 +128,9 @@ def main():
     # save the configurations to the project directory
     with open(os.path.join(project_dir, "config.json"), "w") as f:
         json.dump(vars(args), f, indent=4)
+
+    # set the GPU index
+    device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
 
     autoencoder = download_and_reload_ckpt()
 
@@ -182,28 +188,33 @@ def main():
     best_val_loss = float("inf")
     best_val_epoch = 0
     save_per_epoch = 20
+    autoencoder.to(device)
 
     for epoch in range(args.epochs):
         autoencoder.train()
         train_loss = 0.0
         for i, data in enumerate(data_loader_train):
-            inputs, _ = data
+            # in the data loader, the input is a tuple of (input, label, mask)
+            data_PET, data_CT, data_mask = data
             optimizer.zero_grad()
-            outputs = autoencoder(inputs)
-            loss = loss_fn(outputs[0], inputs)
+            outputs = autoencoder(data_PET.to(device))
+            loss = loss_fn(outputs[0], data_CT.to(device))
+            # apply the mask
+            loss = loss * data_mask.to(device)
             loss.backward()
             optimizer.step()
-            train_loss += loss.item()
+            train_loss += loss.item() * 4000 # for denormalization
         train_loss /= len(data_loader_train)
 
         autoencoder.eval()
         val_loss = 0.0
         with torch.no_grad():
             for i, data in enumerate(data_loader_val):
-                inputs, _ = data
-                outputs = autoencoder(inputs)
-                loss = loss_fn(outputs[0], inputs)
-                val_loss += loss.item()
+                data_PET, data_CT, data_mask = data
+                outputs = autoencoder(data_PET.to(device))
+                loss = loss_fn(outputs[0], data_CT.to(device))
+                loss = loss * data_mask.to(device)
+                val_loss += loss.item() * 4000 # for denormalization
             val_loss /= len(data_loader_val)
 
         log_str = f"Epoch {epoch+1}/{args.epochs}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Best Val Loss: {best_val_loss:.4f} at epoch {best_val_epoch}."
