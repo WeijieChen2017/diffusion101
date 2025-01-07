@@ -5,6 +5,7 @@ from monai.transforms import (
     LoadImaged, 
     EnsureChannelFirstd,
     ResizeWithPadOrCropd,
+    CenterSpatialCropd,
     RandFlipd,
     RandRotate90d,
 
@@ -72,7 +73,7 @@ def create_data_loader(
         "test": test_path_list,
     }
 
-    input_modality = ["PET", "CT"]
+    input_modality = ["PET", "CT", "BODY"]
     return_dict = {
         "input_modality": input_modality,
         "data_division_dict": data_division_dict,
@@ -84,10 +85,11 @@ def create_data_loader(
         train_transforms = Compose(
             [
                 LoadImaged(keys=input_modality, image_only=True),
-                ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
                 EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
-                # RandFlipd(keys=input_modality, prob=0.5),
-                # RandRotate90d(keys=input_modality, prob=0.5),
+                CenterSpatialCropd(keys=input_modality, roi_size=output_size),
+                # ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
+                RandFlipd(keys=input_modality, prob=0.5),
+                RandRotate90d(keys=input_modality, prob=0.5),
             ]
         )
 
@@ -113,8 +115,9 @@ def create_data_loader(
         val_transforms = Compose(
             [
                 LoadImaged(keys=input_modality, image_only=True),
-                ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
-                # EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
+                EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
+                CenterSpatialCropd(keys=input_modality, roi_size=output_size),
+                # ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
             ]
         )
 
@@ -140,8 +143,9 @@ def create_data_loader(
         test_transforms = Compose(
             [
                 LoadImaged(keys=input_modality, image_only=True),
-                ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
                 EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
+                CenterSpatialCropd(keys=input_modality, roi_size=output_size),
+                # ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
             ]
         )
 
