@@ -4,8 +4,7 @@ from monai.transforms import (
     Compose, 
     LoadImaged, 
     EnsureChannelFirstd,
-    ResizeWithPadOrCropd,
-    CenterSpatialCropd,
+    RandSpatialCropd,
     RandFlipd,
     RandRotate90d,
 
@@ -85,9 +84,8 @@ def create_data_loader(
         train_transforms = Compose(
             [
                 LoadImaged(keys=input_modality, image_only=True),
-                EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
-                # CenterSpatialCropd(keys=input_modality, roi_size=output_size),
-                # ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
+                EnsureChannelFirstd(keys=input_modality, channel_dim='no_channel'),
+                RandSpatialCropd(keys=input_modality, roi_size=output_size),
                 RandFlipd(keys=input_modality, prob=0.5),
                 RandRotate90d(keys=input_modality, prob=0.5),
             ]
@@ -115,9 +113,8 @@ def create_data_loader(
         val_transforms = Compose(
             [
                 LoadImaged(keys=input_modality, image_only=True),
-                EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
-                # CenterSpatialCropd(keys=input_modality, roi_size=output_size),
-                # ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
+                EnsureChannelFirstd(keys=input_modality, channel_dim='no_channel'),
+                RandSpatialCropd(keys=input_modality, roi_size=output_size),
             ]
         )
 
@@ -142,10 +139,9 @@ def create_data_loader(
         
         test_transforms = Compose(
             [
-                LoadImaged(keys=input_modality, image_only=True),
-                EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
-                # CenterSpatialCropd(keys=input_modality, roi_size=output_size),
-                # ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
+                LoadImaged(keys=input_modality, image_only=True),                
+                EnsureChannelFirstd(keys=input_modality, channel_dim='no_channel'),
+                RandSpatialCropd(keys=input_modality, roi_size=output_size),
             ]
         )
 

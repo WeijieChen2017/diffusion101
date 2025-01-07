@@ -100,8 +100,12 @@ def main():
     parser.add_argument("--train_encoder", type=bool, default=True, help="Train the encoder.")
     # get the boolean value to determine whether decoder is trainable
     parser.add_argument("--train_decoder", type=bool, default=True, help="Train the decoder.")
-    # get the z length for input volume, default is 32
-    parser.add_argument("--z_width", type=int, default=32, help="Z length for input volume.")
+    # get the image dim x for each batch
+    parser.add_argument("--dim_x", type=int, default=256, help="Image dimension x.")
+    # get the image dim y for each batch
+    parser.add_argument("--dim_y", type=int, default=256, help="Image dimension y.")
+    # get the image dim z for each batch
+    parser.add_argument("--dim_z", type=int, default=32, help="Image dimension z.")
     # get the training epochs, default is 300
     parser.add_argument("--epochs", type=int, default=300, help="Number of training epochs.")
     # get the loss function, default is "mae"
@@ -116,9 +120,10 @@ def main():
     torch.manual_seed(args.seed)
 
     # combine the above arguments into a single project name
-    project_name = f"cv{args.cv_index}_ \
-    Enc{args.train_encoder}_Dec{args.train_decoder}_ \
-    z{args.z_width}_epochs{args.epochs}_Loss{args.loss}_seed{args.seed}"
+    project_name = f"cv{args.cv_index}_\
+    Enc{args.train_encoder}_Dec{args.train_decoder}_\
+    epochs{args.epochs}_Loss{args.loss}_seed{args.seed}_\
+    x{args.dim_x}_y{args.dim_y}_z{args.dim_z}"
 
     # get the project directory
     project_dir = os.path.join(root_dir, project_name)
@@ -139,6 +144,7 @@ def main():
         return_train=True,
         return_val=True,
         return_test=False,
+        output_size=(args.dim_x, args.dim_y, args.dim_z),
     )
     data_division_dict = return_dict["data_division_dict"]
     data_loader_train = return_dict["train_loader"]
