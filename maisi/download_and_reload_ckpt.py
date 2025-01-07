@@ -66,7 +66,7 @@ print("Network definition and inference inputs have been loaded.")
 from scripts.utils import define_instance
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
 autoencoder = define_instance(args, "autoencoder_def").to(device)
 checkpoint_autoencoder = torch.load(args.trained_autoencoder_path, weights_only=True)
