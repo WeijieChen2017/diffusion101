@@ -31,7 +31,7 @@
         "with_decoder_nonlocal_attn": false,
         "use_checkpointing": false,
         "use_convtranspose": false,
-        "norm_float16": false,
+        "norm_float16": true,
         "num_splits": 8,
         "dim_split": 1
     },

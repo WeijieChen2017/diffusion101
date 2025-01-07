@@ -4,11 +4,14 @@ import json
 import argparse
 
 import torch
+from torch.cuda.amp import autocast, GradScaler
 
 from scripts.utils import define_instance
 from monai.apps import download_url
 
 from train_v1_utils import create_data_loader
+
+
 
 root_dir = "project"
 os.makedirs(root_dir, exist_ok=True)
@@ -111,7 +114,7 @@ def main():
     # get the batchsize
     parser.add_argument("--batchsize", type=int, default=1, help="Batch size.")
     # get the loss function, default is "mae"
-    parser.add_argument("--loss", type=str, default="mae", help="Loss function.")
+    parser.add_argument("--loss", type=str, default="MAE", help="Loss function.")
     # get the random GPU index, default is 4
     parser.add_argument("--gpu", type=int, default=4, help="GPU index.")
     # set the random seed for reproducibility
@@ -183,9 +186,9 @@ def main():
     optimizer = torch.optim.AdamW(autoencoder.parameters(), lr=1e-4)
 
     # define the loss function according to the input argument
-    if args.loss == "mae":
+    if args.loss == "MAE":
         loss_fn = torch.nn.L1Loss()
-    elif args.loss == "mse":
+    elif args.loss == "MSE":
         loss_fn = torch.nn.MSELoss()
     else:
         raise ValueError(f"Unsupported loss function: {args.loss}")
@@ -198,26 +201,29 @@ def main():
     best_val_epoch = 0
     save_per_epoch = 20
     autoencoder.to(device)
+    scaler = GradScaler()
 
     for epoch in range(args.epochs):
         autoencoder.train()
         train_loss = 0.0
         for i, batch in enumerate(data_loader_train):
             # in the data loader, the input is a tuple of (input, label, mask)
-            data_PET = batch["PET"].to(device).float().type(torch.float32)
-            data_CT = batch["CT"].to(device).float().type(torch.float32)
-            data_mask = batch["BODY"].to(device).float().type(torch.float32)
+            data_PET = batch["PET"].to(device)
+            data_CT = batch["CT"].to(device)
+            data_mask = batch["BODY"].to(device)
             # print the data shape of all three data
             print("data_PET shape: ", data_PET.shape, data_PET.dtype)
             print("data_CT shape: ", data_CT.shape, data_CT.dtype)
             print("data_mask shape: ", data_mask.shape, data_mask.dtype)
             optimizer.zero_grad()
-            outputs = autoencoder(data_PET)
-            loss = loss_fn(outputs[0], data_CT)
-            # apply the boolean mask to the loss
-            loss = loss * data_mask
-            loss.backward()
-            optimizer.step()
+            with autocast():
+                outputs, _, _ = autoencoder(data_PET)
+                loss = loss_fn(outputs, data_CT)
+                loss = loss * data_mask
+                
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
             train_loss += loss.item() * 4000 # for denormalization
         train_loss /= len(data_loader_train)
 
@@ -225,12 +231,14 @@ def main():
         val_loss = 0.0
         with torch.no_grad():
             for i, batch in enumerate(data_loader_val):
-                data_PET = batch["PET"].to(device).type(torch.float32)
-                data_CT = batch["CT"].to(device).type(torch.float32)
-                data_mask = batch["BODY"].to(device).type(torch.float32)
-                outputs = autoencoder(data_PET)
-                loss = loss_fn(outputs[0], data_CT)
-                loss = loss * data_mask
+                data_PET = batch["PET"].to(device)
+                data_CT = batch["CT"].to(device)
+                data_mask = batch["BODY"].to(device)
+                with autocast():
+                    outputs, _, _ = autoencoder(data_PET)
+                    loss = loss_fn(outputs, data_CT)
+                    loss = loss * data_mask
+                
                 val_loss += loss.item() * 4000
             val_loss /= len(data_loader_val)
 
