@@ -7,7 +7,7 @@ from monai.transforms import (
     RandSpatialCropd,
     RandFlipd,
     RandRotate90d,
-
+    ToTensord,
 )
 
 from monai.data import CacheDataset, DataLoader
@@ -88,6 +88,7 @@ def create_data_loader(
                 RandSpatialCropd(keys=input_modality, roi_size=output_size),
                 RandFlipd(keys=input_modality, prob=0.5),
                 RandRotate90d(keys=input_modality, prob=0.5),
+                ToTensord(keys=input_modality, dtype="half"),
             ]
         )
 
@@ -115,6 +116,7 @@ def create_data_loader(
                 LoadImaged(keys=input_modality, image_only=True),
                 EnsureChannelFirstd(keys=input_modality, channel_dim='no_channel'),
                 RandSpatialCropd(keys=input_modality, roi_size=output_size),
+                ToTensord(keys=input_modality, dtype="half"),
             ]
         )
 
@@ -142,6 +144,7 @@ def create_data_loader(
                 LoadImaged(keys=input_modality, image_only=True),                
                 EnsureChannelFirstd(keys=input_modality, channel_dim='no_channel'),
                 RandSpatialCropd(keys=input_modality, roi_size=output_size),
+                ToTensord(keys=input_modality, dtype="half"),
             ]
         )
 
