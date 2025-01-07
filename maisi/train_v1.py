@@ -194,12 +194,12 @@ def main():
         train_loss = 0.0
         for i, data in enumerate(data_loader_train):
             # in the data loader, the input is a tuple of (input, label, mask)
-            data_PET, data_CT = data
+            data_PET, data_CT, data_mask = data
             optimizer.zero_grad()
             outputs = autoencoder(data_PET.to(device))
             loss = loss_fn(outputs[0], data_CT.to(device))
             # apply the mask
-            # loss = loss * data_mask.to(device)
+            loss = loss * data_mask.to(device)
             loss.backward()
             optimizer.step()
             train_loss += loss.item() * 4000 # for denormalization
@@ -209,10 +209,10 @@ def main():
         val_loss = 0.0
         with torch.no_grad():
             for i, data in enumerate(data_loader_val):
-                data_PET, data_CT = data
+                data_PET, data_CT, data_mask = data
                 outputs = autoencoder(data_PET.to(device))
                 loss = loss_fn(outputs[0], data_CT.to(device))
-                # loss = loss * data_mask.to(device)
+                loss = loss * data_mask.to(device)
                 val_loss += loss.item() * 4000 # for denormalization
             val_loss /= len(data_loader_val)
 
