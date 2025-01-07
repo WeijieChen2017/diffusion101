@@ -195,6 +195,10 @@ def main():
         for i, data in enumerate(data_loader_train):
             # in the data loader, the input is a tuple of (input, label, mask)
             data_PET, data_CT, data_mask = data
+            # print the data shape of all three data
+            print("data_PET shape: ", data_PET.shape)
+            print("data_CT shape: ", data_CT.shape)
+            print("data_mask shape: ", data_mask.shape)
             optimizer.zero_grad()
             outputs = autoencoder(data_PET.to(device))
             loss = loss_fn(outputs[0], data_CT.to(device))

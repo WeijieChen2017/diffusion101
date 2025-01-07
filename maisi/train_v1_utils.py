@@ -85,9 +85,9 @@ def create_data_loader(
             [
                 LoadImaged(keys=input_modality, image_only=True),
                 ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
-                RandFlipd(keys=input_modality, prob=0.5),
-                RandRotate90d(keys=input_modality, prob=0.5),
                 EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
+                # RandFlipd(keys=input_modality, prob=0.5),
+                # RandRotate90d(keys=input_modality, prob=0.5),
             ]
         )
 
@@ -114,7 +114,7 @@ def create_data_loader(
             [
                 LoadImaged(keys=input_modality, image_only=True),
                 ResizeWithPadOrCropd(keys=input_modality, spatial_size=output_size),
-                EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
+                # EnsureChannelFirstd(keys=input_modality, channel_dim=-1),
             ]
         )
 
