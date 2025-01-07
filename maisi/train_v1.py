@@ -204,9 +204,9 @@ def main():
         train_loss = 0.0
         for i, batch in enumerate(data_loader_train):
             # in the data loader, the input is a tuple of (input, label, mask)
-            data_PET = batch["PET"].to(device).type(torch.float32)
-            data_CT = batch["CT"].to(device).type(torch.float32)
-            data_mask = batch["BODY"].to(device).type(torch.float32)
+            data_PET = batch["PET"].to(device).float().type(torch.float32)
+            data_CT = batch["CT"].to(device).float().type(torch.float32)
+            data_mask = batch["BODY"].to(device).float().type(torch.float32)
             # print the data shape of all three data
             print("data_PET shape: ", data_PET.shape, data_PET.dtype)
             print("data_CT shape: ", data_CT.shape, data_CT.dtype)
