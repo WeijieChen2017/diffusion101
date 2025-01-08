@@ -112,7 +112,7 @@ def main():
     # get the training epochs, default is 300
     parser.add_argument("--epochs", type=int, default=300, help="Number of training epochs.")
     # get the batchsize
-    parser.add_argument("--batchsize", type=int, default=8, help="Batch size.")
+    parser.add_argument("--batchsize", type=int, default=4, help="Batch size.")
     # get the loss function, default is "mae"
     parser.add_argument("--loss", type=str, default="MAE", help="Loss function.")
     # get the random GPU index, default is 4
