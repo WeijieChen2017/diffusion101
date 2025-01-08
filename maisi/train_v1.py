@@ -112,7 +112,7 @@ def main():
     # get the training epochs, default is 300
     parser.add_argument("--epochs", type=int, default=300, help="Number of training epochs.")
     # get the batchsize
-    parser.add_argument("--batchsize", type=int, default=1, help="Batch size.")
+    parser.add_argument("--batchsize", type=int, default=8, help="Batch size.")
     # get the loss function, default is "mae"
     parser.add_argument("--loss", type=str, default="MAE", help="Loss function.")
     # get the random GPU index, default is 4
@@ -212,9 +212,9 @@ def main():
             data_CT = batch["CT"].to(device)
             data_mask = batch["BODY"].to(device)
             # print the data shape of all three data
-            print("data_PET shape: ", data_PET.shape, data_PET.dtype)
-            print("data_CT shape: ", data_CT.shape, data_CT.dtype)
-            print("data_mask shape: ", data_mask.shape, data_mask.dtype)
+            # print("data_PET shape: ", data_PET.shape, data_PET.dtype)
+            # print("data_CT shape: ", data_CT.shape, data_CT.dtype)
+            # print("data_mask shape: ", data_mask.shape, data_mask.dtype)
             optimizer.zero_grad()
             with autocast():
                 outputs, _, _ = autoencoder(data_PET)
@@ -239,6 +239,7 @@ def main():
                     outputs, _, _ = autoencoder(data_PET)
                     loss = loss_fn(outputs, data_CT)
                     loss = loss * data_mask
+                    loss = loss.mean()
                 
                 val_loss += loss.item() * 4000
             val_loss /= len(data_loader_val)
@@ -265,3 +266,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+# training log for Jan 7
+# current input is 256*256*32, batchsize = 1, GPU memory occupasion = 5913MiB  / 40960MiB
+# we could either make the batchsize = 8, or make input is 256*256*128
