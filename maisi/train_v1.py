@@ -233,6 +233,8 @@ def main():
             scaler.update()
             train_loss += loss.item() * 4000 # for denormalization
         train_loss /= len(data_loader_train)
+        log_str = f"Epoch {epoch+1}/{args.epochs}: Train Loss: {train_loss:.4f}."
+        log_print(log_file, log_str)
 
         if epoch % eval_per_epoch == 0:
             autoencoder.eval()
@@ -251,7 +253,7 @@ def main():
                     val_loss += loss.item() * 4000
                 val_loss /= len(data_loader_val)
 
-            log_str = f"Epoch {epoch+1}/{args.epochs}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Best Val Loss: {best_val_loss:.4f} at epoch {best_val_epoch}."
+            log_str = f"Epoch {epoch+1}/{args.epochs}: Val Loss: {val_loss:.4f}, Best Val Loss: {best_val_loss:.4f} at epoch {best_val_epoch}."
             log_print(log_file, log_str)
 
         if val_loss < best_val_loss:
