@@ -141,7 +141,7 @@ def main():
     # save the configurations to the project directory
     with open(os.path.join(project_dir, "config.json"), "w") as f:
         json.dump(vars(args), f, indent=4)
-    exit() # for checking the project name
+    # exit() # for checking the project name
 
     # set the GPU index
     device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
