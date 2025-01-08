@@ -97,114 +97,82 @@ def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument("--directory", type=str, default=None, help="Directory to save the downloaded files.")
 
-    # get the cv index to perform cross-validation
-    parser.add_argument("--cv_index", type=int, default=0, help="Cross-validation index.")
-    # get the boolean value to determine whether encoder is trainable
-    parser.add_argument("--train_encoder", type=bool, default=True, help="Train the encoder.")
-    # get the boolean value to determine whether decoder is trainable
-    parser.add_argument("--train_decoder", type=bool, default=True, help="Train the decoder.")
-    # get the image dim x for each batch
-    parser.add_argument("--dim_x", type=int, default=256, help="Image dimension x.")
-    # get the image dim y for each batch
-    parser.add_argument("--dim_y", type=int, default=256, help="Image dimension y.")
-    # get the image dim z for each batch
-    parser.add_argument("--dim_z", type=int, default=32, help="Image dimension z.")
-    # get the training epochs, default is 300
-    parser.add_argument("--epochs", type=int, default=300, help="Number of training epochs.")
-    # get the batchsize
-    parser.add_argument("--batchsize", type=int, default=1, help="Batch size.")
-    # get the loss function, default is "mae"
-    parser.add_argument("--loss", type=str, default="MAE", help="Loss function.")
-    # get the random GPU index, default is 4
-    parser.add_argument("--gpu", type=int, default=4, help="GPU index.")
-    # set the random seed for reproducibility
-    parser.add_argument("--seed", type=int, default=729, help="Random seed.")
+    # get the project folder 
+    parser.add_argument("--project_name", type=str, default="project", help="project name.")
+
+    # # get the cv index to perform cross-validation
+    # parser.add_argument("--cv_index", type=int, default=0, help="Cross-validation index.")
+    # # get the boolean value to determine whether encoder is trainable
+    # parser.add_argument("--train_encoder", type=bool, default=True, help="Train the encoder.")
+    # # get the boolean value to determine whether decoder is trainable
+    # parser.add_argument("--train_decoder", type=bool, default=True, help="Train the decoder.")
+    # # get the image dim x for each batch
+    # parser.add_argument("--dim_x", type=int, default=256, help="Image dimension x.")
+    # # get the image dim y for each batch
+    # parser.add_argument("--dim_y", type=int, default=256, help="Image dimension y.")
+    # # get the image dim z for each batch
+    # parser.add_argument("--dim_z", type=int, default=32, help="Image dimension z.")
+    # # get the training epochs, default is 300
+    # parser.add_argument("--epochs", type=int, default=300, help="Number of training epochs.")
+    # # get the batchsize
+    # parser.add_argument("--batchsize", type=int, default=1, help="Batch size.")
+    # # get the loss function, default is "mae"
+    # parser.add_argument("--loss", type=str, default="MAE", help="Loss function.")
+    # # get the random GPU index, default is 4
+    # parser.add_argument("--gpu", type=int, default=4, help="GPU index.")
+    # # set the random seed for reproducibility
+    # parser.add_argument("--seed", type=int, default=729, help="Random seed.")
     
     args = parser.parse_args()
-    # apply the random seed
-    torch.manual_seed(args.seed)
-
-    # combine the above arguments into a single project name
-    project_name = f"cv{args.cv_index}_"
-    project_name = project_name + f"Enc{args.train_encoder}_Dec{args.train_decoder}_"
-    project_name = project_name + f"epochs{args.epochs}_Loss{args.loss}_seed{args.seed}_"
-    project_name = project_name + f"x{args.dim_x}_y{args.dim_y}_z{args.dim_z}"
-
     # get the project directory
+    project_name = args.project_name
     project_dir = os.path.join(root_dir, project_name)
-    print(f"Project Name: {project_name}")
-    exit() # for checking the project name
-    # create the project directory
-    os.makedirs(project_dir, exist_ok=True)
-    # save the configurations to the project directory
-    with open(os.path.join(project_dir, "config.json"), "w") as f:
-        json.dump(vars(args), f, indent=4)
+    # get the configures from the config.json
+    config_file = os.path.join(project_dir, "config.json")
+    with open(config_file, "r") as f:
+        config_dict = json.load(f)
+    for k, v in config_dict.items():
+        setattr(args, k, v)
+    print("Global config variables have been loaded.")
 
+    # print the project directory
+    print(f"Project Directory: {project_dir}")
+    # print the configurations
+    print("Configurations: ", json.dumps(vars(args), indent=4))
+    
     # set the GPU index
     device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
 
     autoencoder = download_and_reload_ckpt()
+    # load the autoencoder model pre-trained weights
+    pretrain_weights_path = os.path.join(project_dir, "best_model.pth")
+    autoencoder.load_state_dict(torch.load(pretrain_weights_path))
+    print("Pre-trained weights loaded at: ", pretrain_weights_path)
+    autoencoder.to(device)
 
     return_dict = create_data_loader(
         data_div_json=None,
         cv_index=args.cv_index,
-        return_train=True,
-        return_val=True,
-        return_test=False,
+        return_train=False,
+        return_val=False,
+        return_test=True,
         output_size=(args.dim_x, args.dim_y, args.dim_z),
         batchsize=args.batchsize,
     )
-    data_division_dict = return_dict["data_division_dict"]
-    data_loader_train = return_dict["train_loader"]
-    data_loader_val = return_dict["val_loader"]
-    # data_loader_test = data_division_dict["test_loader"]
-
-    # save the data_division_dict to the project directory
-    with open(os.path.join(project_dir, "data_division_dict.json"), "w") as f:
-        json.dump(data_division_dict, f, indent=4)
+    data_loader_test = return_dict["test_loader"]
 
     # set the training progress log file in the project directory
-    log_file = os.path.join(project_dir, "train_log.txt")
+    log_file = os.path.join(project_dir, "test_log.txt")
     # write the base configurations to the log file and timestamp
     with open(log_file, "w") as f:
         f.write(f"Project Name: {project_name}\n")
         f.write(f"Project Directory: {project_dir}\n")
-        f.write(f"Training Start Time: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"Configurations: {json.dumps(vars(args), indent=4)}\n")
+        f.write(f"Test Configurations: {json.dumps(vars(args), indent=4)}\n")
+        f.write(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("\n")
-
-    # freeze the encoder if the encoder is not trainable
-    if not args.train_encoder:
-        for param in autoencoder.encoder.parameters():
-            param.requires_grad = False
-    
-    # freeze the decoder if the decoder is not trainable
-    if not args.train_decoder:
-        for param in autoencoder.decoder.parameters():
-            param.requires_grad = False
-
-    # define the optimizer using AdamW
-    optimizer = torch.optim.AdamW(autoencoder.parameters(), lr=1e-4)
-
-    # define the loss function according to the input argument
-    if args.loss == "MAE":
-        loss_fn = torch.nn.L1Loss()
-    elif args.loss == "MSE":
-        loss_fn = torch.nn.MSELoss()
-    else:
-        raise ValueError(f"Unsupported loss function: {args.loss}")
-
-    # define the scheduler using StepLR
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
-
     # define the training loop
-    best_val_loss = float("inf")
-    best_val_epoch = 0
-    save_per_epoch = 20
-    eval_per_epoch = 10
-    autoencoder.to(device)
-    scaler = GradScaler()
+    
 
     for epoch in range(args.epochs):
         autoencoder.train()

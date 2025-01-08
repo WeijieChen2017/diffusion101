@@ -141,7 +141,7 @@ def create_data_loader(
             [
                 LoadImaged(keys=input_modality, image_only=True),                
                 EnsureChannelFirstd(keys=input_modality, channel_dim='no_channel'),
-                RandSpatialCropd(keys=input_modality, roi_size=output_size),
+                # RandSpatialCropd(keys=input_modality, roi_size=output_size),
             ]
         )
 
