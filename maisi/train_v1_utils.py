@@ -19,6 +19,7 @@ def create_data_loader(
         return_test=True, 
         output_size=(256, 256, 32),
         batchsize=1,
+        cache_rate=1.
     ):
     
     if data_div_json is None:
@@ -94,7 +95,7 @@ def create_data_loader(
         train_ds = CacheDataset(
             data=train_path_list,
             transform=train_transforms,
-            cache_rate=0.1,
+            cache_rate=cache_rate,
             num_workers=4,
         )
 
@@ -121,7 +122,7 @@ def create_data_loader(
         val_ds = CacheDataset(
             data=val_path_list,
             transform=val_transforms,
-            cache_rate=0.1,
+            cache_rate=cache_rate,
             num_workers=4,
         )
 
@@ -148,7 +149,7 @@ def create_data_loader(
         test_ds = CacheDataset(
             data=test_path_list,
             transform=test_transforms,
-            cache_rate=0.1,
+            cache_rate=cache_rate,
             num_workers=4,
         )
 
