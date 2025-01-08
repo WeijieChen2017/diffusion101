@@ -99,10 +99,13 @@ def main():
 
     # get the cv index to perform cross-validation
     parser.add_argument("--cv_index", type=int, default=0, help="Cross-validation index.")
-    # get the boolean value to determine whether encoder is trainable
-    parser.add_argument("--train_encoder", type=bool, default=True, help="Train the encoder.")
+    # get the boolean value to determine whether encoder is trainable using store false
+    # which means if not using --train_encoder, this should be false
+    # parser.add_argument("--train_encoder", type=bool, default=True, help="Train the encoder.")
+    parser.add_argument("--train_encoder", dest="train_encoder", action="store_true")
     # get the boolean value to determine whether decoder is trainable
-    parser.add_argument("--train_decoder", type=bool, default=True, help="Train the decoder.")
+    # parser.add_argument("--train_decoder", type=bool, default=True, help="Train the decoder.")
+    parser.add_argument("--train_decoder", dest="train_decoder", action="store_true")
     # get the image dim x for each batch
     parser.add_argument("--dim_x", type=int, default=256, help="Image dimension x.")
     # get the image dim y for each batch
