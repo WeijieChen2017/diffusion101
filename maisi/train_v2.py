@@ -13,7 +13,12 @@ from monai.inferers import sliding_window_inference
 
 from train_v2_utils import create_data_loader
 
+from monai.losses import DiceCELoss
 
+# now train_v2 will output the bone segmentation map
+
+# use DSC, IoU, Hausdoff as the metric
+from monai.metrics import DiceMetric, HausdorffDistanceMetric, HausdorffDistance
 
 root_dir = "project"
 os.makedirs(root_dir, exist_ok=True)
@@ -166,6 +171,7 @@ def main():
         batchsize=args.batchsize,
         num_samples=args.num_samples,
         cache_rate=0.1,
+        input_modality = ["PET", "BONE"],
     )
     data_division_dict = return_dict["data_division_dict"]
     data_loader_train = return_dict["train_loader"]
@@ -200,11 +206,14 @@ def main():
     optimizer = torch.optim.AdamW(autoencoder.parameters(), lr=1e-4)
 
     # define the loss function according to the input argument
-    if args.loss == "MAE":
-        loss_fn = torch.nn.L1Loss()
-    elif args.loss == "MSE":
-        loss_fn = torch.nn.MSELoss()
-    else:
+    if args.loss == "DiceCELoss":
+        # Define the loss function
+        loss_fn = DiceCELoss(
+            include_background=False,  # Ignore background in the loss computation
+            sigmoid=True,  # Apply sigmoid to logits for binary segmentation
+            lambda_dice=1.0,  # Weight for Dice Loss
+            lambda_ce=1.0,  # Weight for Cross-Entropy Loss
+        )
         raise ValueError(f"Unsupported loss function: {args.loss}")
 
     # define the scheduler using StepLR
@@ -220,8 +229,14 @@ def main():
     best_val_epoch = 0
     save_per_epoch = 20
     eval_per_epoch = 10
-    best_test_loss = float("inf")
-    best_test_epoch = 0
+    best_test_metric_dict = {
+        "DSC": 0.0,
+        "IoU": 0.0,
+        "Hausdorff": float("inf"),
+        "DSC_epoch": 0,
+        "IoU_epoch": 0,
+        "Hausdorff_epoch": 0,
+    }
     autoencoder.to(device)
     scaler = GradScaler()
 
@@ -230,8 +245,7 @@ def main():
         train_loss = 0.0
         for i, batch in enumerate(data_loader_train):
             data_samples_PET = batch["PET"].to(device)
-            data_samples_CT = batch["CT"].to(device)
-            data_samples_mask = batch["BODY"].to(device)
+            data_samples_BONE = batch["BONE"].to(device)
                 # print the data shape of all three data
                 # print("data_PET shape: ", data_PET.shape, data_PET.dtype)
                 # print("data_CT shape: ", data_CT.shape, data_CT.dtype)
@@ -240,18 +254,16 @@ def main():
             for idx_sample in range(args.num_samples):
                 optimizer.zero_grad()
                 data_PET = data_samples_PET[idx_sample].unsqueeze(0)
-                data_CT = data_samples_CT[idx_sample].unsqueeze(0)
-                data_mask = data_samples_mask[idx_sample].unsqueeze(0)
+                data_BONE = data_samples_BONE[idx_sample].unsqueeze(0)
                 with autocast():
-                    outputs, _, _ = autoencoder(data_PET)
-                    loss = loss_fn(outputs, data_CT)
-                    loss = loss * data_mask
+                    pred_mask, _, _ = autoencoder(data_PET)
+                    loss = loss_fn(outputs, data_BONE)
                     loss = loss.mean()  # Ensure loss is a scalar
 
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
-                train_loss += loss.item() * 4000 # for denormalization
+                train_loss += loss.item()
 
         train_loss /= len(data_loader_train)
         train_loss /= args.num_samples
@@ -264,20 +276,17 @@ def main():
             with torch.no_grad():
                 for i, batch in enumerate(data_loader_val):
                     data_samples_PET = batch["PET"].to(device)
-                    data_samples_CT = batch["CT"].to(device)
-                    data_samples_mask = batch["BODY"].to(device)
+                    data_samples_BONE = batch["BONE"].to(device)
                 
                     for idx_sample in range(args.num_samples):
-                        data_PET = data_PET[idx_sample].unsqueeze(0)
-                        data_CT = data_CT[idx_sample].unsqueeze(0)
-                        data_mask = data_mask[idx_sample].unsqueeze(0)
+                        data_PET = data_samples_PET[idx_sample].unsqueeze(0)
+                        data_BONE = data_samples_BONE[idx_sample].unsqueeze(0)
                         with autocast():
                             outputs, _, _ = autoencoder(data_PET)
-                            loss = loss_fn(outputs, data_CT)
-                            loss = loss * data_mask
+                            loss = loss_fn(outputs, data_BONE)
                             loss = loss.mean()
                         
-                        val_loss += loss.item() * 4000
+                        val_loss += loss.item()
                 val_loss /= len(data_loader_val)
                 val_loss /= args.num_samples
 
@@ -286,15 +295,16 @@ def main():
 
             # do testing
             autoencoder.eval()
-            test_loss = 0.0
+            test_DSC = 0.0
+            test_IoU = 0.0
+            test_Hausdorff = 0.0
             for i, batch in enumerate(data_loader_test):
                 data_PET = batch["PET"].to(device)
-                data_CT = batch["CT"]
-                data_mask = batch["BODY"]
+                data_BONE = batch["BONE"]
                 
                 with autocast():
                     with torch.no_grad():
-                        data_synCT = sliding_window_inference(
+                        data_synBONE = sliding_window_inference(
                             inputs=data_PET,
                             roi_size=(args.dim_x, args.dim_y, args.dim_z),
                             sw_batch_size=args.batchsize,
@@ -302,21 +312,47 @@ def main():
                         )
                         
                         # get the synthetic CT data
-                        data_synCT = data_synCT.detach().cpu().numpy().squeeze()
-                        data_CT = data_CT.detach().cpu().numpy().squeeze()
+                        data_synBONE = data_synBONE.detach().cpu().numpy().squeeze()
+                        data_BONE = data_BONE.detach().cpu().numpy().squeeze()
+                        data_synBONE = np.where(data_synBONE > 0.5, 1, 0)
 
-                        # compute the MAE between the synthetic CT and the ground truth CT
-                        masked_data_synCT = data_synCT * data_mask
-                        masked_data_CT = data_CT * data_mask
-                        abs_diff = np.abs(masked_data_synCT - masked_data_CT)
-                        masked_mae = np.sum(abs_diff) / np.sum(data_mask) * 4000 # HU range: -1024 to 2976
-                        test_loss += masked_mae
+                        # compute the metrics
+                        # DSC
+                        metric_DSC = DiceMetric(include_background=False)
+                        DSC = metric_DSC(data_synBONE, data_BONE)
+                        test_DSC += DSC
+
+                        # IoU
+                        IoU = DSC / (2 - DSC)
+                        test_IoU += IoU
+
+                        # Hausdorff
+                        metric_Hausdorff = HausdorffDistanceMetric(include_background=False, percentile=95)
+                        Hausdorff = metric_Hausdorff(data_synBONE, data_BONE)
+                        test_Hausdorff += Hausdorff
             
-            test_loss /= len(data_loader_test)
-            if test_loss < best_test_loss:
-                best_test_loss = test_loss
-                best_test_epoch = epoch
-            log_str = f"Epoch {epoch+1}/{args.epochs}: Test Loss: {test_loss:.4f}, Best Test Loss: {best_test_loss:.4f} at epoch {best_test_epoch}."
+            test_DSC /= len(data_loader_test)
+            test_IoU /= len(data_loader_test)
+            test_Hausdorff /= len(data_loader_test)
+            log_str = f"Epoch {epoch+1}/{args.epochs}: Test DSC: {test_DSC:.4f}, Test IoU: {test_IoU:.4f}, Test Hausdorff: {test_Hausdorff:.4f}."
+            log_print(log_file, log_str)
+            
+            # save the best test metric
+            if test_DSC > best_test_metric_dict["DSC"]:
+                best_test_metric_dict["DSC"] = test_DSC
+                best_test_metric_dict["DSC_epoch"] = epoch
+            if test_IoU > best_test_metric_dict["IoU"]:
+                best_test_metric_dict["IoU"] = test_IoU
+                best_test_metric_dict["IoU_epoch"] = epoch
+            if test_Hausdorff < best_test_metric_dict["Hausdorff"]:
+                best_test_metric_dict["Hausdorff"] = test_Hausdorff
+                best_test_metric_dict["Hausdorff_epoch"] = epoch
+
+            log_str = f"Best Test DSC: {best_test_metric_dict['DSC']:.4f} at epoch {best_test_metric_dict['DSC_epoch']}."
+            log_print(log_file, log_str)
+            log_str = f"Best Test IoU: {best_test_metric_dict['IoU']:.4f} at epoch {best_test_metric_dict['IoU_epoch']}."
+            log_print(log_file, log_str)
+            log_str = f"Best Test Hausdorff: {best_test_metric_dict['Hausdorff']:.4f} at epoch {best_test_metric_dict['Hausdorff_epoch']}."
             log_print(log_file, log_str)
 
         if val_loss < best_val_loss:
@@ -353,73 +389,3 @@ if __name__ == "__main__":
 # GPU 4, 128*128*128, Train Enc, "train_1"
 # GPU 3, 256*256*32, Train Dec, "train_2"
 # GPU 5, 128*128*128, Train Dec, "train_3"
-
-# start the inference
-# autoencoder.eval()
-
-# for key, data_loader in eval_dict.items():
-#     log_str = f"Start testing on {key} dataset."
-#     log_print(log_file, log_str)
-
-#     eval_save_dir = os.path.join(test_result_dir, key)
-#     os.makedirs(eval_save_dir, exist_ok=True)
-#     eval_data_loader = data_loader
-#     average_mae = 0.0
-
-#     for i, batch in enumerate(eval_data_loader):
-#         data_PET = batch["PET"].to(device)
-#         data_CT = batch["CT"]
-#         data_mask = batch["BODY"]
-#         filepath_CT = batch[f"CT_meta_dict"]["filename_or_obj"][0]
-#         print(f"Test {i+1}: {filepath_CT}")
-#         filename_CT = os.path.basename(filepath_CT)
-        
-#         with autocast():
-#             with torch.no_grad():
-#                 data_synCT = sliding_window_inference(
-#                     inputs=data_PET,
-#                     roi_size=(args.dim_x, args.dim_y, args.dim_z),
-#                     sw_batch_size=args.batchsize,
-#                     predictor=predictor,
-#                     # overlap=0.25, 
-#                     # mode=constant, 
-#                     # sigma_scale=0.125, 
-#                     # padding_mode=constant, 
-#                     # cval=0.0, 
-#                     # sw_device=None, 
-#                     # device=None, 
-#                     # progress=False, 
-#                     # roi_weight_map=None, 
-#                     # process_fn=None, 
-#                     # buffer_steps=None, 
-#                     # buffer_dim=-1, 
-#                     # with_coord=False,
-#                 )
-                
-#                 # get the synthetic CT data
-#                 data_synCT = data_synCT.detach().cpu().numpy().squeeze()
-#                 data_CT = data_CT.detach().cpu().numpy().squeeze()
-
-#                 # compute the MAE between the synthetic CT and the ground truth CT
-#                 masked_data_synCT = data_synCT * data_mask
-#                 masked_data_CT = data_CT * data_mask
-#                 abs_diff = np.abs(masked_data_synCT - masked_data_CT)
-#                 masked_mae = np.sum(abs_diff) / np.sum(data_mask) * 4000 # HU range: -1024 to 2976
-
-#                 # load the CT nifti file and take the header and affine to save the synthetic CT
-#                 CT_nii = nib.load(filepath_CT)
-#                 CT_affine = CT_nii.affine
-#                 CT_header = CT_nii.header
-#                 # save the synthetic CT
-#                 data_synCT_nii = nib.Nifti1Image(data_synCT, CT_affine, CT_header)
-#                 filename_synCT = filename_CT.replace("CTACIVV", "synCT")
-#                 filepath_synCT = os.path.join(eval_save_dir, filename_synCT)
-#                 nib.save(data_synCT_nii, filepath_synCT)
-
-#                 log_str = f"Test {i+1}: {filename_CT}, MAE: {masked_mae:.4f}, SynCT saved at: {filepath_synCT}."
-#                 log_print(log_file, log_str)
-#                 average_mae += masked_mae
-    
-#     average_mae /= len(eval_data_loader)
-#     log_str = f"Average MAE on {key} dataset: {average_mae:.4f}"
-#     log_print(log_file, log_str)

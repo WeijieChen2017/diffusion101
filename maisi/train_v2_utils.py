@@ -22,6 +22,7 @@ def create_data_loader(
         num_samples=4,
         cache_rate=1.,
         is_inference=False,
+        input_modality = ["PET", "CT"],
     ):
     
     if data_div_json is None:
@@ -52,6 +53,9 @@ def create_data_loader(
             "PET": f"../James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz",
             "CT": f"../James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz",
             "BODY": f"../James_data_v3/mask/mask_body_contour_{hashname}.nii.gz",
+            "BONE": f"../James_data_v3/mask/mask_body_bone_{hashname}.nii.gz",
+            "AIR": f"../James_data_v3/mask/mask_body_air_{hashname}.nii.gz",
+            "SOFT": f"../James_data_v3/mask/mask_body_soft_{hashname}.nii.gz",
         })
     
     for hashname in val_list:
@@ -59,6 +63,9 @@ def create_data_loader(
             "PET": f"../James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz",
             "CT": f"../James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz",
             "BODY": f"../James_data_v3/mask/mask_body_contour_{hashname}.nii.gz",
+            "BONE": f"../James_data_v3/mask/mask_body_bone_{hashname}.nii.gz",
+            "AIR": f"../James_data_v3/mask/mask_body_air_{hashname}.nii.gz",
+            "SOFT": f"../James_data_v3/mask/mask_body_soft_{hashname}.nii.gz",
         })
 
     for hashname in test_list:
@@ -66,6 +73,9 @@ def create_data_loader(
             "PET": f"../James_data_v3/TOFNAC_256_norm/TOFNAC_{hashname}_norm.nii.gz",
             "CT": f"../James_data_v3/CTACIVV_256_norm/CTACIVV_{hashname}_norm.nii.gz",
             "BODY": f"../James_data_v3/mask/mask_body_contour_{hashname}.nii.gz",
+            "BONE": f"../James_data_v3/mask/mask_body_bone_{hashname}.nii.gz",
+            "AIR": f"../James_data_v3/mask/mask_body_air_{hashname}.nii.gz",
+            "SOFT": f"../James_data_v3/mask/mask_body_soft_{hashname}.nii.gz",
         })
 
     # construct the divison 
@@ -75,7 +85,6 @@ def create_data_loader(
         "test": test_path_list,
     }
 
-    input_modality = ["PET", "CT", "BODY"]
     return_dict = {
         "input_modality": input_modality,
         "data_division_dict": data_division_dict,
