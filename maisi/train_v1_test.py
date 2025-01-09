@@ -198,6 +198,7 @@ def main():
         data_CT = batch["CT"]
         data_mask = batch["BODY"]
         filepath_CT = batch[f"CT_meta_dict"]["filename_or_obj"]
+        print(filepath_CT)
         filename_CT = os.path.basename(filepath_CT)
         
         with autocast():
