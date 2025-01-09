@@ -172,6 +172,7 @@ def main():
         output_size=(args.dim_x, args.dim_y, args.dim_z),
         batchsize=args.batchsize,
         cache_rate=0.1,
+        is_inference=True,
     )
     data_loader_train = return_dict["train_loader"]
     data_loader_val = return_dict["val_loader"]

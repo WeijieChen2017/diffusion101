@@ -4,7 +4,7 @@ from monai.transforms import (
     Compose, 
     LoadImaged, 
     EnsureChannelFirstd,
-    RandSpatialCropd,
+    RandSpatialCropSamplesd,
     RandFlipd,
     RandRotate90d,
 )
@@ -19,6 +19,7 @@ def create_data_loader(
         return_test=True, 
         output_size=(256, 256, 32),
         batchsize=1,
+        num_samples=4,
         cache_rate=1.,
         is_inference=False,
     ):
@@ -88,9 +89,9 @@ def create_data_loader(
                 [
                     LoadImaged(keys=input_modality, image_only=False),
                     EnsureChannelFirstd(keys=input_modality, channel_dim='no_channel'),
-                    RandSpatialCropd(keys=input_modality, roi_size=output_size),
                     RandFlipd(keys=input_modality, prob=0.5),
                     RandRotate90d(keys=input_modality, prob=0.5),
+                    RandSpatialCropSamplesd(keys=input_modality, roi_size=output_size, num_samples=num_samples),
                 ]
             )
         else:
@@ -125,7 +126,7 @@ def create_data_loader(
                 [
                     LoadImaged(keys=input_modality, image_only=False),
                     EnsureChannelFirstd(keys=input_modality, channel_dim='no_channel'),
-                    RandSpatialCropd(keys=input_modality, roi_size=output_size),
+                    RandSpatialCropSamplesd(keys=input_modality, roi_size=output_size, num_samples=num_samples),
                 ]
             )
         else:
