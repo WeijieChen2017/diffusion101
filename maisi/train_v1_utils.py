@@ -140,9 +140,8 @@ def create_data_loader(
         
         test_transforms = Compose(
             [
-                LoadImaged(keys=input_modality, image_only=True),                
+                LoadImaged(keys=input_modality, image_only=False),                
                 EnsureChannelFirstd(keys=input_modality, channel_dim='no_channel'),
-                # RandSpatialCropd(keys=input_modality, roi_size=output_size),
             ]
         )
 

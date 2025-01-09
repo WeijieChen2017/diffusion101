@@ -4,12 +4,14 @@ import json
 import argparse
 
 import torch
+import nibabel as nib
 from torch.cuda.amp import autocast, GradScaler
 
 from scripts.utils import define_instance
 from monai.apps import download_url
 
 from train_v1_utils import create_data_loader
+from monai.inferers import sliding_window_inference
 
 
 
@@ -171,70 +173,69 @@ def main():
         f.write(f"Test Configurations: {json.dumps(vars(args), indent=4)}\n")
         f.write(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("\n")
-    # define the training loop
     
+    # create the test result directory
+    test_result_dir = os.path.join(project_dir, "test_results")
+    os.makedirs(test_result_dir, exist_ok=True)
+    
+    # Define a predictor that extracts only the first tensor
+    def predictor(patch_data):
+        outputs = autoencoder(patch_data)  # Model output is a tuple of 3 tensors
+        return outputs[0]  # Return only the first tensor
 
-    for epoch in range(args.epochs):
-        autoencoder.train()
-        train_loss = 0.0
-        for i, batch in enumerate(data_loader_train):
-            # in the data loader, the input is a tuple of (input, label, mask)
-            data_PET = batch["PET"].to(device)
-            data_CT = batch["CT"].to(device)
-            data_mask = batch["BODY"].to(device)
-            # print the data shape of all three data
-            # print("data_PET shape: ", data_PET.shape, data_PET.dtype)
-            # print("data_CT shape: ", data_CT.shape, data_CT.dtype)
-            # print("data_mask shape: ", data_mask.shape, data_mask.dtype)
-            optimizer.zero_grad()
-            with autocast():
-                outputs, _, _ = autoencoder(data_PET)
-                loss = loss_fn(outputs, data_CT)
-                loss = loss * data_mask
-                loss = loss.mean()  # Ensure loss is a scalar
-
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-            train_loss += loss.item() * 4000 # for denormalization
-        train_loss /= len(data_loader_train)
-
-        if epoch % eval_per_epoch == 0:
-            autoencoder.eval()
-            val_loss = 0.0
+    # start the inference
+    autoencoder.eval()
+    for i, batch in enumerate(data_loader_test):
+        data_PET = batch["PET"].to(device)
+        data_CT = batch["CT"]
+        data_mask = batch["BODY"]
+        filepath_CT = batch[f"CT_meta_dict"]["filename_or_obj"]
+        filename_CT = os.path.basename(filepath_CT)
+        
+        with autocast():
             with torch.no_grad():
-                for i, batch in enumerate(data_loader_val):
-                    data_PET = batch["PET"].to(device)
-                    data_CT = batch["CT"].to(device)
-                    data_mask = batch["BODY"].to(device)
-                    with autocast():
-                        outputs, _, _ = autoencoder(data_PET)
-                        loss = loss_fn(outputs, data_CT)
-                        loss = loss * data_mask
-                        loss = loss.mean()
-                    
-                    val_loss += loss.item() * 4000
-                val_loss /= len(data_loader_val)
+                data_synCT = sliding_window_inference(
+                    inputs=data_PET,
+                    roi_size=(args.dim_x, args.dim_y, args.dim_z),
+                    sw_batch_size=args.batchsize,
+                    predictor=predictor,
+                    # overlap=0.25, 
+                    # mode=constant, 
+                    # sigma_scale=0.125, 
+                    # padding_mode=constant, 
+                    # cval=0.0, 
+                    # sw_device=None, 
+                    # device=None, 
+                    # progress=False, 
+                    # roi_weight_map=None, 
+                    # process_fn=None, 
+                    # buffer_steps=None, 
+                    # buffer_dim=-1, 
+                    # with_coord=False,
+                )
+                
+                # get the synthetic CT data
+                data_synCT = data_synCT.detach().cpu().numpy().squeeze()
 
-            log_str = f"Epoch {epoch+1}/{args.epochs}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Best Val Loss: {best_val_loss:.4f} at epoch {best_val_epoch}."
-            log_print(log_file, log_str)
+                # compute the MAE between the synthetic CT and the ground truth CT
+                masked_data_synCT = data_synCT * data_mask
+                masked_data_CT = data_CT * data_mask
+                abs_diff = torch.abs(masked_data_synCT - masked_data_CT)
+                masked_mae = abs_diff.sum() / data_mask.sum() * 4000  # for denormalization
 
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            best_val_epoch = epoch
-            torch.save(autoencoder.state_dict(), os.path.join(project_dir, "best_model.pth"))
-            log_str = f"Best model saved at epoch {epoch} with Val Loss: {val_loss:.4f}."
-            log_print(log_file, log_str)
 
-        if epoch % save_per_epoch == 0:
-            torch.save(autoencoder.state_dict(), os.path.join(project_dir, f"model_epoch{epoch}.pth"))
-            log_str = f"Model saved at epoch {epoch}."
-            log_print(log_file, log_str)
+                # load the CT nifti file and take the header and affine to save the synthetic CT
+                CT_nii = nib.load(filepath_CT)
+                CT_affine = CT_nii.affine
+                CT_header = CT_nii.header
+                # save the synthetic CT
+                data_synCT_nii = nib.Nifti1Image(data_synCT, CT_affine, CT_header)
+                filename_synCT = filename_CT.replace("CTACIVV", "synCT")
+                filepath_synCT = os.path.join(test_result_dir, filename_synCT)
+                nib.save(data_synCT_nii, filepath_synCT)
 
-        scheduler.step()
-
-    log_str = f"Training completed. Best Val Loss: {best_val_loss:.4f} at epoch {best_val_epoch}."
-    log_print(log_file, log_str)
+                log_str = f"Test {i+1}: {filename_CT}, MAE: {masked_mae:.4f}, SynCT saved at: {filepath_synCT}."
+                log_print(log_file, log_str)
 
 if __name__ == "__main__":
     main()
