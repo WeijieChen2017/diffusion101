@@ -165,11 +165,12 @@ def main():
         output_size=(args.dim_x, args.dim_y, args.dim_z),
         batchsize=args.batchsize,
         num_samples=args.num_samples,
+        cache_rate=0.1,
     )
     data_division_dict = return_dict["data_division_dict"]
     data_loader_train = return_dict["train_loader"]
     data_loader_val = return_dict["val_loader"]
-    data_loader_test = data_division_dict["test_loader"]
+    data_loader_test = return_dict["test_loader"]
 
     # save the data_division_dict to the project directory
     with open(os.path.join(project_dir, "data_division_dict.json"), "w") as f:
