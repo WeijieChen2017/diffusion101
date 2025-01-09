@@ -241,6 +241,11 @@ def main():
     autoencoder.to(device)
     scaler = GradScaler()
 
+    # Initialize metrics once outside the loop
+    metric_DSC = DiceMetric(include_background=False)
+    metric_Hausdorff = HausdorffDistanceMetric(include_background=False, percentile=95)
+
+
     for epoch in range(args.epochs):
         autoencoder.train()
         train_loss = 0.0
@@ -312,23 +317,21 @@ def main():
                             predictor=predictor,
                         )
                         
-                        # Apply sigmoid to logits and threshold to binary predictions
-                        data_synBONE = torch.sigmoid(data_synBONE) > 0.5  # Binary segmentation
-                        data_synBONE = data_synBONE.float()  # Convert to float for metric computation
+                        # Ensure contiguous and move to CPU for metrics
+                        data_synBONE_cpu = data_synBONE.cpu().contiguous()
+                        data_BONE_cpu = data_BONE.cpu().contiguous()
 
-                        # compute the metrics
-                        # DSC
-                        metric_DSC = DiceMetric(include_background=False)
-                        DSC = metric_DSC(data_synBONE, data_BONE)
+                        # Compute DSC
+                        DSC = metric_DSC(data_synBONE_cpu, data_BONE_cpu).item()
                         test_DSC += DSC
 
-                        # IoU
+                        # Compute IoU
                         IoU = DSC / (2 - DSC)
                         test_IoU += IoU
 
-                        # Hausdorff
-                        metric_Hausdorff = HausdorffDistanceMetric(include_background=False, percentile=95)
-                        Hausdorff = metric_Hausdorff(data_synBONE, data_BONE)
+                        # Reset and compute Hausdorff
+                        metric_Hausdorff.reset()
+                        Hausdorff = metric_Hausdorff(data_synBONE_cpu, data_BONE_cpu).item()
                         test_Hausdorff += Hausdorff
             
             test_DSC /= len(data_loader_test)
