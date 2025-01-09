@@ -312,10 +312,9 @@ def main():
                             predictor=predictor,
                         )
                         
-                        # get the synthetic CT data
-                        data_synBONE = data_synBONE.detach().cpu().numpy().squeeze()
-                        data_BONE = data_BONE.detach().cpu().numpy().squeeze()
-                        data_synBONE = np.where(data_synBONE > 0.5, 1, 0)
+                        # Apply sigmoid to logits and threshold to binary predictions
+                        data_synBONE = torch.sigmoid(data_synBONE) > 0.5  # Binary segmentation
+                        data_synBONE = data_synBONE.float()  # Convert to float for metric computation
 
                         # compute the metrics
                         # DSC
