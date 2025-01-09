@@ -84,7 +84,7 @@ def create_data_loader(
         
         train_transforms = Compose(
             [
-                LoadImaged(keys=input_modality, image_only=True),
+                LoadImaged(keys=input_modality, image_only=False),
                 EnsureChannelFirstd(keys=input_modality, channel_dim='no_channel'),
                 RandSpatialCropd(keys=input_modality, roi_size=output_size),
                 RandFlipd(keys=input_modality, prob=0.5),
@@ -113,7 +113,7 @@ def create_data_loader(
         
         val_transforms = Compose(
             [
-                LoadImaged(keys=input_modality, image_only=True),
+                LoadImaged(keys=input_modality, image_only=False),
                 EnsureChannelFirstd(keys=input_modality, channel_dim='no_channel'),
                 RandSpatialCropd(keys=input_modality, roi_size=output_size),
             ]
