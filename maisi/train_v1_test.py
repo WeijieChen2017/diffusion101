@@ -212,6 +212,7 @@ def main():
         eval_save_dir = os.path.join(test_result_dir, key)
         os.makedirs(eval_save_dir, exist_ok=True)
         eval_data_loader = data_loader
+        average_mae = 0.0
 
         for i, batch in enumerate(eval_data_loader):
             data_PET = batch["PET"].to(device)
@@ -265,6 +266,11 @@ def main():
 
                     log_str = f"Test {i+1}: {filename_CT}, MAE: {masked_mae:.4f}, SynCT saved at: {filepath_synCT}."
                     log_print(log_file, log_str)
+                    average_mae += masked_mae
+        
+        average_mae /= len(eval_data_loader)
+        log_str = f"Average MAE on {key} dataset: {average_mae:.4f}"
+        log_print(log_file, log_str)
 
 if __name__ == "__main__":
     main()
