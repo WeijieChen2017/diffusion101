@@ -166,13 +166,22 @@ def main():
     return_dict = create_data_loader(
         data_div_json=None,
         cv_index=args.cv_index,
-        return_train=False,
-        return_val=False,
+        return_train=True,
+        return_val=True,
         return_test=True,
         output_size=(args.dim_x, args.dim_y, args.dim_z),
         batchsize=args.batchsize,
     )
+    data_loader_train = return_dict["train_loader"]
+    data_loader_val = return_dict["val_loader"]
     data_loader_test = return_dict["test_loader"]
+
+    # eval_dict is to perform the evaluation on training/validation/testing datasets and save it to different folders
+    eval_dict = {
+        "train": data_loader_train,
+        "val": data_loader_val,
+        "test": data_loader_test,
+    }
 
     # set the training progress log file in the project directory
     log_file = os.path.join(project_dir, "test_log.txt")
@@ -195,58 +204,67 @@ def main():
 
     # start the inference
     autoencoder.eval()
-    for i, batch in enumerate(data_loader_test):
-        data_PET = batch["PET"].to(device)
-        data_CT = batch["CT"]
-        data_mask = batch["BODY"]
-        filepath_CT = batch[f"CT_meta_dict"]["filename_or_obj"][0]
-        print(f"Test {i+1}: {filepath_CT}")
-        filename_CT = os.path.basename(filepath_CT)
-        
-        with autocast():
-            with torch.no_grad():
-                data_synCT = sliding_window_inference(
-                    inputs=data_PET,
-                    roi_size=(args.dim_x, args.dim_y, args.dim_z),
-                    sw_batch_size=args.batchsize,
-                    predictor=predictor,
-                    # overlap=0.25, 
-                    # mode=constant, 
-                    # sigma_scale=0.125, 
-                    # padding_mode=constant, 
-                    # cval=0.0, 
-                    # sw_device=None, 
-                    # device=None, 
-                    # progress=False, 
-                    # roi_weight_map=None, 
-                    # process_fn=None, 
-                    # buffer_steps=None, 
-                    # buffer_dim=-1, 
-                    # with_coord=False,
-                )
-                
-                # get the synthetic CT data
-                data_synCT = data_synCT.detach().cpu().numpy().squeeze()
-                data_CT = data_CT.detach().cpu().numpy().squeeze()
 
-                # compute the MAE between the synthetic CT and the ground truth CT
-                masked_data_synCT = data_synCT * data_mask
-                masked_data_CT = data_CT * data_mask
-                abs_diff = np.abs(masked_data_synCT - masked_data_CT)
-                masked_mae = np.sum(abs_diff) / np.sum(data_mask) * 4000 # HU range: -1024 to 2976
+    for key, data_loader in eval_dict.items():
+        log_str = f"Start testing on {key} dataset."
+        log_print(log_file, log_str)
 
-                # load the CT nifti file and take the header and affine to save the synthetic CT
-                CT_nii = nib.load(filepath_CT)
-                CT_affine = CT_nii.affine
-                CT_header = CT_nii.header
-                # save the synthetic CT
-                data_synCT_nii = nib.Nifti1Image(data_synCT, CT_affine, CT_header)
-                filename_synCT = filename_CT.replace("CTACIVV", "synCT")
-                filepath_synCT = os.path.join(test_result_dir, filename_synCT)
-                nib.save(data_synCT_nii, filepath_synCT)
+        eval_save_dir = os.path.join(test_result_dir, key)
+        os.makedirs(eval_save_dir, exist_ok=True)
+        eval_data_loader = data_loader
 
-                log_str = f"Test {i+1}: {filename_CT}, MAE: {masked_mae:.4f}, SynCT saved at: {filepath_synCT}."
-                log_print(log_file, log_str)
+        for i, batch in enumerate(eval_data_loader):
+            data_PET = batch["PET"].to(device)
+            data_CT = batch["CT"]
+            data_mask = batch["BODY"]
+            filepath_CT = batch[f"CT_meta_dict"]["filename_or_obj"][0]
+            print(f"Test {i+1}: {filepath_CT}")
+            filename_CT = os.path.basename(filepath_CT)
+            
+            with autocast():
+                with torch.no_grad():
+                    data_synCT = sliding_window_inference(
+                        inputs=data_PET,
+                        roi_size=(args.dim_x, args.dim_y, args.dim_z),
+                        sw_batch_size=args.batchsize,
+                        predictor=predictor,
+                        # overlap=0.25, 
+                        # mode=constant, 
+                        # sigma_scale=0.125, 
+                        # padding_mode=constant, 
+                        # cval=0.0, 
+                        # sw_device=None, 
+                        # device=None, 
+                        # progress=False, 
+                        # roi_weight_map=None, 
+                        # process_fn=None, 
+                        # buffer_steps=None, 
+                        # buffer_dim=-1, 
+                        # with_coord=False,
+                    )
+                    
+                    # get the synthetic CT data
+                    data_synCT = data_synCT.detach().cpu().numpy().squeeze()
+                    data_CT = data_CT.detach().cpu().numpy().squeeze()
+
+                    # compute the MAE between the synthetic CT and the ground truth CT
+                    masked_data_synCT = data_synCT * data_mask
+                    masked_data_CT = data_CT * data_mask
+                    abs_diff = np.abs(masked_data_synCT - masked_data_CT)
+                    masked_mae = np.sum(abs_diff) / np.sum(data_mask) * 4000 # HU range: -1024 to 2976
+
+                    # load the CT nifti file and take the header and affine to save the synthetic CT
+                    CT_nii = nib.load(filepath_CT)
+                    CT_affine = CT_nii.affine
+                    CT_header = CT_nii.header
+                    # save the synthetic CT
+                    data_synCT_nii = nib.Nifti1Image(data_synCT, CT_affine, CT_header)
+                    filename_synCT = filename_CT.replace("CTACIVV", "synCT")
+                    filepath_synCT = os.path.join(eval_save_dir, filename_synCT)
+                    nib.save(data_synCT_nii, filepath_synCT)
+
+                    log_str = f"Test {i+1}: {filename_CT}, MAE: {masked_mae:.4f}, SynCT saved at: {filepath_synCT}."
+                    log_print(log_file, log_str)
 
 if __name__ == "__main__":
     main()
