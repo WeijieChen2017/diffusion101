@@ -95,12 +95,14 @@ def download_and_reload_ckpt(directory=None):
 
 # we need to run the main function and gettting terminal line input configs
 
+default_project_name = "cv0_    EncTrue_DecTrue_    epochs300_Lossmae_seed729_    x256_y256_z32"
+
 def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument("--directory", type=str, default=None, help="Directory to save the downloaded files.")
 
     # get the project folder 
-    parser.add_argument("--project_name", type=str, default="project", help="project name.")
+    parser.add_argument("--project_name", type=str, default=default_project_name, help="project name.")
 
     # # get the cv index to perform cross-validation
     # parser.add_argument("--cv_index", type=int, default=0, help="Cross-validation index.")
@@ -120,8 +122,8 @@ def main():
     # parser.add_argument("--batchsize", type=int, default=1, help="Batch size.")
     # # get the loss function, default is "mae"
     # parser.add_argument("--loss", type=str, default="MAE", help="Loss function.")
-    # # get the random GPU index, default is 4
-    # parser.add_argument("--gpu", type=int, default=4, help="GPU index.")
+    # get the random GPU index, default is 0
+    parser.add_argument("--gpu", type=int, default=0, help="GPU index.")
     # # set the random seed for reproducibility
     # parser.add_argument("--seed", type=int, default=729, help="Random seed.")
     
@@ -133,8 +135,14 @@ def main():
     config_file = os.path.join(project_dir, "config.json")
     with open(config_file, "r") as f:
         config_dict = json.load(f)
+
+    exclude_keys = ["project_name", "gpu"]
     for k, v in config_dict.items():
-        setattr(args, k, v)
+        # do not update the project name and gpu index
+        if k not in exclude_keys:
+            setattr(args, k, v)
+        else:
+            print(f"{k}: {v} is not updated. Current value: {getattr(args, k)}")
     print("Global config variables have been loaded.")
 
     # print the project directory
