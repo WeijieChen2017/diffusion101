@@ -178,9 +178,9 @@ def main():
 
     # eval_dict is to perform the evaluation on training/validation/testing datasets and save it to different folders
     eval_dict = {
+        "test": data_loader_test,
         "train": data_loader_train,
         "val": data_loader_val,
-        "test": data_loader_test,
     }
 
     # set the training progress log file in the project directory
