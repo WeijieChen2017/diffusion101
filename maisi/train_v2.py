@@ -239,9 +239,9 @@ def main():
             
             for idx_sample in range(args.num_samples):
                 optimizer.zero_grad()
-                data_PET = data_samples_PET[idx_sample]
-                data_CT = data_samples_CT[idx_sample]
-                data_mask = data_samples_mask[idx_sample]
+                data_PET = data_samples_PET[idx_sample].unsqueeze(0)
+                data_CT = data_samples_CT[idx_sample].unsqueeze(0)
+                data_mask = data_samples_mask[idx_sample].unsqueeze(0)
                 with autocast():
                     outputs, _, _ = autoencoder(data_PET)
                     loss = loss_fn(outputs, data_CT)
@@ -263,14 +263,14 @@ def main():
             val_loss = 0.0
             with torch.no_grad():
                 for i, batch in enumerate(data_loader_val):
-                    data_PET = batch["PET"].to(device)
-                    data_CT = batch["CT"].to(device)
-                    data_mask = batch["BODY"].to(device)
+                    data_samples_PET = batch["PET"].to(device)
+                    data_samples_CT = batch["CT"].to(device)
+                    data_samples_mask = batch["BODY"].to(device)
                 
                     for idx_sample in range(args.num_samples):
-                        data_PET = data_PET[idx_sample]
-                        data_CT = data_CT[idx_sample]
-                        data_mask = data_mask[idx_sample]
+                        data_PET = data_PET[idx_sample].unsqueeze(0)
+                        data_CT = data_CT[idx_sample].unsqueeze(0)
+                        data_mask = data_mask[idx_sample].unsqueeze(0)
                         with autocast():
                             outputs, _, _ = autoencoder(data_PET)
                             loss = loss_fn(outputs, data_CT)
