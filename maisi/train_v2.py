@@ -214,6 +214,7 @@ def main():
             lambda_dice=1.0,  # Weight for Dice Loss
             lambda_ce=1.0,  # Weight for Cross-Entropy Loss
         )
+    else:
         raise ValueError(f"Unsupported loss function: {args.loss}")
 
     # define the scheduler using StepLR
