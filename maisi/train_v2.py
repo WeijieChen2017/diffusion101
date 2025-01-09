@@ -18,7 +18,7 @@ from monai.losses import DiceCELoss
 # now train_v2 will output the bone segmentation map
 
 # use DSC, IoU, Hausdoff as the metric
-from monai.metrics import DiceMetric, HausdorffDistanceMetric, HausdorffDistance
+from monai.metrics import DiceMetric, HausdorffDistanceMetric
 
 root_dir = "project"
 os.makedirs(root_dir, exist_ok=True)
