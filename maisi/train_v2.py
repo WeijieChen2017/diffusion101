@@ -125,8 +125,8 @@ def main():
     parser.add_argument("--batchsize", type=int, default=1, help="Batch size.")
     # get the number of samples
     parser.add_argument("--num_samples", type=int, default=4, help="Number of samples.")
-    # get the loss function, default is "mae"
-    parser.add_argument("--loss", type=str, default="MAE", help="Loss function.")
+    # get the loss function, default is "DiceCELoss"
+    parser.add_argument("--loss", type=str, default="DiceCELoss", help="Loss function.")
     # get the random GPU index, default is 4
     parser.add_argument("--gpu", type=int, default=2, help="GPU index.")
     # set the random seed for reproducibility
