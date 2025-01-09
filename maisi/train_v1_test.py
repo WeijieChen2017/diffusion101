@@ -5,6 +5,7 @@ import argparse
 
 import torch
 import nibabel as nib
+import numpy as np
 from torch.cuda.amp import autocast, GradScaler
 
 from scripts.utils import define_instance
@@ -225,13 +226,13 @@ def main():
                 
                 # get the synthetic CT data
                 data_synCT = data_synCT.detach().cpu().numpy().squeeze()
+                data_CT = data_CT.detach().cpu().numpy().squeeze()
 
                 # compute the MAE between the synthetic CT and the ground truth CT
                 masked_data_synCT = data_synCT * data_mask
                 masked_data_CT = data_CT * data_mask
-                abs_diff = torch.abs(masked_data_synCT - masked_data_CT)
-                masked_mae = abs_diff.sum() / data_mask.sum() * 4000  # for denormalization
-
+                abs_diff = np.abs(masked_data_synCT - masked_data_CT)
+                masked_mae = np.sum(abs_diff) / np.sum(data_mask) * 4000 # HU range: -1024 to 2976
 
                 # load the CT nifti file and take the header and affine to save the synthetic CT
                 CT_nii = nib.load(filepath_CT)
