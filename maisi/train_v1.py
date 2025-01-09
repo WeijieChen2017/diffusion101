@@ -259,13 +259,31 @@ def main():
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_val_epoch = epoch
-            torch.save(autoencoder.state_dict(), os.path.join(project_dir, "best_model.pth"))
+            checkpoint = {
+                "epoch": epoch,
+                "model_state_dict": autoencoder.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "scheduler_state_dict": scheduler.state_dict(),
+                "scaler_state_dict": scaler.state_dict(),
+                "best_val_loss": best_val_loss,
+                "best_val_epoch": best_val_epoch,
+            }
+            torch.save(checkpoint, os.path.join(project_dir, "best_checkpoint.pth"))
             log_str = f"Best model saved at epoch {epoch} with Val Loss: {val_loss:.4f}."
             log_print(log_file, log_str)
 
         if epoch % save_per_epoch == 0:
-            torch.save(autoencoder.state_dict(), os.path.join(project_dir, f"model_epoch{epoch}.pth"))
-            log_str = f"Model saved at epoch {epoch}."
+            checkpoint = {
+                "epoch": epoch,
+                "model_state_dict": autoencoder.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "scheduler_state_dict": scheduler.state_dict(),
+                "scaler_state_dict": scaler.state_dict(),
+                "best_val_loss": best_val_loss,
+                "best_val_epoch": best_val_epoch,
+            }
+            torch.save(checkpoint, os.path.join(project_dir, f"checkpoint_epoch{epoch}.pth"))
+            log_str = f"Model checkpoint saved at epoch {epoch}."
             log_print(log_file, log_str)
 
         scheduler.step()
