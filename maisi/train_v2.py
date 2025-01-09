@@ -329,25 +329,29 @@ def main():
                     data_BONE = data_BONE.contiguous()
 
                     # Debug unique values and shapes
-                    print("data_synBONE unique values:", torch.unique(data_synBONE))
-                    print("data_BONE unique values:", torch.unique(data_BONE))
-                    print("Shapes - data_synBONE:", data_synBONE.shape, "data_BONE:", data_BONE.shape)
+                    # print("data_synBONE unique values:", torch.unique(data_synBONE))
+                    # print("data_BONE unique values:", torch.unique(data_BONE))
+                    # print("Shapes - data_synBONE:", data_synBONE.shape, "data_BONE:", data_BONE.shape)
+                    # data_synBONE unique values: metatensor([0.], device='cuda:6')
+                    # data_BONE unique values: metatensor([0., 1.], device='cuda:6')
+                    # Shapes - data_synBONE: torch.Size([1, 1, 256, 256, 417]) data_BONE: torch.Size([1, 1, 256, 256, 417])
+                    # Empty segmentation mask detected. Skipping this batch.
 
                     # Skip metrics if masks are empty
                     if data_synBONE.sum() == 0 or data_BONE.sum() == 0:
                         print("Empty segmentation mask detected. Skipping this batch.")
                         continue
 
-                # Compute metrics
-                DSC = metric_DSC(data_synBONE, data_BONE).item()
-                test_DSC += DSC
+                    # Compute metrics
+                    DSC = metric_DSC(data_synBONE, data_BONE).item()
+                    test_DSC += DSC
 
-                IoU = DSC / (2 - DSC)
-                test_IoU += IoU
+                    IoU = DSC / (2 - DSC)
+                    test_IoU += IoU
 
-                metric_Hausdorff.reset()
-                Hausdorff = metric_Hausdorff(data_synBONE, data_BONE).item()
-                test_Hausdorff += Hausdorff
+                    metric_Hausdorff.reset()
+                    Hausdorff = metric_Hausdorff(data_synBONE, data_BONE).item()
+                    test_Hausdorff += Hausdorff
             
             test_DSC /= len(data_loader_test)
             test_IoU /= len(data_loader_test)
