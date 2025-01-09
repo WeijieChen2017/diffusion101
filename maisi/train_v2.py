@@ -301,7 +301,7 @@ def main():
             test_Hausdorff = 0.0
             for i, batch in enumerate(data_loader_test):
                 data_PET = batch["PET"].to(device)
-                data_BONE = batch["BONE"]
+                data_BONE = batch["BONE"].to(device)
                 
                 with autocast():
                     with torch.no_grad():
