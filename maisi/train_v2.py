@@ -344,15 +344,19 @@ def main():
                         print("Empty segmentation mask detected. Skipping this batch.")
                         continue
 
-                    # Compute metrics
+                    # Compute Dice (on GPU)
                     DSC = metric_DSC(data_synBONE, data_BONE).item()
                     test_DSC += DSC
 
+                    # Compute IoU (on GPU)
                     IoU = DSC / (2 - DSC)
                     test_IoU += IoU
 
+                    # Compute Hausdorff (on CPU)
+                    data_synBONE_cpu = data_synBONE.cpu().contiguous()
+                    data_BONE_cpu = data_BONE.cpu().contiguous()
                     metric_Hausdorff.reset()
-                    Hausdorff = metric_Hausdorff(data_synBONE, data_BONE).item()
+                    Hausdorff = metric_Hausdorff(data_synBONE_cpu, data_BONE_cpu).item()
                     test_Hausdorff += Hausdorff
             
             test_DSC /= len(data_loader_test)
