@@ -228,17 +228,20 @@ def main():
     for epoch in range(args.epochs):
         autoencoder.train()
         train_loss = 0.0
-        for i, batch_list in enumerate(data_loader_train):
-            # in the data loader, the input is a tuple of (input, label, mask)
-            for batch in batch_list:
-                data_PET = batch["PET"].to(device)
-                data_CT = batch["CT"].to(device)
-                data_mask = batch["BODY"].to(device)
+        for i, batch in enumerate(data_loader_train):
+            data_samples_PET = batch["PET"].to(device)
+            data_samples_CT = batch["CT"].to(device)
+            data_samples_mask = batch["BODY"].to(device)
                 # print the data shape of all three data
                 # print("data_PET shape: ", data_PET.shape, data_PET.dtype)
                 # print("data_CT shape: ", data_CT.shape, data_CT.dtype)
                 # print("data_mask shape: ", data_mask.shape, data_mask.dtype)
+            
+            for idx_sample in range(args.num_samples):
                 optimizer.zero_grad()
+                data_PET = data_samples_PET[idx_sample]
+                data_CT = data_samples_CT[idx_sample]
+                data_mask = data_samples_mask[idx_sample]
                 with autocast():
                     outputs, _, _ = autoencoder(data_PET)
                     loss = loss_fn(outputs, data_CT)
@@ -259,11 +262,15 @@ def main():
             autoencoder.eval()
             val_loss = 0.0
             with torch.no_grad():
-                for i, batch_list in enumerate(data_loader_val):
-                    for batch in batch_list:
-                        data_PET = batch["PET"].to(device)
-                        data_CT = batch["CT"].to(device)
-                        data_mask = batch["BODY"].to(device)
+                for i, batch in enumerate(data_loader_val):
+                    data_PET = batch["PET"].to(device)
+                    data_CT = batch["CT"].to(device)
+                    data_mask = batch["BODY"].to(device)
+                
+                    for idx_sample in range(args.num_samples):
+                        data_PET = data_PET[idx_sample]
+                        data_CT = data_CT[idx_sample]
+                        data_mask = data_mask[idx_sample]
                         with autocast():
                             outputs, _, _ = autoencoder(data_PET)
                             loss = loss_fn(outputs, data_CT)
