@@ -289,9 +289,9 @@ def main():
                 # Empty segmentation mask detected. Skipping this batch.
 
                 # Skip metrics if masks are empty
-                if data_synBONE.sum() == 0 or data_BONE.sum() == 0:
-                    print("Empty segmentation mask detected. Skipping this batch.")
-                    continue
+                # if data_synBONE.sum() == 0 or data_BONE.sum() == 0:
+                #     print("Empty segmentation mask detected. Skipping this batch.")
+                #     continue
 
                 # Compute Dice (on GPU)
                 DSC = metric_DSC(data_synBONE, data_BONE).item()
