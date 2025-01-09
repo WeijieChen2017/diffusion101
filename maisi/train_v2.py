@@ -257,7 +257,7 @@ def main():
                 data_PET = data_samples_PET[idx_sample].unsqueeze(0)
                 data_BONE = data_samples_BONE[idx_sample].unsqueeze(0)
                 with autocast():
-                    pred_mask, _, _ = autoencoder(data_PET)
+                    outputs, _, _ = autoencoder(data_PET)
                     loss = loss_fn(outputs, data_BONE)
                     loss = loss.mean()  # Ensure loss is a scalar
 
