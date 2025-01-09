@@ -308,31 +308,46 @@ def main():
                 data_PET = batch["PET"].to(device)
                 data_BONE = batch["BONE"].to(device)
                 
-                with autocast():
-                    with torch.no_grad():
+                with torch.no_grad():
+                    with autocast():
+                        # Perform inference
                         data_synBONE = sliding_window_inference(
                             inputs=data_PET,
                             roi_size=(args.dim_x, args.dim_y, args.dim_z),
                             sw_batch_size=args.batchsize,
                             predictor=predictor,
                         )
-                        
-                        # Ensure contiguous and move to CPU for metrics
-                        data_synBONE_cpu = data_synBONE.cpu().contiguous()
-                        data_BONE_cpu = data_BONE.cpu().contiguous()
 
-                        # Compute DSC
-                        DSC = metric_DSC(data_synBONE_cpu, data_BONE_cpu).item()
-                        test_DSC += DSC
+                        # Threshold predictions
+                        data_synBONE = torch.sigmoid(data_synBONE)  # Probabilities in [0, 1]
+                        data_synBONE = (data_synBONE > 0.5).float()  # Binary segmentation
 
-                        # Compute IoU
-                        IoU = DSC / (2 - DSC)
-                        test_IoU += IoU
+                    # Ensure correct shapes and types
+                    data_synBONE = data_synBONE.unsqueeze(1) if data_synBONE.ndim == 4 else data_synBONE
+                    data_BONE = data_BONE.unsqueeze(1) if data_BONE.ndim == 4 else data_BONE
+                    data_synBONE = data_synBONE.contiguous()
+                    data_BONE = data_BONE.contiguous()
 
-                        # Reset and compute Hausdorff
-                        metric_Hausdorff.reset()
-                        Hausdorff = metric_Hausdorff(data_synBONE_cpu, data_BONE_cpu).item()
-                        test_Hausdorff += Hausdorff
+                    # Debug unique values and shapes
+                    print("data_synBONE unique values:", torch.unique(data_synBONE))
+                    print("data_BONE unique values:", torch.unique(data_BONE))
+                    print("Shapes - data_synBONE:", data_synBONE.shape, "data_BONE:", data_BONE.shape)
+
+                    # Skip metrics if masks are empty
+                    if data_synBONE.sum() == 0 or data_BONE.sum() == 0:
+                        print("Empty segmentation mask detected. Skipping this batch.")
+                        continue
+
+                # Compute metrics
+                DSC = metric_DSC(data_synBONE, data_BONE).item()
+                test_DSC += DSC
+
+                IoU = DSC / (2 - DSC)
+                test_IoU += IoU
+
+                metric_Hausdorff.reset()
+                Hausdorff = metric_Hausdorff(data_synBONE, data_BONE).item()
+                test_Hausdorff += Hausdorff
             
             test_DSC /= len(data_loader_test)
             test_IoU /= len(data_loader_test)
