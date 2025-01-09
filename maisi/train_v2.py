@@ -125,12 +125,14 @@ def main():
     parser.add_argument("--batchsize", type=int, default=1, help="Batch size.")
     # get the number of samples
     parser.add_argument("--num_samples", type=int, default=4, help="Number of samples.")
+    # get the cache ratio
+    parser.add_argument("--cache_rate", type=float, default=1.0, help="Cache rate.")
     # get the loss function, default is "DiceCELoss"
     parser.add_argument("--loss", type=str, default="DiceCELoss", help="Loss function.")
     # get the random GPU index, default is 4
     parser.add_argument("--gpu", type=int, default=2, help="GPU index.")
     # set the random seed for reproducibility
-    parser.add_argument("--seed", type=int, default=426, help="Random seed.")
+    parser.add_argument("--seed", type=int, default=729, help="Random seed.")
     
     args = parser.parse_args()
     # apply the random seed
@@ -170,7 +172,7 @@ def main():
         output_size=(args.dim_x, args.dim_y, args.dim_z),
         batchsize=args.batchsize,
         num_samples=args.num_samples,
-        cache_rate=0.1,
+        cache_rate=args.cache_rate,
         input_modality = ["PET", "BONE"],
     )
     data_division_dict = return_dict["data_division_dict"]
