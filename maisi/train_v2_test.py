@@ -126,7 +126,7 @@ def main():
     # # get the loss function, default is "mae"
     # parser.add_argument("--loss", type=str, default="MAE", help="Loss function.")
     # get the random GPU index, default is 0
-    parser.add_argument("--gpu", type=int, default=0, help="GPU index.")
+    parser.add_argument("--gpu", type=int, default=2, help="GPU index.")
     # # set the random seed for reproducibility
     # parser.add_argument("--seed", type=int, default=729, help="Random seed.")
     
