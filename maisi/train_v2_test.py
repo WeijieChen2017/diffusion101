@@ -222,9 +222,9 @@ def main():
         os.makedirs(eval_save_dir, exist_ok=True)
         eval_data_loader = data_loader
 
-        test_DSC = 0.0
-        test_IoU = 0.0
-        test_Hausdorff = 0.0
+        test_DSC = []
+        test_IoU = []
+        test_Hausdorff = []
         for i, batch in enumerate(eval_data_loader):
             data_PET = batch["PET"].to(device)
             data_BONE = batch["BONE"].to(device)
@@ -259,18 +259,18 @@ def main():
 
                 # Compute Dice (on GPU)
                 DSC = metric_DSC(data_synBONE, data_BONE).item()
-                test_DSC += DSC
+                test_DSC.append(DSC)
 
                 # Compute IoU (on GPU)
                 IoU = DSC / (2 - DSC)
-                test_IoU += IoU
+                test_IoU.append(IoU)
 
                 # Compute Hausdorff (on CPU)
                 data_synBONE_cpu = data_synBONE.cpu().contiguous()
                 data_BONE_cpu = data_BONE.cpu().contiguous()
                 metric_Hausdorff.reset()
                 Hausdorff = metric_Hausdorff(data_synBONE_cpu, data_BONE_cpu).item()
-                test_Hausdorff += Hausdorff
+                test_Hausdorff.append(Hausdorff)
 
                 # load the CT nifti file and take the header and affine to save the synthetic CT
                 BONE_nii = nib.load(filepath_BONE)
@@ -286,15 +286,15 @@ def main():
                 log_str = f"{key} {i+1}: {filename_BONE}, DSC: {DSC:.4f}, IoU: {IoU:.4f}, Hausdorff: {Hausdorff:.4f}."
                 log_print(log_file, log_str)
             
-            test_DSC /= len(data_loader_test)
-            test_IoU /= len(data_loader_test)
-            test_Hausdorff /= len(data_loader_test)
+            average_test_DSC = np.mean(np.array(test_DSC))
+            average_test_IoU = np.mean(np.array(test_IoU))
+            average_test_Hausdorff = np.mean(np.array(test_Hausdorff))
             
-            log_str = f"Average {key} DSC: {test_DSC:.4f}."
+            log_str = f"Average {key} DSC: {average_test_DSC:.4f}."
             log_print(log_file, log_str)
-            log_str = f"Average {key} IoU: {test_IoU:.4f}."
+            log_str = f"Average {key} IoU: {average_test_IoU:.4f}."
             log_print(log_file, log_str)
-            log_str = f"Average {key} Hausdorff: {test_Hausdorff:.4f}."
+            log_str = f"Average {key} Hausdorff: {average_test_Hausdorff:.4f}."
             log_print(log_file, log_str)
             
 if __name__ == "__main__":
