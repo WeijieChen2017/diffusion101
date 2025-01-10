@@ -129,6 +129,8 @@ def main():
     parser.add_argument("--cache_rate", type=float, default=1.0, help="Cache rate.")
     # get the loss function, default is "DiceCELoss"
     parser.add_argument("--loss", type=str, default="DiceCELoss", help="Loss function.")
+    # get the learning rate
+    parser.add_argument("--lr", type=float, default=4e-5, help="Learning rate.")
     # get the random GPU index, default is 4
     parser.add_argument("--gpu", type=int, default=2, help="GPU index.")
     # set the random seed for reproducibility
@@ -205,7 +207,7 @@ def main():
             param.requires_grad = False
 
     # define the optimizer using AdamW
-    optimizer = torch.optim.AdamW(autoencoder.parameters(), lr=1e-4)
+    optimizer = torch.optim.AdamW(autoencoder.parameters(), lr=args.lr)
 
     # define the loss function according to the input argument
     if args.loss == "DiceCELoss":
