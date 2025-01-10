@@ -276,6 +276,7 @@ def main():
                 BONE_nii = nib.load(filepath_BONE)
                 BONE_affine = BONE_nii.affine
                 BONE_header = BONE_nii.header
+                data_synBONE_cpu = data_synBONE_cpu > 0.5
                 # save the synthetic BONE mask
                 data_synBONE_nii = nib.Nifti1Image(data_synBONE_cpu.numpy().squeeze(), BONE_affine, BONE_header)
                 filename_synBONE = filename_BONE.replace("BONE", "synBONE")
