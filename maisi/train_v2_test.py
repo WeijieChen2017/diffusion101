@@ -175,6 +175,7 @@ def main():
         batchsize=args.batchsize,
         num_samples=args.num_samples,
         cache_rate=0.1,
+        is_inference=True,
         input_modality = ["PET", "BONE"],
     )
     data_loader_train = return_dict["train_loader"]
@@ -183,7 +184,7 @@ def main():
 
     # eval_dict is to perform the evaluation on training/validation/testing datasets and save it to different folders
     eval_dict = {
-        "test": data_loader_test,
+        # "test": data_loader_test,
         "train": data_loader_train,
         "val": data_loader_val,
     }
