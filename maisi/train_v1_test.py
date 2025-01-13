@@ -219,9 +219,14 @@ def main():
         # "train": data_loader_train,
         # "val": data_loader_val,
     }
+    
+    # create the test result directory
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    test_result_dir = os.path.join(project_dir, "test_results", time_str)
+    os.makedirs(test_result_dir, exist_ok=True)
 
     # set the training progress log file in the project directory
-    log_file = os.path.join(project_dir, "test_log.txt")
+    log_file = os.path.join(test_result_dir, "test_log.txt")
     # write the base configurations to the log file and timestamp
     with open(log_file, "w") as f:
         f.write(f"Project Name: {project_name}\n")
@@ -229,11 +234,6 @@ def main():
         f.write(f"Test Configurations: {json.dumps(vars(args), indent=4)}\n")
         f.write(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("\n")
-    
-    # create the test result directory
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    test_result_dir = os.path.join(project_dir, "test_results_", time_str)
-    os.makedirs(test_result_dir, exist_ok=True)
     
     # Define a predictor that extracts only the first tensor
     def predictor(patch_data):
@@ -299,7 +299,7 @@ def main():
                     # compute the MAE between the synthetic CT and the ground truth CT
                     masked_data_synCT = data_synCT * data_mask
                     masked_data_CT = data_CT * data_mask
-                    masked_data_CT_boneEnhanced = data_CT * data_mask
+                    masked_data_CT_boneEnhanced = data_synCT_boneEnhanced * data_mask
 
                     abs_diff = np.abs(masked_data_synCT - masked_data_CT)
                     masked_mae = np.sum(abs_diff) / np.sum(data_mask) * 4000 # HU range: -1024 to 2976
