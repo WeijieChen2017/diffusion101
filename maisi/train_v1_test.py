@@ -97,7 +97,8 @@ def download_and_reload_ckpt(directory=None):
 # we need to run the main function and gettting terminal line input configs
 
 # default_project_name = "cv0_    EncTrue_DecTrue_    epochs300_Lossmae_seed729_    x256_y256_z32"
-default_project_name = "cv0_EncTrue_DecFalse_epochs600_LossMAE_seed729_x128_y128_z128"
+# default_project_name = "cv0_EncTrue_DecFalse_epochs600_LossMAE_seed729_x128_y128_z128"
+default_project_name = "cv0_EncFalse_DecTrue_epochs600_LossMAE_seed729_x128_y128_z128"
 
 def main():
     parser = argparse.ArgumentParser()
