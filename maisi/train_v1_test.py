@@ -230,7 +230,8 @@ def main():
         f.write("\n")
     
     # create the test result directory
-    test_result_dir = os.path.join(project_dir, "test_results")
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    test_result_dir = os.path.join(project_dir, "test_results_", time_str)
     os.makedirs(test_result_dir, exist_ok=True)
     
     # Define a predictor that extracts only the first tensor
