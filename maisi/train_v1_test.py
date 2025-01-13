@@ -264,7 +264,7 @@ def main():
             # here we add the predicted bone mask and set all masked value to 0.37
             casename = filename_CT.split("_")[1]
             bone_mask_casename =  f"mask_body_bone_{casename}.nii.gz" # mask_body_bone_E4066
-            pred_bone_mask_path = os.path.join(bone_project_dir, key, bone_mask_casename)
+            pred_bone_mask_path = os.path.join(bone_project_dir, "test_results", key, bone_mask_casename)
             pred_bone_mask = nib.load(pred_bone_mask_path).get_fdata()
             pred_bone_mask_binary = pred_bone_mask > 0.5
             
