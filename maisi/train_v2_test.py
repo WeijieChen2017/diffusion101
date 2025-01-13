@@ -98,7 +98,7 @@ def download_and_reload_ckpt(directory=None):
 
     return autoencoder
 
-default_project_name = "cv0_EncTrue_DecTrue_epochs300_LossDiceCELoss_seed729_x256_y256_z32"
+default_project_name = "cv0_EncTrue_DecTrue_epochs1000_LossDiceCELoss_seed729_x256_y256_z32"
 
 def main():
     parser = argparse.ArgumentParser()
@@ -126,7 +126,7 @@ def main():
     # # get the loss function, default is "mae"
     # parser.add_argument("--loss", type=str, default="MAE", help="Loss function.")
     # get the random GPU index, default is 0
-    parser.add_argument("--gpu", type=int, default=2, help="GPU index.")
+    parser.add_argument("--gpu", type=int, default=3, help="GPU index.")
     # # set the random seed for reproducibility
     # parser.add_argument("--seed", type=int, default=729, help="Random seed.")
     
