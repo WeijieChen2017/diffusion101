@@ -157,12 +157,31 @@ def main():
     device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
 
+    # Path to the saved checkpoint
+    pretrain_weights_path = os.path.join(project_dir, "best_checkpoint.pth")
+
+    # Define the autoencoder
     autoencoder = download_and_reload_ckpt()
-    # load the autoencoder model pre-trained weights
-    pretrain_weights_path = os.path.join(project_dir, "best_model.pth")
-    autoencoder.load_state_dict(torch.load(pretrain_weights_path))
-    print("Pre-trained weights loaded at: ", pretrain_weights_path)
+
+    # Load the checkpoint
+    checkpoint = torch.load(pretrain_weights_path)
+
+    # Load the model's weights
+    autoencoder.load_state_dict(checkpoint["model_state_dict"])
+    print("Pre-trained weights loaded from: ", pretrain_weights_path)
+
+    # Move the model to the desired device
     autoencoder.to(device)
+
+    # Optional: If you want to continue training, restore other components
+    # Example:
+    # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    # scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+    # scaler.load_state_dict(checkpoint["scaler_state_dict"])
+    # best_val_loss = checkpoint["best_val_loss"]
+    # best_val_epoch = checkpoint["best_val_epoch"]
+
+    print("Checkpoint successfully loaded.")
 
 
     return_dict = create_data_loader(
