@@ -128,6 +128,9 @@ def main():
     parser.add_argument("--gpu", type=int, default=4, help="GPU index.")
     # # set the random seed for reproducibility
     # parser.add_argument("--seed", type=int, default=729, help="Random seed.")
+
+    # add the bone prediction project name
+    parser.add_argument("--bone_project_name", type=str, default="cv0_EncTrue_DecTrue_epochs1000_LossDiceCELoss_seed729_x256_y256_z32", help="Bone prediction project name.")
     
     args = parser.parse_args()
     # get the project directory
@@ -146,6 +149,10 @@ def main():
         else:
             print(f"{k}: {v} is not updated. Current value: {getattr(args, k)}")
     print("Global config variables have been loaded.")
+
+    # bone project directory
+    bone_project_name = args.bone_project_name
+    bone_project_dir = os.path.join("project", bone_project_name)
 
     # print the project directory
     print(f"Project Directory: {project_dir}")
@@ -242,6 +249,7 @@ def main():
         os.makedirs(eval_save_dir, exist_ok=True)
         eval_data_loader = data_loader
         average_mae = 0.0
+        average_mae_boneEnhanced = 0.0
 
         for i, batch in enumerate(eval_data_loader):
             data_PET = batch["PET"].to(device)
@@ -250,6 +258,13 @@ def main():
             filepath_CT = batch[f"CT_meta_dict"]["filename_or_obj"][0]
             print(f"Test {i+1}: {filepath_CT}")
             filename_CT = os.path.basename(filepath_CT)
+
+            # here we add the predicted bone mask and set all masked value to 0.37
+            casename = filename_CT.split("_")[1]
+            bone_mask_casename =  f"mask_body_bone_{casename}.nii.gz" # mask_body_bone_E4066
+            pred_bone_mask_path = os.path.join(bone_project_dir, key, bone_mask_casename)
+            pred_bone_mask = nib.load(pred_bone_mask_path).get_fdata()
+            pred_bone_mask_binary = pred_bone_mask > 0.5
             
             with autocast():
                 with torch.no_grad():
@@ -276,12 +291,19 @@ def main():
                     # get the synthetic CT data
                     data_synCT = data_synCT.detach().cpu().numpy().squeeze()
                     data_CT = data_CT.detach().cpu().numpy().squeeze()
+                    data_synCT_boneEnhanced = data_synCT.copy()
+                    data_synCT_boneEnhanced[pred_bone_mask_binary] = 0.37
 
                     # compute the MAE between the synthetic CT and the ground truth CT
                     masked_data_synCT = data_synCT * data_mask
                     masked_data_CT = data_CT * data_mask
+                    masked_data_CT_boneEnhanced = data_CT * data_mask
+
                     abs_diff = np.abs(masked_data_synCT - masked_data_CT)
                     masked_mae = np.sum(abs_diff) / np.sum(data_mask) * 4000 # HU range: -1024 to 2976
+
+                    abs_diff_boneEnhanced = np.abs(masked_data_CT_boneEnhanced - masked_data_CT)
+                    masked_mae_boneEnhanced = np.sum(abs_diff_boneEnhanced) / np.sum(data_mask) * 4000 # HU range: -1024 to 2976
 
                     # load the CT nifti file and take the header and affine to save the synthetic CT
                     CT_nii = nib.load(filepath_CT)
@@ -292,13 +314,20 @@ def main():
                     filename_synCT = filename_CT.replace("CTACIVV", "synCT")
                     filepath_synCT = os.path.join(eval_save_dir, filename_synCT)
                     nib.save(data_synCT_nii, filepath_synCT)
+                    # save the bone enhanced synthetic CT
+                    data_synCT_boneEnhanced_nii = nib.Nifti1Image(data_synCT_boneEnhanced, CT_affine, CT_header)
+                    filename_synCT_boneEnhanced = filename_CT.replace("CTACIVV", "synCT_boneEnhanced")
+                    filepath_synCT_boneEnhanced = os.path.join(eval_save_dir, filename_synCT_boneEnhanced)
+                    nib.save(data_synCT_boneEnhanced_nii, filepath_synCT_boneEnhanced)
 
-                    log_str = f"{key} {i+1}: {filename_CT}, MAE: {masked_mae:.4f}, SynCT saved at: {filepath_synCT}."
+                    log_str = f"{key} {i+1}: {filename_CT}, MAE: {masked_mae:.4f}, BoneEnhanced MAE: {masked_mae_boneEnhanced:.4f}, SynCT saved at: {filepath_synCT}, SynCT_boneEnhanced saved at: {filepath_synCT_boneEnhanced}"
                     log_print(log_file, log_str)
                     average_mae += masked_mae
+                    average_mae_boneEnhanced += masked_mae_boneEnhanced
         
         average_mae /= len(eval_data_loader)
-        log_str = f"Average MAE on {key} dataset: {average_mae:.4f}"
+        average_mae_boneEnhanced /= len(eval_data_loader)
+        log_str = f"Average MAE on {key} dataset: {average_mae:.4f}, Average BoneEnhanced MAE on {key} dataset: {average_mae_boneEnhanced:.4f}"
         log_print(log_file, log_str)
 
 if __name__ == "__main__":
