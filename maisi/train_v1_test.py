@@ -97,7 +97,7 @@ def download_and_reload_ckpt(directory=None):
 # we need to run the main function and gettting terminal line input configs
 
 # default_project_name = "cv0_    EncTrue_DecTrue_    epochs300_Lossmae_seed729_    x256_y256_z32"
-default_project_name = "cv0_    EncTrue_DecTrue_    epochs300_LossMAE_seed729_    x128_y128_z128"
+default_project_name = "cv0_EncFalse_DecTrue_epochs600_LossMAE_seed729_x128_y128_z128"
 
 def main():
     parser = argparse.ArgumentParser()
@@ -125,7 +125,7 @@ def main():
     # # get the loss function, default is "mae"
     # parser.add_argument("--loss", type=str, default="MAE", help="Loss function.")
     # get the random GPU index, default is 0
-    parser.add_argument("--gpu", type=int, default=0, help="GPU index.")
+    parser.add_argument("--gpu", type=int, default=4, help="GPU index.")
     # # set the random seed for reproducibility
     # parser.add_argument("--seed", type=int, default=729, help="Random seed.")
     
@@ -156,7 +156,29 @@ def main():
     device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
 
+    # Define the autoencoder
     autoencoder = download_and_reload_ckpt()
+
+    # Load the checkpoint
+    checkpoint = torch.load(pretrain_weights_path)
+
+    # Load the model's weights
+    autoencoder.load_state_dict(checkpoint["model_state_dict"])
+    print("Pre-trained weights loaded from: ", pretrain_weights_path)
+
+    # Move the model to the desired device
+    autoencoder.to(device)
+
+    # Optional: If you want to continue training, restore other components
+    # Example:
+    # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    # scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+    # scaler.load_state_dict(checkpoint["scaler_state_dict"])
+    # best_val_loss = checkpoint["best_val_loss"]
+    # best_val_epoch = checkpoint["best_val_epoch"]
+
+    print("Checkpoint successfully loaded.")
+
     # load the autoencoder model pre-trained weights
     pretrain_weights_path = os.path.join(project_dir, "best_model.pth")
     autoencoder.load_state_dict(torch.load(pretrain_weights_path))
@@ -180,9 +202,9 @@ def main():
 
     # eval_dict is to perform the evaluation on training/validation/testing datasets and save it to different folders
     eval_dict = {
-        # "test": data_loader_test,
-        "train": data_loader_train,
-        "val": data_loader_val,
+        "test": data_loader_test,
+        # "train": data_loader_train,
+        # "val": data_loader_val,
     }
 
     # set the training progress log file in the project directory
@@ -266,7 +288,7 @@ def main():
                     filepath_synCT = os.path.join(eval_save_dir, filename_synCT)
                     nib.save(data_synCT_nii, filepath_synCT)
 
-                    log_str = f"Test {i+1}: {filename_CT}, MAE: {masked_mae:.4f}, SynCT saved at: {filepath_synCT}."
+                    log_str = f"{key} {i+1}: {filename_CT}, MAE: {masked_mae:.4f}, SynCT saved at: {filepath_synCT}."
                     log_print(log_file, log_str)
                     average_mae += masked_mae
         
