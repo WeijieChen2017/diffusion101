@@ -161,7 +161,7 @@ def generate_synthetic_ct_from_maps(ldm_sampler, folder_path):
 
         # Generate synthetic image
         synthetic_image, _ = ldm_sampler.sample_one_pair(
-            combine_label_or_aug=segmentation_map.unsqueeze(0),
+            combine_label_or_aug=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
             top_region_index_tensor=top_region_index_tensor,
             bottom_region_index_tensor=bottom_region_index_tensor,
             spacing_tensor=spacing_tensor,
