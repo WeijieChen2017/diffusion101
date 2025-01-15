@@ -143,8 +143,8 @@ def generate_synthetic_ct_from_maps(ldm_sampler, folder_path):
     synthetic_images = []
     for segmentation_map in segmentation_maps:
         # Prepare tensors for the segmentation map
-        top_region_index_tensor = torch.FloatTensor([0]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
-        bottom_region_index_tensor = torch.FloatTensor([0]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
+        top_region_index_tensor = torch.FloatTensor([79]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
+        bottom_region_index_tensor = torch.FloatTensor([335]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
         spacing_tensor = torch.FloatTensor(ldm_sampler.spacing).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
 
         # Generate synthetic image
@@ -159,4 +159,7 @@ def generate_synthetic_ct_from_maps(ldm_sampler, folder_path):
 
 print(f"Everything goes well!")
 # Generate synthetic CT images from your segmentation maps
-# synthetic_images = generate_synthetic_ct_from_maps(ldm_sampler, "path/to/segmentation_maps")
+synthetic_images = generate_synthetic_ct_from_maps(ldm_sampler, "Seg2SynCT_test")
+
+# 3dresample -dxyz 1.5 1.5 2.0 -rmode Cu -prefix CTACIVV_E4128_MAISI_conferRes.nii.gz -input CTACIVV_E4128_MAISI.nii.gz
+# 3dresample -dxyz 2.734 2.734 2.734 -rmode Cu -prefix CTACIVV_E4128_MAISI_256.nii.gz -input CTACIVV_E4128_MAISI.nii.gz
