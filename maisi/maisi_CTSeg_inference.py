@@ -6,6 +6,7 @@ import json
 import monai
 import torch
 
+from monai.utils import set_determinism
 from scripts.sample import LDMSampler
 from scripts.utils import define_instance
 
@@ -72,6 +73,8 @@ mask_generation_scale_factor = checkpoint_mask_generation_diffusion_unet["scale_
 print("All the trained model weights have been loaded.")
 
 latent_shape = [args.latent_channels, args.output_size[0] // 4, args.output_size[1] // 4, args.output_size[2] // 4]
+set_determinism(seed=0)
+args.random_seed = 0
 
 # Initialize the LDMSampler with appropriate parameters
 ldm_sampler = LDMSampler(
