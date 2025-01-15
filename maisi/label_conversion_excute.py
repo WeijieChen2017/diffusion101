@@ -2,7 +2,9 @@ import os
 import nibabel as nib
 import numpy as np
 from pathlib import Path
+from multiprocessing import Pool, cpu_count
 
+# Mapping dictionary (unchanged)
 T2M_mapping = {
     1: 3,
     2: 5,
@@ -123,56 +125,54 @@ T2M_mapping = {
     117: 114
 }
 
-def convert_nifti_files(input_folder):
+def process_file(file_path):
     """
-    Convert all NIfTI files in the input folder from TSv2 to MAISI labels.
-    
-    Args:
-        input_folder (str): Path to the folder containing NIfTI files
+    Process a single NIfTI file.
     """
-    # Create output folder if it doesn't exist
+    try:
+        # Load the NIfTI file
+        print(f"Processing {file_path.name}...")
+        nifti_img = nib.load(str(file_path))
+        
+        # Get image data
+        data = nifti_img.get_fdata()
+        
+        # Create output array
+        output_data = np.zeros_like(data, dtype=np.int32)
+        
+        # Convert labels
+        for tsv2_idx, maisi_idx in T2M_mapping.items():
+            output_data[data == tsv2_idx] = maisi_idx
+        
+        # Create new NIfTI image with same header and affine
+        output_img = nib.Nifti1Image(output_data, nifti_img.affine, nifti_img.header)
+        
+        # Generate output filename
+        output_filename = file_path.stem.replace('.nii', '') + '_MAISI.nii.gz'
+        
+        # Save converted file
+        output_path = file_path.parent / output_filename
+        nib.save(output_img, str(output_path))
+        
+        print(f"Saved converted file: {output_filename}")
+    except Exception as e:
+        print(f"Error processing {file_path.name}: {str(e)}")
+
+def convert_nifti_files_parallel(input_folder, n_processes=8):
+    """
+    Convert all NIfTI files in the input folder using parallel processing.
+    """
     input_path = Path(input_folder)
-    
-    # Process all .nii.gz and .nii files
     nifti_files = list(input_path.glob('*.nii.gz')) + list(input_path.glob('*.nii'))
+    nifti_files = sorted(nifti_files)
     
     print(f"Found {len(nifti_files)} NIfTI files to process")
     
-    for file_path in nifti_files:
-        try:
-            # Load the NIfTI file
-            print(f"Processing {file_path.name}...")
-            nifti_img = nib.load(str(file_path))
-            
-            # Get image data
-            data = nifti_img.get_fdata()
-            
-            # Create output array
-            output_data = np.zeros_like(data, dtype=np.int32)
-            
-            # Convert labels
-            for tsv2_idx, maisi_idx in T2M_mapping.items():
-                output_data[data == tsv2_idx] = maisi_idx
-            
-            # Create new NIfTI image with same header and affine
-            output_img = nib.Nifti1Image(output_data, nifti_img.affine, nifti_img.header)
-            
-            # Generate output filename
-            output_filename = file_path.stem.replace('.nii', '') + '_MAISI.nii.gz'
-            # if file_path.suffix == '.gz':
-            #     output_filename += '.gz'
-            
-            # Save converted file
-            output_path = file_path.parent / output_filename
-            nib.save(output_img, str(output_path))
-            
-            print(f"Saved converted file: {output_filename}")
-            
-        except Exception as e:
-            print(f"Error processing {file_path.name}: {str(e)}")
+    # Use a pool of workers to process files in parallel
+    with Pool(processes=n_processes) as pool:
+        pool.map(process_file, nifti_files)
 
 def main():
-    
     # Get input folder from user
     input_folder = input("Please enter the path to the folder containing NIfTI files: ").strip()
     
@@ -181,8 +181,8 @@ def main():
         print("Error: Invalid folder path")
         return
     
-    # Process files
-    convert_nifti_files(input_folder)
+    # Process files in parallel
+    convert_nifti_files_parallel(input_folder, n_processes=8)
     print("Conversion complete!")
 
 if __name__ == "__main__":
