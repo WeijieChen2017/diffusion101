@@ -143,9 +143,15 @@ def generate_synthetic_ct_from_maps(ldm_sampler, folder_path):
     synthetic_images = []
     for segmentation_map in segmentation_maps:
         # Prepare tensors for the segmentation map
+        # show segmentation_map shape
+        print(f"segmentation_map shape: {segmentation_map.shape}")
         top_region_index_tensor = torch.FloatTensor([79]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
         bottom_region_index_tensor = torch.FloatTensor([335]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
         spacing_tensor = torch.FloatTensor(ldm_sampler.spacing).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
+        # show top_region_index_tensor, bottom_region_index_tensor, spacing_tensor
+        print(f"top_region_index_tensor: {top_region_index_tensor}")
+        print(f"bottom_region_index_tensor: {bottom_region_index_tensor}")
+        print(f"spacing_tensor: {spacing_tensor}")
 
         # Generate synthetic image
         synthetic_image, _ = ldm_sampler.sample_one_pair(
