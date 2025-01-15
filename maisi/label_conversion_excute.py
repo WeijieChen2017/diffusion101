@@ -148,7 +148,7 @@ def convert_nifti_files(input_folder):
             data = nifti_img.get_fdata()
             
             # Create output array
-            output_data = np.zeros_like(data)
+            output_data = np.zeros_like(data, dtype=np.int32)
             
             # Convert labels
             for tsv2_idx, maisi_idx in T2M_mapping.items():
@@ -158,9 +158,9 @@ def convert_nifti_files(input_folder):
             output_img = nib.Nifti1Image(output_data, nifti_img.affine, nifti_img.header)
             
             # Generate output filename
-            output_filename = file_path.stem.replace('.nii', '') + '_MAISI.nii'
-            if file_path.suffix == '.gz':
-                output_filename += '.gz'
+            output_filename = file_path.stem.replace('.nii', '') + '_MAISI.nii.gz'
+            # if file_path.suffix == '.gz':
+            #     output_filename += '.gz'
             
             # Save converted file
             output_path = file_path.parent / output_filename
