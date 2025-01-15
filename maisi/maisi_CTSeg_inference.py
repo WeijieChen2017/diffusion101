@@ -3,12 +3,13 @@ import torch
 import monai.transforms
 import argparse
 import json
-
-from sample import LDMSampler
-
 import monai
 import torch
+
+from scripts.sample import LDMSampler
 from scripts.utils import define_instance
+
+
 
 root_dir = "."
 save_dir = os.path.join(root_dir, "inference_v1")
