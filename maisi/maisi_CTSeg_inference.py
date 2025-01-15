@@ -151,8 +151,8 @@ def generate_synthetic_ct_from_maps(ldm_sampler, folder_path):
         # Prepare tensors for the segmentation map
         # show segmentation_map shape
         # print(f"segmentation_map shape: {segmentation_map.shape}") # 
-        top_region_index_tensor = torch.FloatTensor([79]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
-        bottom_region_index_tensor = torch.FloatTensor([335]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
+        top_region_index_tensor = torch.FloatTensor([1, 0, 0, 0]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
+        bottom_region_index_tensor = torch.FloatTensor([0, 0, 0, 1]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
         spacing_tensor = torch.FloatTensor(ldm_sampler.spacing).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
         # show top_region_index_tensor, bottom_region_index_tensor, spacing_tensor
         # print(f"top_region_index_tensor: {top_region_index_tensor}")
