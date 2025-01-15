@@ -5,6 +5,7 @@ import argparse
 import json
 import monai
 import torch
+import numpy as np
 
 from monai.utils import set_determinism
 from scripts.sample import LDMSampler
@@ -110,68 +111,109 @@ ldm_sampler = LDMSampler(
         autoencoder_sliding_window_infer_overlap=args.autoencoder_sliding_window_infer_overlap,
 )
 
-def load_segmentation_maps(folder_path):
+# def load_segmentation_maps(folder_path):
+#     """
+#     Load segmentation maps from a folder.
+
+#     Args:
+#         folder_path (str): Path to the folder containing segmentation maps.
+
+#     Returns:
+#         list: List of loaded segmentation maps.
+#     """
+#     segmentation_maps = []
+#     for filename in os.listdir(folder_path):
+#         if filename.endswith(".nii.gz"):
+#             filepath = os.path.join(folder_path, filename)
+#             segmentation_map = monai.transforms.LoadImage(image_only=True, ensure_channel_first=True)(filepath)
+#             segmentation_maps.append(segmentation_map)
+#     return segmentation_maps
+
+# def generate_synthetic_ct_from_maps(ldm_sampler, folder_path):
+#     """
+#     Generate synthetic CT images from segmentation maps in a folder.
+
+#     Args:
+#         ldm_sampler (LDMSampler): The LDMSampler instance.
+#         folder_path (str): Path to the folder containing segmentation maps.
+
+#     Returns:
+#         list: List of generated synthetic CT images.
+#     """
+#     segmentation_maps = load_segmentation_maps(folder_path)
+#     synthetic_images = []
+
+#     # segmentation_map shape: torch.Size([1, 256, 256, 401])
+#     # top_region_index_tensor: tensor([[7900.]], device='cuda:0', dtype=torch.float16)
+#     # bottom_region_index_tensor: tensor([[33504.]], device='cuda:0', dtype=torch.float16)
+#     # spacing_tensor: tensor([[150., 150., 200.]], device='cuda:0', dtype=torch.float16)
+
+#     for i, segmentation_map in enumerate(segmentation_maps):
+#         # Prepare tensors for the segmentation map
+#         # show segmentation_map shape
+#         # print(f"segmentation_map shape: {segmentation_map.shape}") # 
+#         top_region_index_tensor = torch.FloatTensor([1, 0, 0, 0]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
+#         bottom_region_index_tensor = torch.FloatTensor([0, 0, 0, 1]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
+#         spacing_tensor = torch.FloatTensor(ldm_sampler.spacing).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
+#         # show top_region_index_tensor, bottom_region_index_tensor, spacing_tensor
+#         # print(f"top_region_index_tensor: {top_region_index_tensor}")
+#         # print(f"bottom_region_index_tensor: {bottom_region_index_tensor}")
+#         # print(f"spacing_tensor: {spacing_tensor}")
+
+#         # Generate synthetic image
+#         synthetic_image, _ = ldm_sampler.sample_one_pair(
+#             combine_label_or_aug=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
+#             top_region_index_tensor=top_region_index_tensor,
+#             bottom_region_index_tensor=bottom_region_index_tensor,
+#             spacing_tensor=spacing_tensor,
+#         )
+#         # synthetic_images.append(synthetic_image)
+#         # take the filepath 
+#         filepath = fo
+    # return synthetic_images
+
+def generate_and_save_synthetic_ct(ldm_sampler, folder_path):
     """
-    Load segmentation maps from a folder.
+    Load segmentation maps from a folder, generate synthetic CT images, and save them with a new name ending with _synCT.nii.gz.
 
     Args:
+        ldm_sampler (LDMSampler): The LDMSampler instance.
         folder_path (str): Path to the folder containing segmentation maps.
-
-    Returns:
-        list: List of loaded segmentation maps.
     """
+    # Load segmentation maps
     segmentation_maps = []
     for filename in os.listdir(folder_path):
         if filename.endswith(".nii.gz"):
             filepath = os.path.join(folder_path, filename)
             segmentation_map = monai.transforms.LoadImage(image_only=True, ensure_channel_first=True)(filepath)
-            segmentation_maps.append(segmentation_map)
-    return segmentation_maps
+            # segmentation_maps.append((segmentation_map, filepath))
 
-def generate_synthetic_ct_from_maps(ldm_sampler, folder_path):
-    """
-    Generate synthetic CT images from segmentation maps in a folder.
+            # Generate synthetic CT images and save them
+            # for segmentation_map, filepath in segmentation_maps:
+            # Prepare tensors for the segmentation map
+            top_region_index_tensor = torch.FloatTensor([1, 0, 0, 0]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
+            bottom_region_index_tensor = torch.FloatTensor([0, 0, 0, 1]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
+            spacing_tensor = torch.FloatTensor(ldm_sampler.spacing).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
 
-    Args:
-        ldm_sampler (LDMSampler): The LDMSampler instance.
-        folder_path (str): Path to the folder containing segmentation maps.
+            # Generate synthetic image
+            synthetic_image, _ = ldm_sampler.sample_one_pair(
+                combine_label_or_aug=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
+                top_region_index_tensor=top_region_index_tensor,
+                bottom_region_index_tensor=bottom_region_index_tensor,
+                spacing_tensor=spacing_tensor,
+            )
 
-    Returns:
-        list: List of generated synthetic CT images.
-    """
-    segmentation_maps = load_segmentation_maps(folder_path)
-    synthetic_images = []
+            # Save the synthetic image with a new name ending with _synCT.nii.gz
+            save_path = filepath.replace(".nii.gz", "_synCT.npy")
+            synthetic_image_numpy = synthetic_image.detach().cpu().numpy()
+            np.save(save_path, synthetic_image_numpy)
+            print(f"Synthetic CT image saved to {save_path}, shape: {synthetic_image_numpy.shape}")
+            # save_image = SaveImage(output_dir=os.path.dirname(save_path), output_postfix="_synCT", output_ext=".nii.gz", separate_folder=False)
+            # save_image(synthetic_image[0], save_path)
 
-    # segmentation_map shape: torch.Size([1, 256, 256, 401])
-    # top_region_index_tensor: tensor([[7900.]], device='cuda:0', dtype=torch.float16)
-    # bottom_region_index_tensor: tensor([[33504.]], device='cuda:0', dtype=torch.float16)
-    # spacing_tensor: tensor([[150., 150., 200.]], device='cuda:0', dtype=torch.float16)
-
-    for segmentation_map in segmentation_maps:
-        # Prepare tensors for the segmentation map
-        # show segmentation_map shape
-        # print(f"segmentation_map shape: {segmentation_map.shape}") # 
-        top_region_index_tensor = torch.FloatTensor([1, 0, 0, 0]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
-        bottom_region_index_tensor = torch.FloatTensor([0, 0, 0, 1]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
-        spacing_tensor = torch.FloatTensor(ldm_sampler.spacing).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
-        # show top_region_index_tensor, bottom_region_index_tensor, spacing_tensor
-        # print(f"top_region_index_tensor: {top_region_index_tensor}")
-        # print(f"bottom_region_index_tensor: {bottom_region_index_tensor}")
-        # print(f"spacing_tensor: {spacing_tensor}")
-
-        # Generate synthetic image
-        synthetic_image, _ = ldm_sampler.sample_one_pair(
-            combine_label_or_aug=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
-            top_region_index_tensor=top_region_index_tensor,
-            bottom_region_index_tensor=bottom_region_index_tensor,
-            spacing_tensor=spacing_tensor,
-        )
-        synthetic_images.append(synthetic_image)
-    return synthetic_images
-
-print(f"Everything goes well!")
+print(f"Everything goes well at loading the trained model weights and setting up the LDMSampler instance.")
 # Generate synthetic CT images from your segmentation maps
-synthetic_images = generate_synthetic_ct_from_maps(ldm_sampler, "Seg2SynCT_test")
+synthetic_images = generate_and_save_synthetic_ct(ldm_sampler, "Seg2SynCT_test")
 
 # 3dresample -dxyz 1.5 1.5 2.0 -rmode Cu -prefix CTACIVV_E4128_MAISI_conferRes.nii.gz -input CTACIVV_E4128_MAISI.nii.gz
 # 3dresample -dxyz 2.734 2.734 2.734 -rmode Cu -prefix CTACIVV_E4128_MAISI_256.nii.gz -input CTACIVV_E4128_MAISI.nii.gz
