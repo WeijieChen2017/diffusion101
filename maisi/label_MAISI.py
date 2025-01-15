@@ -178,15 +178,15 @@ def get_anatomical_category(label):
     """Determine anatomical category based on label name."""
     if any(bone in label for bone in ['vertebrae', 'rib', 'sacrum', 'skull', 'sternum', 'hip', 'femur', 'humerus', 'scapula', 'clavicula']):
         return 'Skeletal System'
-    elif any(organ in label for bone in ['lung', 'trachea', 'airway']):
+    elif any(organ in label for organ in ['lung', 'trachea', 'airway']):
         return 'Respiratory System'
-    elif any(organ in label for bone in ['heart', 'aorta', 'vena', 'artery', 'vein']):
+    elif any(organ in label for organ in ['heart', 'aorta', 'vena', 'artery', 'vein']):
         return 'Cardiovascular System'
-    elif any(organ in label for bone in ['liver', 'gallbladder', 'pancreas', 'stomach', 'small bowel', 'duodenum', 'colon']):
+    elif any(organ in label for organ in ['liver', 'gallbladder', 'pancreas', 'stomach', 'small bowel', 'duodenum', 'colon']):
         return 'Digestive System'
-    elif any(organ in label for bone in ['kidney', 'bladder', 'prostate']):
+    elif any(organ in label for organ in ['kidney', 'bladder', 'prostate']):
         return 'Urinary System'
-    elif any(organ in label for bone in ['spleen', 'thyroid']):
+    elif any(organ in label for organ in ['spleen', 'thyroid']):
         return 'Endocrine/Lymphatic System'
     elif any(muscle in label for muscle in ['gluteus', 'iliopsoas', 'autochthon']):
         return 'Muscular System'
