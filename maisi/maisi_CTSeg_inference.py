@@ -141,10 +141,16 @@ def generate_synthetic_ct_from_maps(ldm_sampler, folder_path):
     """
     segmentation_maps = load_segmentation_maps(folder_path)
     synthetic_images = []
+
+    # segmentation_map shape: torch.Size([1, 256, 256, 401])
+    # top_region_index_tensor: tensor([[7900.]], device='cuda:0', dtype=torch.float16)
+    # bottom_region_index_tensor: tensor([[33504.]], device='cuda:0', dtype=torch.float16)
+    # spacing_tensor: tensor([[150., 150., 200.]], device='cuda:0', dtype=torch.float16)
+
     for segmentation_map in segmentation_maps:
         # Prepare tensors for the segmentation map
         # show segmentation_map shape
-        print(f"segmentation_map shape: {segmentation_map.shape}")
+        # print(f"segmentation_map shape: {segmentation_map.shape}") # 
         top_region_index_tensor = torch.FloatTensor([79]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
         bottom_region_index_tensor = torch.FloatTensor([335]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
         spacing_tensor = torch.FloatTensor(ldm_sampler.spacing).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
@@ -155,7 +161,7 @@ def generate_synthetic_ct_from_maps(ldm_sampler, folder_path):
 
         # Generate synthetic image
         synthetic_image, _ = ldm_sampler.sample_one_pair(
-            combine_label_or_aug=segmentation_map,
+            combine_label_or_aug=segmentation_map.unsqueeze(0),
             top_region_index_tensor=top_region_index_tensor,
             bottom_region_index_tensor=bottom_region_index_tensor,
             spacing_tensor=spacing_tensor,
