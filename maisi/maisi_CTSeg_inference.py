@@ -17,6 +17,20 @@ os.makedirs(save_dir, exist_ok=True)
 
 args = argparse.Namespace()
 
+config_file = "./configs/config_maisi.json"
+with open(config_file, "r") as f:
+    config_dict = json.load(f)
+for k, v in config_dict.items():
+    setattr(args, k, v)
+
+# check the format of inference inputs
+config_infer_file = "./configs/config_infer.json"
+with open(config_infer_file, "r") as f:
+    config_infer_dict = json.load(f)
+for k, v in config_infer_dict.items():
+    setattr(args, k, v)
+    print(f"{k}: {v}")
+
 environment_file = "./configs/environment.json"
 with open(environment_file, "r") as f:
     env_dict = json.load(f)
