@@ -155,9 +155,9 @@ def generate_synthetic_ct_from_maps(ldm_sampler, folder_path):
         bottom_region_index_tensor = torch.FloatTensor([335]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
         spacing_tensor = torch.FloatTensor(ldm_sampler.spacing).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
         # show top_region_index_tensor, bottom_region_index_tensor, spacing_tensor
-        print(f"top_region_index_tensor: {top_region_index_tensor}")
-        print(f"bottom_region_index_tensor: {bottom_region_index_tensor}")
-        print(f"spacing_tensor: {spacing_tensor}")
+        # print(f"top_region_index_tensor: {top_region_index_tensor}")
+        # print(f"bottom_region_index_tensor: {bottom_region_index_tensor}")
+        # print(f"spacing_tensor: {spacing_tensor}")
 
         # Generate synthetic image
         synthetic_image, _ = ldm_sampler.sample_one_pair(
