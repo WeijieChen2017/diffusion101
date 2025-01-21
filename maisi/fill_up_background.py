@@ -62,43 +62,49 @@ for con_path in con_file_list:
     con_data_256 = con_data[72:328, 72:328, :]
     seg_data_256 = seg_data[105:361, 105:361, :]
     
-    # Print the new shapes to confirm
-    print(f"Cropped con shape: {con_data_256.shape}, seg shape: {seg_data_256.shape}")
+    # Handle size mismatch along Z-dimension
+    if con_data_256.shape[2] > seg_data_256.shape[2]:
+        con_data_256 = con_data_256[:, :, :seg_data_256.shape[2]]
+    elif con_data_256.shape[2] < seg_data_256.shape[2]:
+        seg_data_256 = seg_data_256[:, :, :con_data_256.shape[2]]
     
-    # Save the cropped data (optional)
-    # Construct new file names for saving
-    con_output_path = folder + f"/cropped_con_{case_name}_Spacing15.nii.gz"
-    seg_output_path = folder + f"/cropped_seg_{case_name}_Spacing15.nii.gz"
-    
-    # Update the affine matrices for the cropped data
-    con_affine = con_file.affine.copy()
-    seg_affine = seg_file.affine.copy()
-    
-    con_affine[:3, 3] += [72 * con_affine[0, 0], 72 * con_affine[1, 1], 0]
-    seg_affine[:3, 3] += [105 * seg_affine[0, 0], 105 * seg_affine[1, 1], 0]
-    
-    # Save the cropped NIfTI files
-    con_cropped_nifti = nib.Nifti1Image(con_data_256, con_affine, con_file.header)
-    seg_cropped_nifti = nib.Nifti1Image(seg_data_256, seg_affine, seg_file.header)
-    
-    nib.save(con_cropped_nifti, con_output_path)
-    nib.save(seg_cropped_nifti, seg_output_path)
-    
-    print(f"Saved cropped con file to {con_output_path}")
-    print(f"Saved cropped seg file to {seg_output_path}")
-
     # Create a new segmentation map
     new_seg_map = np.zeros_like(con_data_256)
-    
-    # Apply the binary map logic
     new_seg_map[con_data_256 > 0.5] = 200
-    
-    # Overlap the segmentation labels from seg_data_256
     new_seg_map[seg_data_256 > 0] = seg_data_256[seg_data_256 > 0]
     
     # Save the new segmentation map with the "emb" tag
     emb_output_path = folder + f"/emb_seg_{case_name}_Spacing15.nii.gz"
-    emb_nifti = nib.Nifti1Image(new_seg_map, con_affine, con_file.header)
-    
+    emb_nifti = nib.Nifti1Image(new_seg_map, con_file.affine, con_file.header)
     nib.save(emb_nifti, emb_output_path)
     print(f"Saved new segmentation map to {emb_output_path}")
+    
+    # Save Z=256 cubes with overlap=128
+    z_size = 256
+    z_overlap = 128
+    z_end = new_seg_map.shape[2]
+    z_start = 0
+    cube_idx = 1
+    
+    while z_start < z_end:
+        z_stop = min(z_start + z_size, z_end)
+        if z_stop - z_start < z_size:  # Handle the last cube if it doesn't fit 256 slices
+            z_start = max(0, z_end - z_size)
+            z_stop = z_end
+        
+        # Extract the cube
+        cube_data = new_seg_map[:, :, z_start:z_stop]
+        
+        # Adjust the affine matrix for the cube
+        cube_affine = con_file.affine.copy()
+        cube_affine[:3, 3] += np.dot(con_file.affine[:3, :3], [0, 0, z_start])
+        
+        # Save the cube
+        cube_output_path = os.path.join(cube_folder, f"cube{cube_idx}_emb_seg_{case_name}_Spacing15.nii.gz")
+        cube_nifti = nib.Nifti1Image(cube_data, cube_affine, con_file.header)
+        nib.save(cube_nifti, cube_output_path)
+        print(f"Saved cube {cube_idx} to {cube_output_path}")
+        
+        # Update for next cube
+        cube_idx += 1
+        z_start += z_size - z_overlap
