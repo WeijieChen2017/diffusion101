@@ -41,7 +41,7 @@ seg_file_list = sorted(glob.glob(folder + "/mask_body_contour_*_Spacing15.nii.gz
 # Process each segmentation file and corresponding body contour file
 for seg_path in seg_file_list:
     # Extract the case name from the file name
-    case_name = os.path.basename(seg_path)[8:13]
+    case_name = os.path.basename(seg_path)[18:23]
     
     # Construct the body contour file path
     body_contour_path = folder + f"/CTACIVV_{case_name}_MAISI_Spacing15.nii.gz"
