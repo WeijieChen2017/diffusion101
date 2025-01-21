@@ -61,7 +61,7 @@ for seg_path in seg_file_list:
     seg_data_256 = seg_data[105:361, 105:361, :]
     
     # Crop the body contour data to 256x256 along x and y
-    con_data_256 = con_data[48:304, 48:304, :]
+    con_data_256 = con_data[72:328, 72:328, :]
     
     # Print the new shapes to confirm
     print(f"Cropped seg shape: {seg_data_256.shape}, con shape: {con_data_256.shape}")
