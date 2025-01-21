@@ -114,3 +114,5 @@ for con_path in con_file_list:
         # Update for the next cube
         cube_idx += 1
         z_start += z_overlap
+
+    exit()
