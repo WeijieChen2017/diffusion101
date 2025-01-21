@@ -35,6 +35,8 @@ import numpy as np
 
 # Folder containing the files
 folder = "Spacing15"
+cube_folder = "Cube256"
+os.makedirs(cube_folder, exist_ok=True)
 
 # Get a sorted list of body contour files
 con_file_list = sorted(glob.glob(folder + "/mask_body_contour_*_Spacing15.nii.gz"))
