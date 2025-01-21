@@ -36,7 +36,7 @@ import nibabel as nib
 folder = "Spacing15"
 
 # Get a sorted list of segmentation files
-seg_file_list = sorted(glob.glob(folder + "/CTACIVV_*_MAISI_Spacing15.nii.gz"))
+seg_file_list = sorted(glob.glob(folder + "/mask_body_contour_*_Spacing15.nii.gz"))
 
 # Process each segmentation file and corresponding body contour file
 for seg_path in seg_file_list:
@@ -44,7 +44,7 @@ for seg_path in seg_file_list:
     case_name = os.path.basename(seg_path)[8:13]
     
     # Construct the body contour file path
-    body_contour_path = folder + f"/mask_body_contour_{case_name}_Spacing15.nii.gz"
+    body_contour_path = folder + f"/CTACIVV_{case_name}_MAISI_Spacing15.nii.gz"
     
     # Load the segmentation and body contour NIfTI files
     seg_file = nib.load(seg_path)
