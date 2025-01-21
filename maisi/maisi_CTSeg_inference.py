@@ -11,6 +11,9 @@ from monai.utils import set_determinism
 from scripts.sample import LDMSampler
 from scripts.utils import define_instance
 
+import datetime
+from monai.data import MetaTensor
+from monai.transforms import SaveImage
 
 
 root_dir = "."
@@ -195,21 +198,74 @@ def generate_and_save_synthetic_ct(ldm_sampler, folder_path):
             bottom_region_index_tensor = torch.FloatTensor([0, 0, 0, 1]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
             spacing_tensor = torch.FloatTensor(ldm_sampler.spacing).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
 
+            # # Generate synthetic image
+            # synthetic_image, syntheic_mask, combine_label_or_aug = ldm_sampler.sample_one_pair(
+            #     combine_label_or_aug=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
+            #     top_region_index_tensor=top_region_index_tensor,
+            #     bottom_region_index_tensor=bottom_region_index_tensor,
+            #     spacing_tensor=spacing_tensor,
+            # )
+
+            # # Save the synthetic image with a new name ending with _synCT.nii.gz
+            # save_path = filepath.replace(".nii.gz", "_synCT.npy")
+            # synthetic_image_numpy = synthetic_image.detach().cpu().numpy()
+            # np.save(save_path, synthetic_image_numpy)
+            # print(f"Synthetic CT image saved to {save_path}, shape: {synthetic_image_numpy.shape}")
+            # # save_image = SaveImage(output_dir=os.path.dirname(save_path), output_postfix="_synCT", output_ext=".nii.gz", separate_folder=False)
+            # # save_image(synthetic_image[0], save_path)
+
             # Generate synthetic image
-            synthetic_image, _ = ldm_sampler.sample_one_pair(
+            synthetic_image, synthetic_mask, combine_label_or_aug = ldm_sampler.sample_one_pair(
                 combine_label_or_aug=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
                 top_region_index_tensor=top_region_index_tensor,
                 bottom_region_index_tensor=bottom_region_index_tensor,
                 spacing_tensor=spacing_tensor,
             )
 
-            # Save the synthetic image with a new name ending with _synCT.nii.gz
-            save_path = filepath.replace(".nii.gz", "_synCT.npy")
+            # Generate unique timestamp-based postfix
+            output_postfix = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+
+            # Save synthetic CT image in .npy format for debugging/reference
+            npy_save_path = filepath.replace(".nii.gz", f"_{output_postfix}_synCT.npy")
             synthetic_image_numpy = synthetic_image.detach().cpu().numpy()
-            np.save(save_path, synthetic_image_numpy)
-            print(f"Synthetic CT image saved to {save_path}, shape: {synthetic_image_numpy.shape}")
-            # save_image = SaveImage(output_dir=os.path.dirname(save_path), output_postfix="_synCT", output_ext=".nii.gz", separate_folder=False)
-            # save_image(synthetic_image[0], save_path)
+            np.save(npy_save_path, synthetic_image_numpy)
+            print(f"Synthetic CT image saved to {npy_save_path}, shape: {synthetic_image_numpy.shape}")
+
+            # Save synthetic CT image in .nii.gz format
+            save_path = filepath.replace(".nii.gz", f"_{output_postfix}_synCT.nii.gz")
+            synthetic_image = MetaTensor(synthetic_image, meta=segmentation_map.meta)  # Use metadata from segmentation map
+            img_saver = SaveImage(
+                output_dir=os.path.dirname(save_path),
+                output_postfix="_synCT",
+                output_ext=".nii.gz",
+                separate_folder=False,
+            )
+            img_saver(synthetic_image[0])
+            print(f"Synthetic CT image saved to {save_path}")
+
+            # Save synthetic label
+            synthetic_label_save_path = filepath.replace(".nii.gz", f"_{output_postfix}_synLabel.nii.gz")
+            synthetic_mask = MetaTensor(synthetic_mask, meta=segmentation_map.meta)
+            label_saver = SaveImage(
+                output_dir=os.path.dirname(synthetic_label_save_path),
+                output_postfix="_synLabel",
+                output_ext=".nii.gz",
+                separate_folder=False,
+            )
+            label_saver(synthetic_mask[0])
+            print(f"Synthetic label saved to {synthetic_label_save_path}")
+
+            # Save combined label
+            combine_label_save_path = filepath.replace(".nii.gz", f"_{output_postfix}_combineLabel.nii.gz")
+            combine_label_or_aug = MetaTensor(combine_label_or_aug, meta=segmentation_map.meta)
+            combine_label_saver = SaveImage(
+                output_dir=os.path.dirname(combine_label_save_path),
+                output_postfix="_combineLabel",
+                output_ext=".nii.gz",
+                separate_folder=False,
+            )
+            combine_label_saver(combine_label_or_aug[0])
+            print(f"Combined label saved to {combine_label_save_path}")
 
 print(f"Everything goes well at loading the trained model weights and setting up the LDMSampler instance.")
 # Generate synthetic CT images from your segmentation maps
