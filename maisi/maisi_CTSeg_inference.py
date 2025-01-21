@@ -11,7 +11,8 @@ from monai.utils import set_determinism
 from scripts.sample import LDMSampler
 from scripts.utils import define_instance
 
-import datetime
+from datetime import datetime
+
 from monai.data import MetaTensor
 from monai.transforms import SaveImage
 
