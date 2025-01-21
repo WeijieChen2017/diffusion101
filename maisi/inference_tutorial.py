@@ -5,6 +5,8 @@ import tempfile
 
 import monai
 import torch
+import nibabel as nib
+import numpy as np
 from monai.apps import download_url
 from monai.config import print_config
 from monai.transforms import LoadImage, Orientation
@@ -192,7 +194,15 @@ image_volume = image_volume / torch.max(image_volume)
 nifti_image_path = os.path.join(args.output_dir, "visualize_image.nii.gz")
 nifti_mask_path = os.path.join(args.output_dir, "visualize_mask.nii.gz")
 
-monai.utils.save_image(image_volume, nifti_image_path)
-monai.utils.save_image(mask_volume, nifti_mask_path)
+nifti_image_npy = image_volume.cpu().numpy()
+nifti_mask_npy = mask_volume.cpu().numpy()
+np.save(nifti_image_path.replace(".nii.gz", ".npy"), nifti_image_npy)
+np.save(nifti_mask_path.replace(".nii.gz", ".npy"), nifti_mask_npy)
+
+
+nifti_image_file = nib.Nifti1Image(nifti_image_npy, affine=None)
+nib.save(nifti_image_file, nifti_image_path)
+nifti_mask_file = nib.Nifti1Image(nifti_mask_npy, affine=None)
+nib.save(nifti_mask_file, nifti_mask_path)
 
 print(f"Visualized image saved to {nifti_image_path} and mask saved to {nifti_mask_path}")
