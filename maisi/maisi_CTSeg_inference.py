@@ -213,7 +213,7 @@ def generate_and_save_synthetic_ct(ldm_sampler, folder_path):
 
 print(f"Everything goes well at loading the trained model weights and setting up the LDMSampler instance.")
 # Generate synthetic CT images from your segmentation maps
-synthetic_images = generate_and_save_synthetic_ct(ldm_sampler, "Seg2SynCT_test")
+synthetic_images = generate_and_save_synthetic_ct(ldm_sampler, "Cube256_MAISI")
 
-# 3dresample -dxyz 1.5 1.5 2.0 -rmode Cu -prefix CTACIVV_E4128_MAISI_conferRes.nii.gz -input CTACIVV_E4128_MAISI.nii.gz
+# 3dresample -dxyz 1.5 1.5 1.5 -rmode NN -prefix CTACIVV_E4128_MAISI_Cube15.nii.gz -input CTACIVV_E4128_MAISI_256.nii.gz
 # 3dresample -dxyz 2.734 2.734 2.734 -rmode Cu -prefix CTACIVV_E4128_MAISI_256.nii.gz -input CTACIVV_E4128_MAISI.nii.gz
