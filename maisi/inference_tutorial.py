@@ -109,7 +109,7 @@ args.random_seed = 0
 noise_scheduler = define_instance(args, "noise_scheduler")
 mask_generation_noise_scheduler = define_instance(args, "mask_generation_noise_scheduler")
 
-device = torch.device("cuda")
+device = torch.device("cuda:1")
 
 autoencoder = define_instance(args, "autoencoder_def").to(device)
 checkpoint_autoencoder = torch.load(args.trained_autoencoder_path, weights_only=True)
