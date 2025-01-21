@@ -6,6 +6,7 @@
 import os
 import glob
 import nibabel as nib
+import numpy as np
 
 # file_list = sorted(glob.glob(body_contour_folder+"/mask_body_contour_*.nii.gz"))
 # print(f"We find {len(file_list)} files in the target folder")
@@ -85,3 +86,19 @@ for con_path in con_file_list:
     
     print(f"Saved cropped con file to {con_output_path}")
     print(f"Saved cropped seg file to {seg_output_path}")
+
+    # Create a new segmentation map
+    new_seg_map = np.zeros_like(con_data_256)
+    
+    # Apply the binary map logic
+    new_seg_map[con_data_256 > 0.5] = 200
+    
+    # Overlap the segmentation labels from seg_data_256
+    new_seg_map[seg_data_256 > 0] = seg_data_256[seg_data_256 > 0]
+    
+    # Save the new segmentation map with the "emb" tag
+    emb_output_path = folder + f"/emb_seg_{case_name}_Spacing15.nii.gz"
+    emb_nifti = nib.Nifti1Image(new_seg_map, con_affine, con_file.header)
+    
+    nib.save(emb_nifti, emb_output_path)
+    print(f"Saved new segmentation map to {emb_output_path}")
