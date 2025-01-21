@@ -4,9 +4,10 @@ body_contour_folder = "../James_data_v3/mask"
 
 # load all files in the target folder
 import os
+import glob
 import nibabel as nib
 
-file_list = sorted(os.listdir(body_contour_folder+"/mask_body_contour_*.nii.gz"))
+file_list = sorted(glob.glob(body_contour_folder+"/mask_body_contour_*.nii.gz"))
 print(f"We find {len(file_list)} files in the target folder")
 for file in file_list:
     new_name = file.replace(".nii.gz", "_Spacing15.nii.gz")
