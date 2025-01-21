@@ -233,7 +233,8 @@ def generate_and_save_synthetic_ct(ldm_sampler, folder_path):
             # print(f"Synthetic CT image saved to {npy_save_path}, shape: {synthetic_image_numpy.shape}")
 
             # Save synthetic CT image in .nii.gz format
-            save_path = filepath.replace(".nii.gz", f"_{output_postfix}_synCT.nii.gz")
+            # save_path = filepath.replace(".nii.gz", f"_{output_postfix}_synCT.nii.gz")
+            save_path = filepath.replace("cube", f"synCT_cube")
             synthetic_image = MetaTensor(synthetic_image, meta=segmentation_map.meta)  # Use metadata from segmentation map
             img_saver = SaveImage(
                 output_dir=os.path.dirname(save_path),
@@ -245,7 +246,8 @@ def generate_and_save_synthetic_ct(ldm_sampler, folder_path):
             print(f"Synthetic CT image saved to {save_path}")
 
             # Save synthetic label
-            synthetic_label_save_path = filepath.replace(".nii.gz", f"_{output_postfix}_synLabel.nii.gz")
+            # synthetic_label_save_path = filepath.replace(".nii.gz", f"_{output_postfix}_synLabel.nii.gz")
+            synthetic_label_save_path = filepath.replace("cube", f"synLabel_cube")
             synthetic_mask = MetaTensor(synthetic_mask, meta=segmentation_map.meta)
             label_saver = SaveImage(
                 output_dir=os.path.dirname(synthetic_label_save_path),
@@ -270,7 +272,7 @@ def generate_and_save_synthetic_ct(ldm_sampler, folder_path):
 
 print(f"Everything goes well at loading the trained model weights and setting up the LDMSampler instance.")
 # Generate synthetic CT images from your segmentation maps
-synthetic_images = generate_and_save_synthetic_ct(ldm_sampler, "Cube256_MAISI")
+synthetic_images = generate_and_save_synthetic_ct(ldm_sampler, "Cube256")
 
 # 3dresample -dxyz 1.5 1.5 1.5 -rmode NN -prefix CTACIVV_E4128_MAISI_Cube15.nii.gz -input CTACIVV_E4128_MAISI_256.nii.gz
 # 3dresample -dxyz 2.734 2.734 2.734 -rmode Cu -prefix CTACIVV_E4128_MAISI_256.nii.gz -input CTACIVV_E4128_MAISI.nii.gz
