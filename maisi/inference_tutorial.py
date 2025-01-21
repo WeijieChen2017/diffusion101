@@ -175,34 +175,34 @@ print(f"The generated image/mask pairs will be saved in {args.output_dir}.")
 output_filenames = ldm_sampler.sample_multiple_images(args.num_output_samples)
 print("MAISI image/mask generation finished")
 
-visualize_image_filename = output_filenames[0][0]
-visualize_mask_filename = output_filenames[0][1]
-print(f"Visualizing {visualize_image_filename} and {visualize_mask_filename}...")
+# visualize_image_filename = output_filenames[0][0]
+# visualize_mask_filename = output_filenames[0][1]
+# print(f"Visualizing {visualize_image_filename} and {visualize_mask_filename}...")
 
-# load image/mask pairs
-loader = LoadImage(image_only=True, ensure_channel_first=True)
-orientation = Orientation(axcodes="RAS")
-image_volume = orientation(loader(visualize_image_filename))
-mask_volume = orientation(loader(visualize_mask_filename)).to(torch.uint8)
+# # load image/mask pairs
+# loader = LoadImage(image_only=True, ensure_channel_first=True)
+# orientation = Orientation(axcodes="RAS")
+# image_volume = orientation(loader(visualize_image_filename))
+# mask_volume = orientation(loader(visualize_mask_filename)).to(torch.uint8)
 
-# visualize for CT HU intensity between [-200, 500]
-image_volume = torch.clip(image_volume, -200, 500)
-image_volume = image_volume - torch.min(image_volume)
-image_volume = image_volume / torch.max(image_volume)
+# # visualize for CT HU intensity between [-200, 500]
+# image_volume = torch.clip(image_volume, -200, 500)
+# image_volume = image_volume - torch.min(image_volume)
+# image_volume = image_volume / torch.max(image_volume)
 
-# save the mask and image to the output directory as nifti files
-nifti_image_path = os.path.join(args.output_dir, "visualize_image.nii.gz")
-nifti_mask_path = os.path.join(args.output_dir, "visualize_mask.nii.gz")
+# # save the mask and image to the output directory as nifti files
+# nifti_image_path = os.path.join(args.output_dir, "visualize_image.nii.gz")
+# nifti_mask_path = os.path.join(args.output_dir, "visualize_mask.nii.gz")
 
-nifti_image_npy = image_volume.cpu().numpy()
-nifti_mask_npy = mask_volume.cpu().numpy()
-np.save(nifti_image_path.replace(".nii.gz", ".npy"), nifti_image_npy)
-np.save(nifti_mask_path.replace(".nii.gz", ".npy"), nifti_mask_npy)
+# nifti_image_npy = image_volume.cpu().numpy()
+# nifti_mask_npy = mask_volume.cpu().numpy()
+# np.save(nifti_image_path.replace(".nii.gz", ".npy"), nifti_image_npy)
+# np.save(nifti_mask_path.replace(".nii.gz", ".npy"), nifti_mask_npy)
 
 
-nifti_image_file = nib.Nifti1Image(nifti_image_npy, affine=None)
-nib.save(nifti_image_file, nifti_image_path)
-nifti_mask_file = nib.Nifti1Image(nifti_mask_npy, affine=None)
-nib.save(nifti_mask_file, nifti_mask_path)
+# nifti_image_file = nib.Nifti1Image(nifti_image_npy, affine=None)
+# nib.save(nifti_image_file, nifti_image_path)
+# nifti_mask_file = nib.Nifti1Image(nifti_mask_npy, affine=None)
+# nib.save(nifti_mask_file, nifti_mask_path)
 
-print(f"Visualized image saved to {nifti_image_path} and mask saved to {nifti_mask_path}")
+# print(f"Visualized image saved to {nifti_image_path} and mask saved to {nifti_mask_path}")

@@ -690,7 +690,7 @@ class LDMSampler:
             to_generate = True
             try_time = 0
             while to_generate:
-                synthetic_images, synthetic_labels = self.sample_one_pair(
+                synthetic_images, synthetic_labels, combine_label_or_aug = self.sample_one_pair(
                     combine_label_or,
                     top_region_index_tensor,
                     bottom_region_index_tensor,
@@ -727,7 +727,19 @@ class LDMSampler:
                     synthetic_labels_filename = os.path.join(
                         self.output_dir, "sample_" + output_postfix + "_label" + self.label_output_ext
                     )
-                    output_filenames.append([synthetic_images_filename, synthetic_labels_filename])
+                    # save the combined label for reference
+                    direct_inputs = MetaTensor(combine_label_or, meta=synthetic_labels.meta)
+                    direct_saver = SaveImage(
+                        output_dir=self.output_dir,
+                        output_postfix=output_postfix + "_combine_label",
+                        output_ext=self.label_output_ext,
+                        separate_folder=False,
+                    )
+                    direct_saver(direct_inputs[0])
+                    combine_label_or_filename = os.path.join(
+                        self.output_dir, "sample_" + output_postfix + "_combine_label" + self.label_output_ext
+                    )
+                    output_filenames.append([synthetic_images_filename, synthetic_labels_filename, combine_label_or_filename])
                     to_generate = False
                 else:
                     logging.info(
@@ -793,7 +805,7 @@ class LDMSampler:
             autoencoder_sliding_window_infer_size=self.autoencoder_sliding_window_infer_size,
             autoencoder_sliding_window_infer_overlap=self.autoencoder_sliding_window_infer_overlap,
         )
-        return synthetic_images, synthetic_labels
+        return synthetic_images, synthetic_labels, combine_label_or_aug
 
     def prepare_anatomy_size_condtion(
         self,
