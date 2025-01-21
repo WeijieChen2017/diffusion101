@@ -89,6 +89,7 @@ for con_path in con_file_list:
     cube_idx = 1
     
     while z_start < z_end:
+        print(z_start, z_end)
         z_stop = min(z_start + z_size, z_end)
         if z_stop - z_start < z_size:  # Handle the last cube if it doesn't fit 256 slices
             z_start = max(0, z_end - z_size)
