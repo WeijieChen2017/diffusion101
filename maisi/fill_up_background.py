@@ -89,7 +89,6 @@ for con_path in con_file_list:
     cube_idx = 1
     
     while z_start < z_end:
-        print(z_start, z_end)
         z_stop = min(z_start + z_size, z_end)
         if z_stop - z_start < z_size:  # Handle the last cube if it doesn't fit 256 slices
             z_start = max(0, z_end - z_size)
@@ -108,6 +107,10 @@ for con_path in con_file_list:
         nib.save(cube_nifti, cube_output_path)
         print(f"Saved cube {cube_idx} to {cube_output_path}")
         
-        # Update for next cube
+        # Break the loop if this is the last cube
+        if z_stop == z_end:
+            break
+        
+        # Update for the next cube
         cube_idx += 1
         z_start += z_overlap
