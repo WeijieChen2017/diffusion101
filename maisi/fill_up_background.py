@@ -11,5 +11,5 @@ file_list = sorted(glob.glob(body_contour_folder+"/mask_body_contour_*.nii.gz"))
 print(f"We find {len(file_list)} files in the target folder")
 for file in file_list:
     new_name = file.replace(".nii.gz", "_Spacing15.nii.gz")
-    command = f"3dresample -dxyz 1.5 1.5 1.5 -rmode NN -prefix {new_name} -input {body_contour_folder}/{file}"
+    command = f"3dresample -dxyz 1.5 1.5 1.5 -rmode NN -prefix {new_name} -input {file}"
     print(command)
