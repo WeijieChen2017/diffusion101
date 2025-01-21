@@ -23,6 +23,6 @@ for seg_path in seg_file_list:
     print(body_contour_path)
     seg_file = nib.load(seg_path)
     con_file = nib.load(body_contour_path)
-    seg_data = seg_file.fdata()
-    con_data = con_file.fdata()
+    seg_data = seg_file.get_fdata()
+    con_data = con_file.get_fdata()
     print(f"seg shape: {seg_data.shape}, con shape: {con_data.shape}")
