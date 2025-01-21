@@ -18,7 +18,7 @@ print_config()
 directory = os.environ.get("MONAI_DATA_DIRECTORY")
 if directory is not None:
     os.makedirs(directory, exist_ok=True)
-root_dir = tempfile.mkdtemp() if directory is None else directory
+root_dir = "." if directory is None else directory
 
 # TODO: remove the `files` after the files are uploaded to the NGC
 files = [
@@ -64,10 +64,7 @@ files = [
 
 for file in files:
     file["path"] = file["path"] if "datasets/" not in file["path"] else os.path.join(root_dir, file["path"])
-    if "datasets" not in file["path"]:
-        download_url(url=file["url"], filepath=file["path"])
-    else:
-        continue
+    download_url(url=file["url"], filepath=file["path"])
 
 args = argparse.Namespace()
 
