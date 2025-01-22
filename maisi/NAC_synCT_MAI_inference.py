@@ -60,20 +60,20 @@ for nii_file_path in nii_file_list:
         # xy1_nii = nib.Nifti1Image(xy1, new_affine, new_header)
         # xy2_nii = nib.Nifti1Image(xy2, new_affine, new_header)
         # xy3_nii = nib.Nifti1Image(xy3, new_affine, new_header)
-        # xy4_nii = nib.Nifti1Image(xy4, new_affine, new_header)
+        xy4_nii = nib.Nifti1Image(xy4, new_affine, new_header)
 
         # xy1_path = f"{results_folder}/{case_name}_xy1_{i}.nii.gz"
         # xy2_path = f"{results_folder}/{case_name}_xy2_{i}.nii.gz"
         # xy3_path = f"{results_folder}/{case_name}_xy3_{i}.nii.gz"
-        # xy4_path = f"{results_folder}/{case_name}_xy4_{i}.nii.gz"
+        xy4_path = f"{results_folder}/{case_name}_xy4_{i}.nii.gz"
 
         # nib.save(xy1_nii, xy1_path)
         # nib.save(xy2_nii, xy2_path)
         # nib.save(xy3_nii, xy3_path)
-        # nib.save(xy4_nii, xy4_path)
+        nib.save(xy4_nii, xy4_path)
 
-        xy5_nii = nib.Nifti1Image(xy4, new_affine, new_header)
-        xy5_path = f"{results_folder}/{case_name}_xy4_{i}.nii.gz"
+        xy5_nii = nib.Nifti1Image(xy5, new_affine, new_header)
+        xy5_path = f"{results_folder}/{case_name}_xy5_{i}.nii.gz"
         nib.save(xy5_nii, xy5_path)
 
     print(f"Saved results for {case_name}")
