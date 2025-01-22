@@ -8,7 +8,7 @@ work_dir = "NAC_synCT_MAISI"
 vanila_overlap_save_folder = f"{work_dir}/vanila_overlap"
 PET_observed_range_save_folder = f"{work_dir}/PET_observation"
 
-target_folder = vanila_overlap_save_folder
+target_folder = PET_observed_range_save_folder
 
 # find every .nii.gz file in target_folder
 nii_file_list = sorted(glob.glob(target_folder+"/*.nii.gz"))
