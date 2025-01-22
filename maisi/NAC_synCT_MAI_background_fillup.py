@@ -62,8 +62,9 @@ import os
 import nibabel as nib
 import numpy as np
 
-for case_idx in case_idx_list:
-    synCT_seg_path = f"{work_dir}/{case_idx}_seg_MAISI_Spacing15.nii.gz"
+for case_name in case_idx_list:
+    case_idx = f"E4{case_name[3:]}"
+    synCT_seg_path = f"{work_dir}/{case_name}_seg_MAISI_Spacing15.nii.gz"
     body_contour_path = f"{work_dir}/mask_body_contour_{case_idx}_Spacing15.nii.gz"
 
     synCT_seg_file = nib.load(synCT_seg_path)
