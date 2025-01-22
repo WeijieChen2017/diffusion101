@@ -52,7 +52,7 @@ case_name_list = [
     "ZTS092",
 ]
 
-case_idx_list = [ f"E4x[3:]" for x in case_name_list ]
+case_idx_list = [ f"E4{x[3:]}" for x in case_name_list ]
 
 # synCT_seg_list = [ f"{work_dir}/{case_name}_seg_MAISI_Spacing15.nii.gz" for case_name in case_name_list ]
 # mask_body_contour_E4241_Spacing15.nii.gz
