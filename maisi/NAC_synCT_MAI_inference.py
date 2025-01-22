@@ -44,6 +44,7 @@ for nii_file_path in nii_file_list:
         xy2 = z[:256, -256:]
         xy3 = z[-256:, :256]
         xy4 = z[-256:, -256:]
+        xy5 = z[72:328, 72:328]
 
         # we need to change affine and header to save the results
         new_header = nii_file.header.copy()
@@ -56,20 +57,24 @@ for nii_file_path in nii_file_list:
         new_header.set_sform(new_affine, 1)
 
         # save the results
-        xy1_nii = nib.Nifti1Image(xy1, new_affine, new_header)
-        xy2_nii = nib.Nifti1Image(xy2, new_affine, new_header)
-        xy3_nii = nib.Nifti1Image(xy3, new_affine, new_header)
-        xy4_nii = nib.Nifti1Image(xy4, new_affine, new_header)
+        # xy1_nii = nib.Nifti1Image(xy1, new_affine, new_header)
+        # xy2_nii = nib.Nifti1Image(xy2, new_affine, new_header)
+        # xy3_nii = nib.Nifti1Image(xy3, new_affine, new_header)
+        # xy4_nii = nib.Nifti1Image(xy4, new_affine, new_header)
 
-        xy1_path = f"{results_folder}/{case_name}_xy1_{i}.nii.gz"
-        xy2_path = f"{results_folder}/{case_name}_xy2_{i}.nii.gz"
-        xy3_path = f"{results_folder}/{case_name}_xy3_{i}.nii.gz"
-        xy4_path = f"{results_folder}/{case_name}_xy4_{i}.nii.gz"
+        # xy1_path = f"{results_folder}/{case_name}_xy1_{i}.nii.gz"
+        # xy2_path = f"{results_folder}/{case_name}_xy2_{i}.nii.gz"
+        # xy3_path = f"{results_folder}/{case_name}_xy3_{i}.nii.gz"
+        # xy4_path = f"{results_folder}/{case_name}_xy4_{i}.nii.gz"
 
-        nib.save(xy1_nii, xy1_path)
-        nib.save(xy2_nii, xy2_path)
-        nib.save(xy3_nii, xy3_path)
-        nib.save(xy4_nii, xy4_path)
+        # nib.save(xy1_nii, xy1_path)
+        # nib.save(xy2_nii, xy2_path)
+        # nib.save(xy3_nii, xy3_path)
+        # nib.save(xy4_nii, xy4_path)
+
+        xy5_nii = nib.Nifti1Image(xy4, new_affine, new_header)
+        xy5_path = f"{results_folder}/{case_name}_xy4_{i}.nii.gz"
+        nib.save(xy5_nii, xy5_path)
 
     print(f"Saved results for {case_name}")
 
