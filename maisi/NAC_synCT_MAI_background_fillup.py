@@ -62,6 +62,12 @@ import os
 import nibabel as nib
 import numpy as np
 
+vanila_overlap_save_folder = f"{work_dir}/vanila_overlap"
+PET_observed_range_save_folder = f"{work_dir}/PET_observation"
+
+os.makedirs(vanila_overlap_save_folder, exist_ok=True)
+os.makedirs(PET_observed_range_save_folder, exist_ok=True)
+
 for case_name in case_name_list:
     case_idx = f"E4{case_name[3:]}"
     synCT_seg_path = f"{work_dir}/{case_name}_seg_MAISI_Spacing15.nii.gz"
@@ -84,7 +90,7 @@ for case_name in case_name_list:
     vanila_overlap[synCT_seg_data_aligned > 0] = synCT_seg_data_aligned[synCT_seg_data_aligned > 0]
     # use body_contour_file header and affine to save the vanila_overlap
     vanila_overlap_nifti = nib.Nifti1Image(vanila_overlap, body_contour_file.affine, body_contour_file.header)
-    vanila_overlap_path = f"{work_dir}/vanila_overlap_{case_name}_Spacing15.nii.gz"
+    vanila_overlap_path = f"{vanila_overlap_save_folder}/vanila_overlap_{case_idx}_Spacing15.nii.gz"
     nib.save(vanila_overlap_nifti, vanila_overlap_path)
     print(f"Saved vanila_overlap to {vanila_overlap_path}")
 
@@ -101,12 +107,13 @@ for case_name in case_name_list:
     ]
     PET_observed_range_overlap = np.zeros_like(synCT_seg_data_aligned)
     PET_observed_range_overlap[body_contour_data > 0.5] = 200
-    PET_observed_range_overlap[synCT_seg_data_aligned > 0] = synCT_seg_data_aligned[synCT_seg_data_aligned > 0]
-    PET_observed_range_overlap[synCT_seg_data_aligned == 0] = 200
+    # only overlap the PET_observed_range
+    for label in PET_observed_range:
+        PET_observed_range_overlap[synCT_seg_data_aligned == label] = label
     
     # use body_contour_file header and affine to save the PET_observed_range_overlap
     PET_observed_range_overlap_nifti = nib.Nifti1Image(PET_observed_range_overlap, body_contour_file.affine, body_contour_file.header)
-    PET_observed_range_overlap_path = f"{work_dir}/PET_observed_range_overlap_{case_name}_Spacing15.nii.gz"
+    PET_observed_range_overlap_path = f"{PET_observed_range_save_folder}/PET_observed_range_{case_idx}_Spacing15.nii.gz"
     nib.save(PET_observed_range_overlap_nifti, PET_observed_range_overlap_path)
     print(f"Saved PET_observed_range_overlap to {PET_observed_range_overlap_path}")
 
