@@ -288,7 +288,7 @@ def inference_function(inputs):
     return synthetic_image
 
 
-work_dir = "."
+work_dir = "SynthRad_nifti"
 ct_dir = f"{work_dir}/ct"
 con_dir = f"{work_dir}/mask/"
 seg_dir = f"{work_dir}/mr/mr_seg"
