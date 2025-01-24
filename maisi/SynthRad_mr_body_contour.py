@@ -2,7 +2,7 @@ import nibabel as nib
 import glob
 import os
 
-from skimage.morphology import binary_fill_holes
+from skimage.segmentation import binary_fill_holes
 
 work_dir = "."
 mr_list = sorted(glob.glob(f"{work_dir}/*.nii.gz"))
