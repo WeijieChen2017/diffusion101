@@ -6,7 +6,7 @@ from scipy.ndimage import binary_fill_holes
 
 work_dir = "."
 mr_list = sorted(glob.glob(f"{work_dir}/*.nii.gz"))
-mr_th = 10
+mr_th = 100
 for path in mr_list:
     nii_file = nib.load(path)
     nii_data = nii_file.get_fdata()
