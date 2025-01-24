@@ -330,6 +330,8 @@ case_list = [
     "1PA022", "1PA045", "1PA064", "1PA090", "1PA109", "1PA127", "1PA148", "1PA167", "1PA183", "1PC017", "1PC038", "1PC057", "1PC079",
 ]
 
+print("The current device is", device)
+
 for case_name in case_list:
     overlap_path = f"{overlap_dir}/{case_name}_overlap.nii.gz"
     mask_path = f"{con_dir}/{case_name}_mask.nii.gz"
@@ -348,7 +350,7 @@ for case_name in case_list:
         sw_batch_size=1,
         predictor=inference_function,
         overlap=1/4,
-        mode="constant",
+        mode="gaussian",
         sigma_scale=0.125,
         device=device,
         sw_device=device,
