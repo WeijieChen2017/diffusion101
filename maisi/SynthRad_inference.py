@@ -345,9 +345,17 @@ for case_name in case_list:
     synthetic_image = sliding_window_inference(
         inputs=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
         roi_size=(256, 256, 256),
-        sw_batch_size=1,
+        sw_batch_size=2,
         predictor=inference_function,
-        overlap=1/8,
+        overlap=1/4,
+        mode="gaussian",
+        sigma_scale=0.125,
+        # inputs=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
+        # roi_size=(256, 256, 256),
+        # sw_batch_size=1,
+        # sw_d
+        # predictor=inference_function,
+        # overlap=1/8,
     )
     
     # save it using ct_path header and affine
