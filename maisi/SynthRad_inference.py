@@ -280,12 +280,12 @@ def generate_and_save_synthetic_ct(ldm_sampler, folder_path):
 # here we wrap model to let it be a function for sliding_window_inference
 def inference_function(inputs):
     synthetic_image, _, _ = ldm_sampler.sample_one_pair(
-        combine_label_or_aug=inputs.unsqueeze(0).to(ldm_sampler.device),
+        combine_label_or_aug=inputs,
         top_region_index_tensor=top_region_index_tensor,
         bottom_region_index_tensor=bottom_region_index_tensor,
         spacing_tensor=spacing_tensor,
     )
-    return synthetic_image.unsqueeze(0)
+    return synthetic_image
 
 
 work_dir = "SynthRad_nifti"
