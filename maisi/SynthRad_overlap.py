@@ -53,7 +53,9 @@ for case_name in case_list:
 
     print(f"{case_name}: Original con shape: {con_data.shape}, seg shape: {seg_data.shape}")
 
+    # seg con_data as label 200
     overlap_data = con_data.copy()
+    overlap_data[con_data > 0.5] = 200
     overlap_data[seg_data > 0] = seg_data[seg_data > 0]
 
     overlap_nii = nib.Nifti1Image(overlap_data, con_file.affine, con_file.header)
