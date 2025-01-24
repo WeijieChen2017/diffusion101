@@ -116,7 +116,7 @@ ldm_sampler = LDMSampler(
         random_seed=args.random_seed,
         autoencoder_sliding_window_infer_size=args.autoencoder_sliding_window_infer_size,
         autoencoder_sliding_window_infer_overlap=args.autoencoder_sliding_window_infer_overlap,
-)
+).to(device)
 
 # def load_segmentation_maps(folder_path):
 #     """
@@ -285,7 +285,7 @@ def inference_function(inputs):
         bottom_region_index_tensor=bottom_region_index_tensor,
         spacing_tensor=spacing_tensor,
     )
-    return synthetic_image.cpu()
+    return synthetic_image
 
 
 work_dir = "SynthRad_nifti"
