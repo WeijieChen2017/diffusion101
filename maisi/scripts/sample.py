@@ -123,7 +123,7 @@ def ldm_conditional_sample_one_mask(
         anatomy_size = torch.FloatTensor(anatomy_size).unsqueeze(0).unsqueeze(0).half().to(device)
         # synthesize latents
         noise_scheduler.set_timesteps(num_inference_steps=num_inference_steps)
-        inferer_ddpm = DiffusionInferer(noise_scheduler)
+        inferer_ddpm = DiffusionInferfer(noise_scheduler)
         latents = inferer_ddpm.sample(
             input_noise=latents,
             diffusion_model=diffusion_unet,
@@ -241,7 +241,8 @@ def ldm_conditional_sample_one_image(
             )
             combine_label = torch.nn.functional.interpolate(combine_label, size=output_size, mode="nearest")
 
-        controlnet_cond_vis = binarize_labels(combine_label.as_tensor().long()).half()
+        controlnet_cond_vis = binarize_labels(combine_label.long()).half()
+        # controlnet_cond_vis = binarize_labels(combine_label.as_tensor().long()).half()
 
         # Generate random noise
         latents = initialize_noise_latents(latent_shape, device) * noise_factor
