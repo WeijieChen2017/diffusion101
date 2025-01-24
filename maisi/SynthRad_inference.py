@@ -331,6 +331,7 @@ case_list = [
 ]
 
 print("The current device is", device)
+txtlog = open(f"{synCT_dir}/log.txt", "w")
 
 for case_name in case_list:
     overlap_path = f"{overlap_dir}/{case_name}_overlap.nii.gz"
@@ -381,3 +382,4 @@ for case_name in case_list:
     synthetic_image = nib.Nifti1Image(synthetic_image, ct_affine, ct_header)
     nib.save(synthetic_image, synCT_path)
     print(f"Synthetic CT image saved to {synCT_path}, MAE: {mae.mean()}")
+    txtlog.write(f"{case_name}: {mae.mean()}\n")
