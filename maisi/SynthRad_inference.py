@@ -285,7 +285,7 @@ def inference_function(inputs):
         bottom_region_index_tensor=bottom_region_index_tensor,
         spacing_tensor=spacing_tensor,
     )
-    return synthetic_image
+    return synthetic_image.to(device)
 
 
 work_dir = "SynthRad_nifti"
@@ -352,8 +352,8 @@ for case_name in case_list:
         overlap=1/4,
         mode="gaussian",
         sigma_scale=0.125,
-        device=device,
-        sw_device=device,
+        # device=device,
+        # sw_device=device,
         # inputs=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
         # roi_size=(256, 256, 256),
         # sw_batch_size=1,
