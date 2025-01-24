@@ -116,7 +116,7 @@ ldm_sampler = LDMSampler(
         random_seed=args.random_seed,
         autoencoder_sliding_window_infer_size=args.autoencoder_sliding_window_infer_size,
         autoencoder_sliding_window_infer_overlap=args.autoencoder_sliding_window_infer_overlap,
-).to(device)
+)
 
 # def load_segmentation_maps(folder_path):
 #     """
@@ -350,8 +350,8 @@ for case_name in case_list:
         overlap=1/4,
         mode="gaussian",
         sigma_scale=0.125,
-        # device=ldm_sampler.device,
-        # sw_device=ldm_sampler.device,
+        device=device,
+        sw_device=device,
         # inputs=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
         # roi_size=(256, 256, 256),
         # sw_batch_size=1,
