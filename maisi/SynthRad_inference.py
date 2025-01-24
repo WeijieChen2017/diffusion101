@@ -369,7 +369,7 @@ for case_name in case_list:
     ct_affine = ct_file.affine
     mask_file = nib.load(mask_path)
     mask_data = mask_file.get_fdata()
-    synthetic_image = synthetic_image.detach().cpu().numpy()
+    synthetic_image = synthetic_image.squeeze().detach().cpu().numpy()
 
     # compute mae using ct_data and synthetic_image and apply the mask_data
     mae = np.abs(ct_data - synthetic_image)
