@@ -285,7 +285,7 @@ def inference_function(inputs):
         bottom_region_index_tensor=bottom_region_index_tensor,
         spacing_tensor=spacing_tensor,
     )
-    return synthetic_image
+    return synthetic_image.unsqueeze(0)
 
 
 work_dir = "SynthRad_nifti"
