@@ -348,7 +348,7 @@ for case_name in case_list:
         sw_batch_size=1,
         predictor=inference_function,
         overlap=1/4,
-        mode="gaussian",
+        mode="constant",
         sigma_scale=0.125,
         device=device,
         sw_device=device,
