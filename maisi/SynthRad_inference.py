@@ -334,7 +334,7 @@ print("The current device is", device)
 txtlog = open(f"{synCT_dir}/log.txt", "w")
 
 for case_name in case_list:
-    overlap_path = f"{overlap_dir}/{case_name}_overlap.nii.gz"
+    overlap_path = f"{overlap_dir}/{case_name}_label_painting.nii.gz"
     mask_path = f"{con_dir}/{case_name}_mask.nii.gz"
     synCT_path = f"{synCT_dir}/{case_name}_label_painting.nii.gz"
     ct_path = f"{ct_dir}/{case_name}_ct.nii.gz"
