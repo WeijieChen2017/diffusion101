@@ -102,7 +102,7 @@ for case_name in case_list:
         seg_data = seg_file.get_fdata()
 
         # get the value as the segmentation label for the organ
-        label = organ_to_index[organ_name].astype(np.int16)
+        label = organ_to_index[organ_name]
         # make label to be integer
         label_painting_data[seg_data > 0] = label
 
