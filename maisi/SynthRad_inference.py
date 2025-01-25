@@ -340,7 +340,7 @@ for case_name in case_list:
     ct_path = f"{ct_dir}/{case_name}_ct.nii.gz"
     segmentation_map = monai.transforms.LoadImage(image_only=True, ensure_channel_first=True)(overlap_path)
 
-    top_region_index_tensor = torch.FloatTensor([1, 0, 0, 0]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
+    top_region_index_tensor = torch.FloatTensor([0, 0, 1, 0]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
     bottom_region_index_tensor = torch.FloatTensor([0, 0, 0, 1]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
     spacing_tensor = torch.FloatTensor(ldm_sampler.spacing).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
 

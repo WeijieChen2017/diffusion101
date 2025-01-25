@@ -93,7 +93,7 @@ for case_name in case_list:
     con_data = con_file.get_fdata()
 
     # copy the con_data and set the label to 200
-    label_painting_data = con_data.copy()
+    label_painting_data = np.zeros_like(con_data, dtype=np.int16)
     label_painting_data[con_data > 0.5] = 200
 
     for organ_name in organ_to_index.keys():
@@ -102,8 +102,16 @@ for case_name in case_list:
         seg_data = seg_file.get_fdata()
 
         # get the value as the segmentation label for the organ
-        label = organ_to_index[organ_name]
+        label = organ_to_index[organ_name].astype(np.int16)
+        # make label to be integer
         label_painting_data[seg_data > 0] = label
+
+    # output all unique labels
+    unique_labels = np.unique(label_painting_data)
+    print(f"Unique labels: {unique_labels}")
+    # check whether there are float
+    if not all([x.is_integer() for x in unique_labels]):
+        print(f"Warning: there are float labels in {case_name}")
 
     # save the label_painting_data
     label_painting_nifti = nib.Nifti1Image(label_painting_data, con_file.affine, con_file.header)
