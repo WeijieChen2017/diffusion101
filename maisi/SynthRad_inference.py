@@ -292,8 +292,8 @@ work_dir = "SynthRad_nifti"
 ct_dir = f"{work_dir}/ct"
 con_dir = f"{work_dir}/mask/"
 seg_dir = f"{work_dir}/mr/mr_seg"
-overlap_dir = f"{work_dir}/overlap"
-synCT_dir = f"{work_dir}/synCT"
+overlap_dir = f"{work_dir}/label_painting"
+synCT_dir = f"{work_dir}/synCT_label_painting"
 top_region_index_tensor = torch.FloatTensor([0, 0, 1, 0]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
 bottom_region_index_tensor = torch.FloatTensor([0, 0, 0, 1]).unsqueeze(0).half().to(ldm_sampler.device) * 1e2
 spacing_tensor = torch.FloatTensor([1.5, 1.5, 1.5]).to(ldm_sampler.device)  # Example tensor
@@ -336,7 +336,7 @@ txtlog = open(f"{synCT_dir}/log.txt", "w")
 for case_name in case_list:
     overlap_path = f"{overlap_dir}/{case_name}_overlap.nii.gz"
     mask_path = f"{con_dir}/{case_name}_mask.nii.gz"
-    synCT_path = f"{synCT_dir}/{case_name}_synCT.nii.gz"
+    synCT_path = f"{synCT_dir}/{case_name}_label_painting.nii.gz"
     ct_path = f"{ct_dir}/{case_name}_ct.nii.gz"
     segmentation_map = monai.transforms.LoadImage(image_only=True, ensure_channel_first=True)(overlap_path)
 
