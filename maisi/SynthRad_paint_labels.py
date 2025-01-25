@@ -1,6 +1,6 @@
 import os
 import glob
-import niabel as nib
+import nibabel as nib
 import numpy as np
 
 case_list = [
