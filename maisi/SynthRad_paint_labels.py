@@ -79,7 +79,7 @@ organ_to_index = {
 }
 
 
-work_dir = "SynthRad_nifit"
+work_dir = "SynthRad_nifti"
 seg_folder = f"{work_dir}/mr"
 con_dir = f"{work_dir}/mask"
 label_painting_folder = f"{work_dir}/label_painting"
