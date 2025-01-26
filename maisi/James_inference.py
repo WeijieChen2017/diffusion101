@@ -328,12 +328,11 @@ for case_name in case_list:
     synthetic_image = sliding_window_inference(
         inputs=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
         roi_size=(256, 256, 256),
-        sw_batch_size=1,
+        sw_batch_size=4,
         predictor=inference_function,
         overlap=1/4,
         mode="gaussian",
         sigma_scale=0.125,
-        sw_batch_size=4,
         # device=device,
         # sw_device=device,
         # inputs=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
