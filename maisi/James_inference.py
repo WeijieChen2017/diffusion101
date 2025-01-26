@@ -47,7 +47,7 @@ elif case_list_division == 3:
     device = torch.device("cuda:4")
 elif case_list_division == 4:
     case_list = ["JLB061","JQR130","KQA094"]
-    device = torch.device("cuda:4")
+    device = torch.device("cuda:3")
 elif case_list_division == 5:
     case_list = ["KWX131","KZF084","LBO118"]
     device = torch.device("cuda:5")
@@ -59,7 +59,7 @@ elif case_list_division == 7:
     device = torch.device("cuda:5")
 elif case_list_division == 8:
     case_list = ["OOP125","PAW055","RFK139"]
-    device = torch.device("cuda:5")
+    device = torch.device("cuda:3")
 elif case_list_division == 9:
     case_list = ["RSE114","SAM079","SCH068"]
     device = torch.device("cuda:6")
@@ -71,7 +71,7 @@ elif case_list_division == 11:
     device = torch.device("cuda:6")
 elif case_list_division == 12:
     case_list = ["XZG098","YKY073","ZTS092"]
-    device = torch.device("cuda:6")
+    device = torch.device("cuda:3")
 else:
     print("Invalid input, please enter a number between 1 and 12.")
     exit()
