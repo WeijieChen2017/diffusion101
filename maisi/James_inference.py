@@ -363,7 +363,7 @@ txtlog = open(f"{synCT_dir}/log.txt", "w")
 
 for case_name in case_list:
     case_idx = f"E4{case_name[3:]}"
-    body_contour_path = f"{work_dir}/mask_body_contour_{case_idx}_Spacing15.nii.gz"
+    body_contour_path = f"{con_dir}/mask_body_contour_{case_idx}_Spacing15.nii.gz"
     synCT_seg_path = f"{synCT_seg_dir}/vanila_overlap_{case_idx}_Spacing15.nii.gz"
     synCT_path = f"{synCT_dir}/SynCT_{case_idx}.nii.gz"
     segmentation_map = monai.transforms.LoadImage(image_only=True, ensure_channel_first=True)(synCT_seg_path)
