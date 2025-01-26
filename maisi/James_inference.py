@@ -333,6 +333,7 @@ for case_name in case_list:
         overlap=1/4,
         mode="gaussian",
         sigma_scale=0.125,
+        sw_batch_size=4,
         # device=device,
         # sw_device=device,
         # inputs=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
