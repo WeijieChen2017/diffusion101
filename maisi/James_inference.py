@@ -19,6 +19,62 @@ from monai.transforms import SaveImage
 
 from monai.inferers import sliding_window_inference
 
+case_list_total = [
+    "BII096","BPO124","DZS099",
+    "EGS066","EIA058","FGX078",
+    "FNG137","GSB106","HNJ120",
+    "JLB061","JQR130","KQA094",
+    "KWX131","KZF084","LBO118",
+    "LCQ128","MLU077","NAF069",
+    "NIR103","NKQ091","ONC134",
+    "OOP125","PAW055","RFK139",
+    "RSE114","SAM079","SCH068",
+    "SNF129","SPT074","TTE081",
+    "TVA105","WLX138","WVX115",
+    "XZG098","YKY073","ZTS092",
+]
+# here ask for the input of case_list division
+user_input = input("Please enter the case list division (1-12): ")
+case_list_division = int(user_input)
+if case_list_division == 1:
+    case_list = ["BII096","BPO124","DZS099"]
+    device = torch.device("cuda:4")
+elif case_list_division == 2:
+    case_list = ["EGS066","EIA058","FGX078"]
+    device = torch.device("cuda:4")
+elif case_list_division == 3:
+    case_list = ["FNG137","GSB106","HNJ120"]
+    device = torch.device("cuda:4")
+elif case_list_division == 4:
+    case_list = ["JLB061","JQR130","KQA094"]
+    device = torch.device("cuda:4")
+elif case_list_division == 5:
+    case_list = ["KWX131","KZF084","LBO118"]
+    device = torch.device("cuda:5")
+elif case_list_division == 6:
+    case_list = ["LCQ128","MLU077","NAF069"]
+    device = torch.device("cuda:5")
+elif case_list_division == 7:
+    case_list = ["NIR103","NKQ091","ONC134"]
+    device = torch.device("cuda:5")
+elif case_list_division == 8:
+    case_list = ["OOP125","PAW055","RFK139"]
+    device = torch.device("cuda:5")
+elif case_list_division == 9:
+    case_list = ["RSE114","SAM079","SCH068"]
+    device = torch.device("cuda:6")
+elif case_list_division == 10:
+    case_list = ["SNF129","SPT074","TTE081"]
+    device = torch.device("cuda:6")
+elif case_list_division == 11:
+    case_list = ["TVA105","WLX138","WVX115"]
+    device = torch.device("cuda:6")
+elif case_list_division == 12:
+    case_list = ["XZG098","YKY073","ZTS092"]
+    device = torch.device("cuda:6")
+else:
+    print("Invalid input, please enter a number between 1 and 12.")
+    exit()
 
 root_dir = "."
 save_dir = os.path.join(root_dir, "inference_v1")
@@ -52,8 +108,6 @@ print("Global config variables have been loaded.")
 
 noise_scheduler = define_instance(args, "noise_scheduler")
 mask_generation_noise_scheduler = define_instance(args, "mask_generation_noise_scheduler")
-
-device = torch.device("cuda:0")
 
 autoencoder = define_instance(args, "autoencoder_def").to(device)
 checkpoint_autoencoder = torch.load(args.trained_autoencoder_path, weights_only=True)
@@ -287,14 +341,8 @@ def inference_function(inputs):
     )
     return synthetic_image.to(device)
 
-case_list = [
-    "BII096","BPO124","DZS099","EGS066","EIA058","FGX078",
-    "FNG137","GSB106","HNJ120","JLB061","JQR130","KQA094",
-    "KWX131","KZF084","LBO118","LCQ128","MLU077","NAF069",
-    "NIR103","NKQ091","ONC134","OOP125","PAW055","RFK139",
-    "RSE114","SAM079","SCH068","SNF129","SPT074","TTE081",
-    "TVA105","WLX138","WVX115","XZG098","YKY073","ZTS092",
-]
+
+
 
 work_dir = "James_36"
 # ct_dir = f"{work_dir}/ct"
@@ -328,7 +376,7 @@ for case_name in case_list:
     synthetic_image = sliding_window_inference(
         inputs=segmentation_map.unsqueeze(0).to(ldm_sampler.device),
         roi_size=(256, 256, 256),
-        sw_batch_size=4,
+        sw_batch_size=1,
         predictor=inference_function,
         overlap=1/4,
         mode="gaussian",
