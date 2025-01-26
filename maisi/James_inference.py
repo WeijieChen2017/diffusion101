@@ -56,13 +56,13 @@ elif case_list_division == 6:
     device = torch.device("cuda:5")
 elif case_list_division == 7:
     case_list = ["NIR103","NKQ091","ONC134"]
-    device = torch.device("cuda:0")
+    device = torch.device("cuda:5")
 elif case_list_division == 8:
     case_list = ["OOP125","PAW055","RFK139"]
     device = torch.device("cuda:3")
 elif case_list_division == 9:
     case_list = ["RSE114","SAM079","SCH068"]
-    device = torch.device("cuda:0")
+    device = torch.device("cuda:5")
 elif case_list_division == 10:
     case_list = ["SNF129","SPT074","TTE081"]
     device = torch.device("cuda:6")
