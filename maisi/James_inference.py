@@ -38,7 +38,7 @@ user_input = input("Please enter the case list division (1-12): ")
 case_list_division = int(user_input)
 if case_list_division == 1:
     case_list = ["BII096","BPO124","DZS099"]
-    device = torch.device("cuda:4")
+    device = torch.device("cuda:2")
 elif case_list_division == 2:
     case_list = ["EGS066","EIA058","FGX078"]
     device = torch.device("cuda:4")
@@ -47,7 +47,7 @@ elif case_list_division == 3:
     device = torch.device("cuda:4")
 elif case_list_division == 4:
     case_list = ["JLB061","JQR130","KQA094"]
-    device = torch.device("cuda:3")
+    device = torch.device("cuda:2")
 elif case_list_division == 5:
     case_list = ["KWX131","KZF084","LBO118"]
     device = torch.device("cuda:5")
