@@ -39,15 +39,18 @@ metric_psnr_mid = 0
 for case_name in case_list:
     overlap_path = f"{overlap_dir}/{case_name}_label_painting.nii.gz"
     con_path = f"{con_dir}/{case_name}_mask_shrink5.nii.gz"
+    metric_mask_path = f"{con_dir}/{case_name}_mask.nii.gz"
     synCT_path = f"{synCT_dir}/{case_name}_label_painting.nii.gz"
     ct_path = f"{ct_dir}/{case_name}_ct.nii.gz"
 
     ct_file = nib.load(ct_path)
     con_file = nib.load(con_path)
+    mask_file = nib.load(metric_mask_path)
     synCT_file = nib.load(synCT_path)
 
     ct_data = ct_file.get_fdata()
     con_data = con_file.get_fdata()
+    mask_data = mask_file.get_fdata()
     synCT_data = synCT_file.get_fdata()
 
     minHU, maxHU = -1024, 3000
@@ -83,8 +86,8 @@ for case_name in case_list:
     case_ssim_mid = 0
     case_psnr_mid = 0
     for z in range(len_z):
-        masked_ct = nonneg_ct[:, :, z][con_data[:, :, z] > 0.5]
-        masked_synCT_bg = nonneg_synCT_bg[:, :, z][con_data[:, :, z] > 0.5]
+        masked_ct = nonneg_ct[:, :, z][mask_data[:, :, z] > 0.5]
+        masked_synCT_bg = nonneg_synCT_bg[:, :, z][mask_data[:, :, z] > 0.5]
         case_mae += np.mean(np.abs(masked_ct - masked_synCT_bg))
         case_ssim += ssim(masked_ct, masked_synCT_bg, data_range=maxHU - minHU)
         case_psnr += psnr(masked_ct, masked_synCT_bg, data_range=maxHU - minHU)
