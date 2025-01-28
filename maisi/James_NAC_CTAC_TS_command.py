@@ -28,7 +28,12 @@ import numpy as np
 
 # available GPU is 0/1/2/4/5/6
 GPU_mapping = ["0", "1", "2", "4", "5", "6"]
-
+commands_list = [
+    [],
+    [],
+    [],
+    [],
+]
 for i, case_name in enumerate(case_name_list):
     # NAC_E4055_256.nii.gz CTAC_E4055_256.nii.gz
     CTACIVV_cropped_path = f"{work_dir}/CTAC_{case_name}_cropped.nii.gz"
@@ -36,7 +41,13 @@ for i, case_name in enumerate(case_name_list):
     gpu_idx = f"gpu:{GPU_mapping[i % 4]}"
 
     command = f"TotalSegmentator -i {CTACIVV_cropped_path} -o {CTACIVV_cropped_seg_path} --device {gpu_idx} --ml"
-    print(command)
+    commands_list[i % 4].append(command)
+
+for i, commands in enumerate(commands_list):
+    print(f"echo 'Running on GPU {GPU_mapping[i]}'")
+    for command in commands:
+        print(command)
+    print("\n")
 
     
 
