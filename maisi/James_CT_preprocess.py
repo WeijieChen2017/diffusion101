@@ -103,7 +103,6 @@ for i, case_name in enumerate(case_name_list):
     # print(f"case: {case_name}, TOFNAC physical space: {TOFNAC_physical_space}, CTACIVV physical space: {CTACIVV_physical_space}")
     # print("-" * 50)
 
-workbook.save()
 workbook.close()
 print(f"Saved to {xlsx_path}")
 
