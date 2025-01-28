@@ -29,7 +29,7 @@ os.makedirs(dst_folder, exist_ok=True)
 for case_name in case_name_list:
     print("-"*30)
     # PET TOFNAC E4193 B100 and CTACIVV_4301.nii
-    NAC_path = f"{NAC_folder}/PET\ TOFNAC\ {case_name}\ B100/*.nii"
+    NAC_path = f"{NAC_folder}/*{case_name}*.nii"
     CTAC_path = f"{CTAC_folder}/CTACIVV_{case_name[1:]}.nii"
     # check how many NAC path exist
     NAC_path_list = glob.glob(NAC_path)
