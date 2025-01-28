@@ -31,33 +31,24 @@ case_name_list = [
     'E4120', 'E4124', 'E4125', 'E4128', 'E4129',
     'E4130', 'E4131', 'E4134', 'E4137', 'E4138',
     'E4139', 
-    # 'E4242', 'E4275', 'E4298', 'E4313',
-    # 'E4245', 'E4276', 'E4299', 'E4317', 'E4246',
-    # 'E4280', 'E4300', 'E4318', 'E4247', 'E4282',
-    # 'E4301', 'E4324', 'E4248', 'E4283', 'E4302',
-    # 'E4325', 'E4250', 'E4284', 'E4306', 'E4328',
-    # 'E4252', 'E4288', 'E4307', 'E4332', 'E4259',
-    # 'E4308', 'E4335', 'E4260', 'E4290', 'E4309',
-    # 'E4336', 'E4261', 'E4292', 'E4310', 'E4337',
-    # 'E4273', 'E4297', 'E4312', 'E4338',
 ]
 # E4063, E4080, E4087, E4097, E4102, E4289 are removed for z mismatch
 
 # here ask for the input of case_list division
-user_input = input("Please enter the case list division (1-4): ")
+user_input = input("Please enter the case list division (1-2): ")
 case_list_division = int(user_input)
 case_name_list = sorted(case_name_list)
 # use % to divide the case_name_list into 4 parts
 current_case_name_list = []
 for i, case_name in enumerate(case_name_list):
-    if i % 4 == case_list_division - 1:
+    if i % 2 == case_list_division - 1:
         current_case_name_list.append(case_name)
 print(f"Current case name list: {current_case_name_list}")
 
 # available GPU is 0/1/2/4/5/6
-GPU_mapping = ["1", "2", "4", "5"]
+GPU_mapping = ["4", "5"]
 device = torch.device(f"cuda:{GPU_mapping[case_list_division - 1]}")
-root_dir = "NAC_CTAC_Spacing15"
+root_dir = "James_36/SynCT/"
 
 save_dir = os.path.join(root_dir, "inference_20250128_noon")
 os.makedirs(save_dir, exist_ok=True)
@@ -346,9 +337,9 @@ metric_dict = {
 }
 
 for case_name in current_case_name_list:
-    ct_path = f"{root_dir}/CTAC_{case_name}_cropped.nii.gz"
-    body_contour_path = f"{root_dir}/CTAC_{case_name}_TS_body.nii.gz"
-    synCT_seg_path = f"{root_dir}/CTAC_{case_name}_TS_label.nii.gz"
+    ct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
+    body_contour_path = f"{root_dir}/SynCT_{case_name}_TS_body.nii.gz"
+    synCT_seg_path = f"{root_dir}/SynCT_{case_name}_TS_label.nii.gz"
     synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS_MAISI.nii.gz"
     segmentation_map = monai.transforms.LoadImage(image_only=True, ensure_channel_first=True)(synCT_seg_path)
 
