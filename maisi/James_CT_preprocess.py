@@ -29,8 +29,8 @@ import numpy as np
 
 for case_name in case_name_list:
     # NAC_E4055_256.nii.gz CTAC_E4055_256.nii.gz
-    TOFNAC_path = f"{work_dir}/NAC_{case_name}.nii.gz"
-    CTACIVV_path = f"{work_dir}/CTAC_{case_name}.nii.gz"
+    TOFNAC_path = f"{work_dir}/NAC_{case_name}_256.nii.gz"
+    CTACIVV_path = f"{work_dir}/CTAC_{case_name}_256.nii.gz"
 
     TOFNAC_file = nib.load(TOFNAC_path)
     TOFNAC_data = TOFNAC_file.get_fdata()
@@ -49,6 +49,6 @@ for case_name in case_name_list:
     print(f"case: {case_name}, TOFNAC spacing: {TOFNAC_spacing}, CTACIVV spacing: {CTACIVV_spacing}")
     print(f"case: {case_name}, TOFNAC physical space: {TOFNAC_physical_space}, CTACIVV physical space: {CTACIVV_physical_space}")
     print("-" * 50)
-    
+
 
     
