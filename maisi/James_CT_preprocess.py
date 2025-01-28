@@ -21,8 +21,9 @@ case_name_list = [
     'E4260', 'E4290', 'E4309', 'E4336',
     'E4261', 'E4292', 'E4310', 'E4337',
     'E4273', 'E4297', 'E4312', 'E4338',
-    
 ]
+
+case_name_list = sorted(case_name_list)
 
 import os
 import nibabel as nib
