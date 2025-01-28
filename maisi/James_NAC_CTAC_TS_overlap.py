@@ -73,10 +73,10 @@ work_dir = "NAC_CTAC_Spacing15"
 # work_dir = "James_36/synCT"
 for i, case_name in enumerate(case_name_list):
     # NAC_E4055_256.nii.gz CTAC_E4055_256.nii.gz
-    # CTACIVV_cropped_path = f"{work_dir}/CTAC_{case_name}_cropped.nii.gz"
-    # CTACIVV_cropped_seg_path = f"{work_dir}/CTAC_{case_name}_TS.nii.gz"
-    CTACIVV_cropped_path = f"{work_dir}/SynCT_{case_name}.nii.gz"
-    CTACIVV_cropped_seg_path = f"{work_dir}/SynCT_{case_name}_TS.nii.gz"
+    CTACIVV_cropped_path = f"{work_dir}/CTAC_{case_name}_cropped.nii.gz"
+    CTACIVV_cropped_seg_path = f"{work_dir}/CTAC_{case_name}_TS.nii.gz"
+    # CTACIVV_cropped_path = f"{work_dir}/SynCT_{case_name}.nii.gz"
+    # CTACIVV_cropped_seg_path = f"{work_dir}/SynCT_{case_name}_TS.nii.gz"
     # gpu_idx = f"gpu:{GPU_mapping[i % 2]}"
 
     # command = f"TotalSegmentator -i {CTACIVV_cropped_path} -o {CTACIVV_cropped_seg_path} --device {gpu_idx} --ml"
