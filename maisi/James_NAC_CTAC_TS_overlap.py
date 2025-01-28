@@ -98,21 +98,32 @@ for i, case_name in enumerate(case_name_list):
     len_z = body_contour.shape[2]
     for z in range(len_z):
         slice_z = body_contour[:, :, z]
-        slice_z[CT_data > -500] = 1
+        slice_z[CT_data[:, :, z] > -500] = 1
         slice_z = binary_fill_holes(slice_z)
-        body_contour[slice_z > 0] = 200
-    
-    # label transformation using T2M_mapping
-    n_labels = len(T2M_mapping.keys())
-    for i in range(1, n_labels + 1):
-        body_contour[seg_data == i] = T2M_mapping[i]
-    
+        body_contour[:, :, z] = slice_z
+
     body_contour_nii = nib.Nifti1Image(body_contour, seg_file.affine, seg_file.header)
     body_contour_path = CTACIVV_cropped_seg_path.replace("_TS.nii.gz", "_TS_body.nii.gz")
     nib.save(body_contour_nii, body_contour_path)
     print(f"Saved body contour to {body_contour_path}")
 
+    # copy as label overlap
+    label_overlap = body_contour.copy()
+    label_overlap[body_contour > 0] = 200
     
+    # label transformation using T2M_mapping
+    n_labels = len(T2M_mapping.keys())
+    for i in range(1, n_labels + 1):
+        label_overlap[seg_data == i] = T2M_mapping[i]
+    
+    label_overlap_nii = nib.Nifti1Image(label_overlap, seg_file.affine, seg_file.header)
+    label_overlap_path = CTACIVV_cropped_seg_path.replace("_TS.nii.gz", "_TS_label.nii.gz")
+    nib.save(label_overlap_nii, label_overlap_path)
+    print(f"Saved label overlap to {label_overlap_path}")
+    
+
+
+
     
 
 
