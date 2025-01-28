@@ -434,6 +434,11 @@ for case_name in current_case_name_list:
     for z in range(len_z):
         masked_ct = nonneg_ct[:, :, z][mask_data[:, :, z] > 0.5]
         masked_synCT_bg = nonneg_synCT_bg[:, :, z][mask_data[:, :, z] > 0.5]
+
+        #compute if not empty
+        if len(masked_ct) == 0:
+            continue
+        
         case_mae += np.mean(np.abs(masked_ct - masked_synCT_bg))
         case_ssim += ssim(masked_ct, masked_synCT_bg, data_range=maxHU - minHU)
         case_psnr += psnr(masked_ct, masked_synCT_bg, data_range=maxHU - minHU)
