@@ -27,6 +27,7 @@ os.makedirs(dst_folder, exist_ok=True)
 
 # load every folder in NAC_folder
 for case_name in case_name_list:
+    print("-"*30)
     # PET TOFNAC E4193 B100 and CTACIVV_4301.nii
     NAC_path = f"{NAC_folder}/PET TOFNAC {case_name} B100/*.nii"
     CTAC_path = f"{CTAC_folder}/CTACIVV_{case_name}.nii"
@@ -38,8 +39,10 @@ for case_name in case_name_list:
         print(f"case: {case_name}, multiple NAC paths found!")
     else:
         # move the NAC and CTAC to the dst folder
-        cmd_NAC = f"mv {NAC_path_list[0]} {dst_folder}/NAC_{case_name}.nii"
-        cmd_CTAC = f"mv {CTAC_path} {dst_folder}/CTAC_{case_name}.nii"
+        cmd_NAC = f"cp {NAC_path_list[0]} {dst_folder}/NAC_{case_name}.nii"
+        cmd_CTAC = f"cp {CTAC_path} {dst_folder}/CTAC_{case_name}.nii"
+        print(cmd_NAC)
+        print(cmd_CTAC)
         os.system(cmd_NAC)
         os.system(cmd_CTAC)
         print(f"case: {case_name}, NAC and CTAC moved!")
