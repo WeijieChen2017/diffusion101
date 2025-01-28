@@ -39,7 +39,7 @@ for i, case_name in enumerate(case_name_list):
 
     cropped_CTACIVV_data = CTACIVV_data[33:433, 33:433, :]
     cropped_CTACIVV_file = nib.Nifti1Image(cropped_CTACIVV_data, TOFNAC_file.affine, TOFNAC_file.header)
-    cropped_CTACIVV_path = CTACIVV_path.replace("CTAC", "CTAC_cropped")
+    cropped_CTACIVV_path = f"{work_dir}/CTAC_{case_name}_cropped.nii.gz"
     nib.save(cropped_CTACIVV_file, cropped_CTACIVV_path)
     print(f"Saved cropped CTAC to {cropped_CTACIVV_path}")
 
