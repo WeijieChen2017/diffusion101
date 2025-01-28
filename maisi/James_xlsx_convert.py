@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 # Define the path to the directory containing the Excel files
-directory_path = "NAC_CTAC_Spacing15/NAC_CTAC_Spacing15.xlsx"
+directory_path = "NAC_CTAC_Spacing15"
 
 # Create an empty DataFrame to store the combined data
 combined_df = pd.DataFrame()
