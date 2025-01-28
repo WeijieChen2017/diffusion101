@@ -20,36 +20,33 @@ case_name_list = [
 ]
 
 # Part 0
-NAC_folder = "Duetto_Output_B100_part3"
-CTAC_folder = "CTAC_IVV"
-dst_folder = "NAC_CT_pairs_part3"
-os.makedirs(dst_folder, exist_ok=True)
+# NAC_folder = "Duetto_Output_B100_part3"
+# CTAC_folder = "CTAC_IVV"
+# dst_folder = "NAC_CT_pairs_part3"
+# os.makedirs(dst_folder, exist_ok=True)
 
-# load every folder in NAC_folder
-for case_name in case_name_list:
-    print("-"*30)
-    # PET TOFNAC E4193 B100 and CTACIVV_4301.nii
-    NAC_path = f"{NAC_folder}/*{case_name}*.nii"
-    CTAC_path = f"{CTAC_folder}/CTACIVV_{case_name[1:]}.nii"
-    # check how many NAC path exist
-    NAC_path_list = glob.glob(NAC_path)
-    if len(NAC_path_list) == 0:
-        print(f"case: {case_name}, NAC path not found!")
-    elif len(NAC_path_list) > 1:
-        print(f"case: {case_name}, multiple NAC paths found!")
-    else:
-        # move the NAC and CTAC to the dst folder
-        cmd_NAC = f"cp {NAC_path_list[0]} {dst_folder}/NAC_{case_name}.nii"
-        cmd_CTAC = f"cp {CTAC_path} {dst_folder}/CTAC_{case_name}.nii"
-        print(cmd_NAC)
-        print(cmd_CTAC)
-        os.system(cmd_NAC)
-        os.system(cmd_CTAC)
-        print(f"case: {case_name}, NAC and CTAC moved!")
+# # load every folder in NAC_folder
+# for case_name in case_name_list:
+#     print("-"*30)
+#     # PET TOFNAC E4193 B100 and CTACIVV_4301.nii
+#     NAC_path = f"{NAC_folder}/*{case_name}*.nii"
+#     CTAC_path = f"{CTAC_folder}/CTACIVV_{case_name[1:]}.nii"
+#     # check how many NAC path exist
+#     NAC_path_list = glob.glob(NAC_path)
+#     if len(NAC_path_list) == 0:
+#         print(f"case: {case_name}, NAC path not found!")
+#     elif len(NAC_path_list) > 1:
+#         print(f"case: {case_name}, multiple NAC paths found!")
+#     else:
+#         # move the NAC and CTAC to the dst folder
+#         cmd_NAC = f"cp {NAC_path_list[0]} {dst_folder}/NAC_{case_name}.nii"
+#         cmd_CTAC = f"cp {CTAC_path} {dst_folder}/CTAC_{case_name}.nii"
+#         print(cmd_NAC)
+#         print(cmd_CTAC)
+#         os.system(cmd_NAC)
+#         os.system(cmd_CTAC)
+#         print(f"case: {case_name}, NAC and CTAC moved!")
     
-
-
-
 
 # Part 1
 # ----> rename all the files in the James_data_v3 directory
@@ -73,15 +70,43 @@ for case_name in case_name_list:
 #     os.system(move_cmd_CTACIVV)
 
 # Part 2
-# ----> 3d resample to 2.344 mm isotropic
+# ----> 3d resample to 1.5 mm isotropic
+# dst_folder = "NAC_CT_pairs_Winston"
+# for case_name in case_name_list:
+#     NAC_path = dst_folder + f"/NAC_{case_name}.nii"
+#     CTAC_path = dst_folder + f"/CTAC_{case_name}.nii"
+#     new_NAC_path = dst_folder + f"/NAC_{case_name}_256.nii.gz"
+#     new_CTAC_path = dst_folder + f"/CTAC_{case_name}_256.nii.gz"
+#     NAC_cmd = f"3dresample -dxyz 1.5 1.5 1.5 -prefix {new_NAC_path} -inset {NAC_path}"
+#     CTAC_cmd = f"3dresample -dxyz 1.5 1.5 1.5 -prefix {new_CTAC_path} -inset {CTAC_path}"
+#     print(NAC_cmd)
+#     print(CTAC_cmd)
 
-# TOFNAC_dir = "James_data_v3/TOFNAC/"
-# CTACIVV_dir = "James_data_v3/CTACIVV/"
+old_case_name_list = [    
+    "E4055", "E4058", "E4061", "E4063", "E4066",
+    "E4068", "E4069", "E4073", "E4074", "E4077",
+    "E4078", "E4079", "E4080", "E4081", "E4084",
+    "E4087", "E4091", "E4092", "E4094", "E4096",
+    "E4097", "E4098", "E4099", "E4102", "E4103",
+    "E4105", "E4106", "E4114", "E4115", "E4118",
+    "E4120", "E4124", "E4125", "E4128", "E4129",
+    "E4130", "E4131", "E4134", "E4137", "E4138",
+    "E4139",]
 
-# TOFNAC_dir_list =sorted(glob.glob(TOFNAC_dir + "*.nii"))
-# CTACIVV_dir_list =sorted(glob.glob(CTACIVV_dir + "*.nii"))
+TOFNAC_folder = "James_data_v3/TOFNAC"
+CTACIVV_folder = "James_data_v3/CTACIVV"
 
-# for TOFNAC_path in TOFNAC_dir_list:
+for case_name in case_name_list:
+    TOFNAC_path = f"{TOFNAC_folder}/TOFNAC_{case_name}.nii"
+    CTACIVV_path = f"{CTACIVV_folder}/CTACIVV_{case_name}.nii"
+    new_TOFNAC_path = f"{TOFNAC_folder}/NAC_{case_name}_256.nii.gz"
+    new_CTACIVV_path = f"{CTACIVV_folder}/CTAC_{case_name}_256.nii.gz"
+    TOFNAC_cmd = f"3dresample -dxyz 1.5 1.5 1.5 -prefix {new_TOFNAC_path} -inset {TOFNAC_path}"
+    CTACIVV_cmd = f"3dresample -dxyz 1.5 1.5 1.5 -prefix {new_CTACIVV_path} -inset {CTACIVV_path}"
+    print(TOFNAC_cmd)
+    print(CTACIVV_cmd)
+
+# for TOFNAC_path in TOFNAC_folder:
 #     dst_path = TOFNAC_path.replace(".nii", "_256.nii")
 #     print(f"3dresample -dxyz 2.344 2.344 2.344 -prefix {dst_path} -inset {TOFNAC_path}")
 
