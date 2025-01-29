@@ -31,7 +31,7 @@ from skimage.metrics import peak_signal_noise_ratio as psnr
 
 
 root_dir = "James_36/synCT"
-mask_dir = f"James_data_v3/mask"
+mask_dir = f"../James_data_v3/mask"
 os.makedirs(mask_dir, exist_ok=True)
 ct_dir = f"{root_dir}"
 con_dir = f"{root_dir}"
