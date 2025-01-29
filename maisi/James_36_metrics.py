@@ -31,7 +31,7 @@ from skimage.metrics import peak_signal_noise_ratio as psnr
 
 
 root_dir = "James_36/synCT"
-mask_dir = f"../James_data_v3/mask"
+mask_dir = f"James_363/CT_mask"
 os.makedirs(mask_dir, exist_ok=True)
 ct_dir = f"{root_dir}"
 con_dir = f"{root_dir}"
@@ -91,11 +91,16 @@ for case_name in case_name_list:
         soft_mask = nib.load(soft_mask_path).get_fdata()
         bone_mask = nib.load(bone_mask_path).get_fdata()
     else:
+        body_mask = ct_data >= body_contour_boundary
+        for i in range(body_mask.shape[2]):
+            body_mask[:, :, i] = binary_fill_holes(body_mask[:, :, i])
         # mask_CT_soft = (CT_GT_data >= HU_boundary_soft[0]) & (CT_GT_data <= HU_boundary_soft[1])
         soft_mask = (ct_data >= soft_boundary) & (ct_data <= bone_boundary)
         # mask_CT_bone = (CT_GT_data >= HU_boundary_bone[0]) & (CT_GT_data <= HU_boundary_bone[1])
         bone_mask = (ct_data >= bone_boundary) & (ct_data <= max_boundary)
         # save the mask
+        body_mask_nii = nib.Nifti1Image(body_mask.astype(np.uint8), ct_file.affine, ct_file.header)
+        nib.save(body_mask_nii, body_mask_path)
         soft_mask_nii = nib.Nifti1Image(soft_mask.astype(np.uint8), ct_file.affine, ct_file.header)
         nib.save(soft_mask_nii, soft_mask_path)
         bone_mask_nii = nib.Nifti1Image(bone_mask.astype(np.uint8), ct_file.affine, ct_file.header)
