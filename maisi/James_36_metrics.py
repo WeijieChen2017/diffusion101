@@ -23,6 +23,7 @@ region_list = ["whole", "soft", "bone"]
 import os
 import nibabel as nib
 import numpy as np
+from scipy.ndimage import sobel
 
 from scipy.ndimage import binary_fill_holes
 from skimage.metrics import structural_similarity as ssim
@@ -54,8 +55,8 @@ metrics_dict = {
     "psnr_by_region": {},
     "dsc_by_case": {},
     "dsc_by_region": {},
-    "accutance_by_case": {},
-    "accutance_by_region": {},
+    " acutance_by_case": {},
+    " acutance_by_region": {},
 }
 
 for case_name in case_name_list:
@@ -125,8 +126,8 @@ for case_name in case_name_list:
     pred_bone_mask_binary = pred_bone_mask > 0
     pred_mask_list = [pred_body_countour_binary, pred_soft_mask_binary, pred_bone_mask_binary]
 
-    # compute the whole accutance in pixel wise
-    accutance_whole = np.abs(np.gradient(synCT_data))
+    # compute the pixelwise gradient of the image using sobel filter
+    acutance_whole = np.absolute(sobel(synCT_data))
 
     for i in range(len(region_list)):
         region = region_list[i]
@@ -141,10 +142,10 @@ for case_name in case_name_list:
         intersection = np.sum(mask & pred_mask)
         union = np.sum(mask | pred_mask)
         dsc = 2 * intersection / (np.sum(mask) + np.sum(pred_mask))
-        # compute accutance by computing the average absolute gradient of the image
-        accutance = np.mean(accutance_whole[mask])
+        # compute  acutance by computing the average absolute gradient of the image
+        acutance = np.mean( acutance_whole[mask])
 
-        print(f"Computed metrics {region} for {case_name}, MAE: {mae:.4f}, SSIM: {ssim_val:.4f}, PSNR: {psnr_val:.4f}, DSC: {dsc:.4f}, Accutance: {accutance:.4f}")
+        print(f"Computed metrics {region} for {case_name}, MAE: {mae:.4f}, SSIM: {ssim_val:.4f}, PSNR: {psnr_val:.4f}, DSC: {dsc:.4f}, Accutance: { acutance:.4f}")
 
         # save metrics
         if case_name not in metrics_dict["mae_by_case"]:
@@ -152,24 +153,24 @@ for case_name in case_name_list:
             metrics_dict["ssim_by_case"][case_name] = {}
             metrics_dict["psnr_by_case"][case_name] = {}
             metrics_dict["dsc_by_case"][case_name] = {}
-            metrics_dict["accutance_by_case"][case_name] = {}
+            metrics_dict[" acutance_by_case"][case_name] = {}
         metrics_dict["mae_by_case"][case_name][region] = mae
         metrics_dict["ssim_by_case"][case_name][region] = ssim_val
         metrics_dict["psnr_by_case"][case_name][region] = psnr_val
         metrics_dict["dsc_by_case"][case_name][region] = dsc
-        metrics_dict["accutance_by_case"][case_name][region] = accutance
+        metrics_dict[" acutance_by_case"][case_name][region] =  acutance
 
         if region not in metrics_dict["mae_by_region"]:
             metrics_dict["mae_by_region"][region] = []
             metrics_dict["ssim_by_region"][region] = []
             metrics_dict["psnr_by_region"][region] = []
             metrics_dict["dsc_by_region"][region] = []
-            metrics_dict["accutance_by_region"][region] = []
+            metrics_dict[" acutance_by_region"][region] = []
         metrics_dict["mae_by_region"][region].append(mae)
         metrics_dict["ssim_by_region"][region].append(ssim_val)
         metrics_dict["psnr_by_region"][region].append(psnr_val)
         metrics_dict["dsc_by_region"][region].append(dsc)
-        metrics_dict["accutance_by_region"][region].append(accutance)
+        metrics_dict[" acutance_by_region"][region].append( acutance)
 
 # compute average metrics
 for region in region_list:
@@ -177,20 +178,20 @@ for region in region_list:
     metrics_dict["ssim_by_region"][region] = np.mean(metrics_dict["ssim_by_region"][region])
     metrics_dict["psnr_by_region"][region] = np.mean(metrics_dict["psnr_by_region"][region])
     metrics_dict["dsc_by_region"][region] = np.mean(metrics_dict["dsc_by_region"][region])
-    metrics_dict["accutance_by_region"][region] = np.mean(metrics_dict["accutance_by_region"][region])
+    metrics_dict[" acutance_by_region"][region] = np.mean(metrics_dict[" acutance_by_region"][region])
 
 print("Average metrics by region:")
 print(f"MAE: {metrics_dict['mae_by_region']}")
 print(f"SSIM: {metrics_dict['ssim_by_region']}")
 print(f"PSNR: {metrics_dict['psnr_by_region']}")
 print(f"DSC: {metrics_dict['dsc_by_region']}")
-print(f"Accutance: {metrics_dict['accutance_by_region']}")
+print(f"Accutance: {metrics_dict[' acutance_by_region']}")
 print("Metrics by case:")
 print(f"MAE: {metrics_dict['mae_by_case']}")
 print(f"SSIM: {metrics_dict['ssim_by_case']}")
 print(f"PSNR: {metrics_dict['psnr_by_case']}")
 print(f"DSC: {metrics_dict['dsc_by_case']}")
-print(f"Accutance: {metrics_dict['accutance_by_case']}")
+print(f"Accutance: {metrics_dict[' acutance_by_case']}")
 
 # Save metrics to json
 import json
