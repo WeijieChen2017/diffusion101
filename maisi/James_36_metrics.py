@@ -30,7 +30,7 @@ from skimage.metrics import peak_signal_noise_ratio as psnr
 
 
 root_dir = "James_36/synCT"
-mask_dir = f"{root_dir}/mask"
+mask_dir = f"James_data_v3/mask"
 os.makedirs(mask_dir, exist_ok=True)
 ct_dir = f"{root_dir}"
 con_dir = f"{root_dir}"
@@ -54,6 +54,8 @@ metrics_dict = {
     "psnr_by_region": {},
     "dsc_by_case": {},
     "dsc_by_region": {},
+    "accutance_by_case": {},
+    "accutance_by_region": {},
 }
 
 for case_name in case_name_list:
@@ -72,8 +74,8 @@ for case_name in case_name_list:
     synCT_data = synCT_file.get_fdata()
     
     # compute soft and bone mask
-    soft_mask_path = f"{mask_dir}/SynCT_{case_name}_mask_soft.nii.gz"
-    bone_mask_path = f"{mask_dir}/SynCT_{case_name}_mask_bone.nii.gz"
+    soft_mask_path = f"{mask_dir}/mask_body_soft_{case_name}.nii.gz"
+    bone_mask_path = f"{mask_dir}/mask_body_bone_{case_name}.nii.gz"
 
     # if exist, load the mask
     if os.path.exists(soft_mask_path):
@@ -81,9 +83,9 @@ for case_name in case_name_list:
         bone_mask = nib.load(bone_mask_path).get_fdata()
     else:
         # mask_CT_soft = (CT_GT_data >= HU_boundary_soft[0]) & (CT_GT_data <= HU_boundary_soft[1])
-        soft_mask = (synCT_data >= soft_boundary) & (synCT_data <= bone_boundary)
+        soft_mask = (ct_data >= soft_boundary) & (ct_data <= bone_boundary)
         # mask_CT_bone = (CT_GT_data >= HU_boundary_bone[0]) & (CT_GT_data <= HU_boundary_bone[1])
-        bone_mask = (synCT_data >= bone_boundary) & (synCT_data <= max_boundary)
+        bone_mask = (ct_data >= bone_boundary) & (ct_data <= max_boundary)
         # save the mask
         soft_mask_nii = nib.Nifti1Image(soft_mask.astype(np.uint8), ct_file.affine, ct_file.header)
         nib.save(soft_mask_nii, soft_mask_path)
@@ -123,6 +125,9 @@ for case_name in case_name_list:
     pred_bone_mask_binary = pred_bone_mask > 0
     pred_mask_list = [pred_body_countour_binary, pred_soft_mask_binary, pred_bone_mask_binary]
 
+    # compute the whole accutance in pixel wise
+    accutance_whole = np.abs(np.gradient(synCT_data))
+
     for i in range(len(region_list)):
         region = region_list[i]
         mask = mask_list[i]
@@ -130,14 +135,16 @@ for case_name in case_name_list:
 
         # compute metrics
         mae = np.mean(np.abs(ct_data[mask] - synCT_data[mask]))
-        ssim_val = ssim(ct_data, synCT_data, data_range=max_boundary - min_boundary, mask=mask)
-        psnr_val = psnr(ct_data, synCT_data, data_range=max_boundary - min_boundary)
+        ssim_val = ssim(ct_data[mask], synCT_data[mask], data_range=max_boundary - min_boundary, mask=mask)
+        psnr_val = psnr(ct_data[mask], synCT_data[mask], data_range=max_boundary - min_boundary)
         # compute DSC 
         intersection = np.sum(mask & pred_mask)
         union = np.sum(mask | pred_mask)
         dsc = 2 * intersection / (np.sum(mask) + np.sum(pred_mask))
-        
-        print(f"Computed metrics {region} for {case_name}, MAE: {mae:.4f}, SSIM: {ssim_val:.4f}, PSNR: {psnr_val:.4f}, DSC: {dsc:.4f}")
+        # compute accutance by computing the average absolute gradient of the image
+        accutance = np.mean(accutance_whole[mask])
+
+        print(f"Computed metrics {region} for {case_name}, MAE: {mae:.4f}, SSIM: {ssim_val:.4f}, PSNR: {psnr_val:.4f}, DSC: {dsc:.4f}, Accutance: {accutance:.4f}")
 
         # save metrics
         if case_name not in metrics_dict["mae_by_case"]:
@@ -145,20 +152,24 @@ for case_name in case_name_list:
             metrics_dict["ssim_by_case"][case_name] = {}
             metrics_dict["psnr_by_case"][case_name] = {}
             metrics_dict["dsc_by_case"][case_name] = {}
+            metrics_dict["accutance_by_case"][case_name] = {}
         metrics_dict["mae_by_case"][case_name][region] = mae
         metrics_dict["ssim_by_case"][case_name][region] = ssim_val
         metrics_dict["psnr_by_case"][case_name][region] = psnr_val
         metrics_dict["dsc_by_case"][case_name][region] = dsc
+        metrics_dict["accutance_by_case"][case_name][region] = accutance
 
         if region not in metrics_dict["mae_by_region"]:
             metrics_dict["mae_by_region"][region] = []
             metrics_dict["ssim_by_region"][region] = []
             metrics_dict["psnr_by_region"][region] = []
             metrics_dict["dsc_by_region"][region] = []
+            metrics_dict["accutance_by_region"][region] = []
         metrics_dict["mae_by_region"][region].append(mae)
         metrics_dict["ssim_by_region"][region].append(ssim_val)
         metrics_dict["psnr_by_region"][region].append(psnr_val)
         metrics_dict["dsc_by_region"][region].append(dsc)
+        metrics_dict["accutance_by_region"][region].append(accutance)
 
 # compute average metrics
 for region in region_list:
@@ -166,17 +177,20 @@ for region in region_list:
     metrics_dict["ssim_by_region"][region] = np.mean(metrics_dict["ssim_by_region"][region])
     metrics_dict["psnr_by_region"][region] = np.mean(metrics_dict["psnr_by_region"][region])
     metrics_dict["dsc_by_region"][region] = np.mean(metrics_dict["dsc_by_region"][region])
+    metrics_dict["accutance_by_region"][region] = np.mean(metrics_dict["accutance_by_region"][region])
 
 print("Average metrics by region:")
 print(f"MAE: {metrics_dict['mae_by_region']}")
 print(f"SSIM: {metrics_dict['ssim_by_region']}")
 print(f"PSNR: {metrics_dict['psnr_by_region']}")
 print(f"DSC: {metrics_dict['dsc_by_region']}")
+print(f"Accutance: {metrics_dict['accutance_by_region']}")
 print("Metrics by case:")
 print(f"MAE: {metrics_dict['mae_by_case']}")
 print(f"SSIM: {metrics_dict['ssim_by_case']}")
 print(f"PSNR: {metrics_dict['psnr_by_case']}")
 print(f"DSC: {metrics_dict['dsc_by_case']}")
+print(f"Accutance: {metrics_dict['accutance_by_case']}")
 
 # Save metrics to json
 import json
