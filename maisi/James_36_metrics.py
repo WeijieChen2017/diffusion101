@@ -29,7 +29,7 @@ from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import peak_signal_noise_ratio as psnr
 
 
-root_dir = "James_36/synCT/"
+root_dir = "James_36/synCT"
 mask_dir = f"{root_dir}/mask"
 os.makedirs(mask_dir, exist_ok=True)
 ct_dir = f"{root_dir}"
@@ -86,7 +86,7 @@ for case_name in case_name_list:
         nib.save(soft_mask_nii, soft_mask_path)
         bone_mask_nii = nib.Nifti1Image(bone_mask.astype(np.uint8), ct_file.affine, ct_file.header)
         nib.save(bone_mask_nii, bone_mask_path)
-        print(f"Saved soft and bone mask for {case_name} at {soft_mask_path} and {bone_mask_path}")
+        # print(f"Saved soft and bone mask for {case_name} at {soft_mask_path} and {bone_mask_path}")
 
     # compute metrics for whole, soft, and bone regions
     region_list = ["body", "soft", "bone"]
@@ -121,7 +121,7 @@ for case_name in case_name_list:
         metrics_dict["ssim_by_region"][region].append(ssim_val)
         metrics_dict["psnr_by_region"][region].append(psnr_val)
 
-    print(f"Computed metrics for {case_name}, MAE: {mae}, SSIM: {ssim_val}, PSNR: {psnr_val}")
+        print(f"Computed metrics {region} for {case_name}, MAE: {mae}, SSIM: {ssim_val}, PSNR: {psnr_val}")
 
 # compute average metrics
 for region in region_list:
