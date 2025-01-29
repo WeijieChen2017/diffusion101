@@ -73,6 +73,12 @@ for case_name in case_name_list:
     body_contour = body_contour_file.get_fdata()
     synCT_file = nib.load(synCT_path)
     synCT_data = synCT_file.get_fdata()
+
+    # normalize CT data and synCT data by clipping to the range [-1024, 3000] and adding 1024
+    ct_data = ct_data.clip(min_boundary, max_boundary)
+    ct_data += -min_boundary
+    synCT_data = synCT_data.clip(min_boundary, max_boundary)
+    synCT_data += -min_boundary
     
     # compute soft and bone mask
     soft_mask_path = f"{mask_dir}/mask_body_soft_{case_name}.nii.gz"
