@@ -80,12 +80,14 @@ for case_name in case_name_list:
     synCT_data = synCT_data.clip(min_boundary, max_boundary)
     synCT_data += -min_boundary
     
-    # compute soft and bone mask
+    # compute soft and bone masks from gt CT
+    body_mask_path = f"{mask_dir}/mask_body_contour_{case_name}.nii.gz"
     soft_mask_path = f"{mask_dir}/mask_body_soft_{case_name}.nii.gz"
     bone_mask_path = f"{mask_dir}/mask_body_bone_{case_name}.nii.gz"
 
     # if exist, load the mask
     if os.path.exists(soft_mask_path):
+        body_mask = nib.load(body_mask_path).get_fdata()
         soft_mask = nib.load(soft_mask_path).get_fdata()
         bone_mask = nib.load(bone_mask_path).get_fdata()
     else:
@@ -102,7 +104,7 @@ for case_name in case_name_list:
 
     # compute metrics for whole, soft, and bone regions
     region_list = ["body", "soft", "bone"]
-    mask_body_binary = body_contour > 0
+    mask_body_binary = body_mask > 0
     mask_soft_binary = soft_mask > 0
     mask_bone_binary = bone_mask > 0
     mask_list = [mask_body_binary, mask_soft_binary, mask_bone_binary]
