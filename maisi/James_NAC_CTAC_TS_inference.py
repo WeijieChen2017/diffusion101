@@ -31,15 +31,15 @@ case_name_list = [
     'E4120', 'E4124', 'E4125', 'E4128', 'E4129',
     'E4130', 'E4131', 'E4134', 'E4137', 'E4138',
     'E4139', 
-    # 'E4242', 'E4275', 'E4298', 'E4313',
-    # 'E4245', 'E4276', 'E4299', 'E4317', 'E4246',
-    # 'E4280', 'E4300', 'E4318', 'E4247', 'E4282',
-    # 'E4301', 'E4324', 'E4248', 'E4283', 'E4302',
-    # 'E4325', 'E4250', 'E4284', 'E4306', 'E4328',
-    # 'E4252', 'E4288', 'E4307', 'E4332', 'E4259',
-    # 'E4308', 'E4335', 'E4260', 'E4290', 'E4309',
-    # 'E4336', 'E4261', 'E4292', 'E4310', 'E4337',
-    # 'E4273', 'E4297', 'E4312', 'E4338',
+    'E4242', 'E4275', 'E4298', 'E4313',
+    'E4245', 'E4276', 'E4299', 'E4317', 'E4246',
+    'E4280', 'E4300', 'E4318', 'E4247', 'E4282',
+    'E4301', 'E4324', 'E4248', 'E4283', 'E4302',
+    'E4325', 'E4250', 'E4284', 'E4306', 'E4328',
+    'E4252', 'E4288', 'E4307', 'E4332', 'E4259',
+    'E4308', 'E4335', 'E4260', 'E4290', 'E4309',
+    'E4336', 'E4261', 'E4292', 'E4310', 'E4337',
+    'E4273', 'E4297', 'E4312', 'E4338',
 ]
 # E4063, E4080, E4087, E4097, E4102, E4289 are removed for z mismatch
 
@@ -405,20 +405,21 @@ for case_name in current_case_name_list:
     minHU, maxHU = -1024, 3000
 
     # set background to -1024
-    synCT_bg = synCT_data.copy()
+    synCT_bg = synCT_data
     synCT_bg[con_data < 0.5] = -1024
     synCT_bg_file = nib.Nifti1Image(synCT_bg, ct_file.affine, ct_file.header)
     synCT_bg_path = synCT_path
     nib.save(synCT_bg_file, synCT_bg_path)
+    print(f"{case_name} has been saved at {synCT_bg_path}")
 
     # compute metrics of synCT_bg and ct
-    nonneg_ct = ct_data - minHU
-    nonneg_synCT_bg = synCT_bg - minHU
-    # clip
-    nonneg_ct[nonneg_ct < 0] = 0
-    nonneg_ct[nonneg_ct > maxHU - minHU] = maxHU - minHU
-    nonneg_synCT_bg[nonneg_synCT_bg < 0] = 0
-    nonneg_synCT_bg[nonneg_synCT_bg > maxHU - minHU] = maxHU - minHU
+    # nonneg_ct = ct_data - minHU
+    # nonneg_synCT_bg = synCT_bg - minHU
+    # # clip
+    # nonneg_ct[nonneg_ct < 0] = 0
+    # nonneg_ct[nonneg_ct > maxHU - minHU] = maxHU - minHU
+    # nonneg_synCT_bg[nonneg_synCT_bg < 0] = 0
+    # nonneg_synCT_bg[nonneg_synCT_bg > maxHU - minHU] = maxHU - minHU
 
     # MAE based on body contour con_data
     # case_mae = np.mean(np.abs(nonneg_synCT_bg[con_data > 0.5] - nonneg_ct[con_data > 0.5]))
@@ -426,36 +427,36 @@ for case_name in current_case_name_list:
     # metric_mae += case_mae
     # metric_mae_mid += case_mae_mid
 
-    # SSIM and PSNRbased on body contour con_data [-1024, 3000]
-    len_z = con_data.shape[2]
-    case_mae = 0
-    case_ssim = 0
-    case_psnr = 0
-    for z in range(len_z):
-        masked_ct = nonneg_ct[:, :, z][mask_data[:, :, z] > 0.5]
-        masked_synCT_bg = nonneg_synCT_bg[:, :, z][mask_data[:, :, z] > 0.5]
+    # # SSIM and PSNRbased on body contour con_data [-1024, 3000]
+    # len_z = con_data.shape[2]
+    # case_mae = 0
+    # case_ssim = 0
+    # case_psnr = 0
+    # for z in range(len_z):
+    #     masked_ct = nonneg_ct[:, :, z][mask_data[:, :, z] > 0.5]
+    #     masked_synCT_bg = nonneg_synCT_bg[:, :, z][mask_data[:, :, z] > 0.5]
 
-        #compute if not empty
-        if len(masked_ct) == 0:
-            continue
+    #     #compute if not empty
+    #     if len(masked_ct) == 0:
+    #         continue
         
-        case_mae += np.mean(np.abs(masked_ct - masked_synCT_bg))
-        case_ssim += ssim(masked_ct, masked_synCT_bg, data_range=maxHU - minHU)
-        case_psnr += psnr(masked_ct, masked_synCT_bg, data_range=maxHU - minHU)
+    #     case_mae += np.mean(np.abs(masked_ct - masked_synCT_bg))
+    #     case_ssim += ssim(masked_ct, masked_synCT_bg, data_range=maxHU - minHU)
+    #     case_psnr += psnr(masked_ct, masked_synCT_bg, data_range=maxHU - minHU)
         
-    case_mae /= len_z
-    case_ssim /= len_z
-    case_psnr /= len_z
+    # case_mae /= len_z
+    # case_ssim /= len_z
+    # case_psnr /= len_z
 
-    # save the metric to the json
-    metric_dict["mae"][case_name] = case_mae
-    metric_dict["ssim"][case_name] = case_ssim
-    metric_dict["psnr"][case_name] = case_psnr
+    # # save the metric to the json
+    # metric_dict["mae"][case_name] = case_mae
+    # metric_dict["ssim"][case_name] = case_ssim
+    # metric_dict["psnr"][case_name] = case_psnr
 
-    print(f"Processed {case_name}: MAE {case_mae:.4f}, SSIM {case_ssim:.4f}, PSNR {case_psnr:.4f}, saved to {synCT_path}")
+    # print(f"Processed {case_name}: MAE {case_mae:.4f}, SSIM {case_ssim:.4f}, PSNR {case_psnr:.4f}, saved to {synCT_path}")
 
-with open(metric_json_path, "w") as f:
-    json.dump(metric_dict, f)
-print(f"Saved metric to {metric_json_path}")
+# with open(metric_json_path, "w") as f:
+#     json.dump(metric_dict, f)
+# print(f"Saved metric to {metric_json_path}")
 
 print("All done!")
