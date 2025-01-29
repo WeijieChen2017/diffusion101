@@ -39,6 +39,7 @@ synCT_seg_dir = f"{root_dir}"
 save_dir = f"{root_dir}"
 synCT_dir = f"{save_dir}"
 
+body_contour_boundary = -500
 min_boundary = -1024
 soft_boundary = -450
 bone_boundary = 150
@@ -51,6 +52,8 @@ metrics_dict = {
     "ssim_by_region": {},
     "psnr_by_case": {},
     "psnr_by_region": {},
+    "dsc_by_case": {},
+    "dsc_by_region": {},
 }
 
 for case_name in case_name_list:
@@ -95,48 +98,85 @@ for case_name in case_name_list:
     mask_bone_binary = bone_mask > 0
     mask_list = [mask_body_binary, mask_soft_binary, mask_bone_binary]
 
+    # compute mask for each region for synCT
+    pred_mask = []
+    pred_body_countour_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_body.nii.gz"
+    pred_soft_mask_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_mask_soft.nii.gz"
+    pred_bone_mask_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_mask_bone.nii.gz"
+    pred_body_countour_file = nib.load(pred_body_countour_path)
+    pred_body_countour_data = pred_body_countour_file.get_fdata()
+    pred_body_countour_binary = pred_body_countour_data > 0
+
+    if os.path.exists(pred_soft_mask_path):
+        pred_soft_mask = nib.load(pred_soft_mask_path).get_fdata()
+        pred_bone_mask = nib.load(pred_bone_mask_path).get_fdata()
+    else:
+        pred_soft_mask = (synCT_data >= soft_boundary) & (synCT_data <= bone_boundary)
+        pred_bone_mask = (synCT_data >= bone_boundary) & (synCT_data <= max_boundary)
+        pred_soft_mask_nii = nib.Nifti1Image(pred_soft_mask.astype(np.uint8), ct_file.affine, ct_file.header)
+        nib.save(pred_soft_mask_nii, pred_soft_mask_path)
+        pred_bone_mask_nii = nib.Nifti1Image(pred_bone_mask.astype(np.uint8), ct_file.affine, ct_file.header)
+        nib.save(pred_bone_mask_nii, pred_bone_mask_path)
+        # print(f"Saved soft and bone mask for {case_name} at {pred_soft_mask_path} and {pred_bone_mask_path}")
+    
+    pred_soft_mask_binary = pred_soft_mask > 0
+    pred_bone_mask_binary = pred_bone_mask > 0
+    pred_mask_list = [pred_body_countour_binary, pred_soft_mask_binary, pred_bone_mask_binary]
+
     for i in range(len(region_list)):
         region = region_list[i]
         mask = mask_list[i]
+        pred_mask = pred_mask_list[i]
 
         # compute metrics
         mae = np.mean(np.abs(ct_data[mask] - synCT_data[mask]))
         ssim_val = ssim(ct_data, synCT_data, data_range=max_boundary - min_boundary, mask=mask)
         psnr_val = psnr(ct_data, synCT_data, data_range=max_boundary - min_boundary)
+        # compute DSC 
+        intersection = np.sum(mask & pred_mask)
+        union = np.sum(mask | pred_mask)
+        dsc = 2 * intersection / (np.sum(mask) + np.sum(pred_mask))
+        
+        print(f"Computed metrics {region} for {case_name}, MAE: {mae:.4f}, SSIM: {ssim_val:.4f}, PSNR: {psnr_val:.4f}, DSC: {dsc:.4f}")
 
         # save metrics
         if case_name not in metrics_dict["mae_by_case"]:
             metrics_dict["mae_by_case"][case_name] = {}
             metrics_dict["ssim_by_case"][case_name] = {}
             metrics_dict["psnr_by_case"][case_name] = {}
+            metrics_dict["dsc_by_case"][case_name] = {}
         metrics_dict["mae_by_case"][case_name][region] = mae
         metrics_dict["ssim_by_case"][case_name][region] = ssim_val
         metrics_dict["psnr_by_case"][case_name][region] = psnr_val
+        metrics_dict["dsc_by_case"][case_name][region] = dsc
 
         if region not in metrics_dict["mae_by_region"]:
             metrics_dict["mae_by_region"][region] = []
             metrics_dict["ssim_by_region"][region] = []
             metrics_dict["psnr_by_region"][region] = []
+            metrics_dict["dsc_by_region"][region] = []
         metrics_dict["mae_by_region"][region].append(mae)
         metrics_dict["ssim_by_region"][region].append(ssim_val)
         metrics_dict["psnr_by_region"][region].append(psnr_val)
-
-        print(f"Computed metrics {region} for {case_name}, MAE: {mae}, SSIM: {ssim_val}, PSNR: {psnr_val}")
+        metrics_dict["dsc_by_region"][region].append(dsc)
 
 # compute average metrics
 for region in region_list:
     metrics_dict["mae_by_region"][region] = np.mean(metrics_dict["mae_by_region"][region])
     metrics_dict["ssim_by_region"][region] = np.mean(metrics_dict["ssim_by_region"][region])
     metrics_dict["psnr_by_region"][region] = np.mean(metrics_dict["psnr_by_region"][region])
+    metrics_dict["dsc_by_region"][region] = np.mean(metrics_dict["dsc_by_region"][region])
 
 print("Average metrics by region:")
 print(f"MAE: {metrics_dict['mae_by_region']}")
 print(f"SSIM: {metrics_dict['ssim_by_region']}")
 print(f"PSNR: {metrics_dict['psnr_by_region']}")
+print(f"DSC: {metrics_dict['dsc_by_region']}")
 print("Metrics by case:")
 print(f"MAE: {metrics_dict['mae_by_case']}")
 print(f"SSIM: {metrics_dict['ssim_by_case']}")
 print(f"PSNR: {metrics_dict['psnr_by_case']}")
+print(f"DSC: {metrics_dict['dsc_by_case']}")
 
 # Save metrics to json
 import json
