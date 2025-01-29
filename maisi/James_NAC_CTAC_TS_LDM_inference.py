@@ -396,57 +396,58 @@ for case_name in current_case_name_list:
     minHU, maxHU = -1024, 3000
 
     # set background to -1024
-    synCT_bg = synCT_data.copy()
+    synCT_bg = synCT_data
     synCT_bg[con_data < 0.5] = -1024
     synCT_bg_file = nib.Nifti1Image(synCT_bg, ct_file.affine, ct_file.header)
     synCT_bg_path = synCT_path
     nib.save(synCT_bg_file, synCT_bg_path)
+    print(f"{case_name} has been saved at {synCT_bg_path}")
 
-    # compute metrics of synCT_bg and ct
-    nonneg_ct = ct_data - minHU
-    nonneg_synCT_bg = synCT_bg - minHU
-    # clip
-    nonneg_ct[nonneg_ct < 0] = 0
-    nonneg_ct[nonneg_ct > maxHU - minHU] = maxHU - minHU
-    nonneg_synCT_bg[nonneg_synCT_bg < 0] = 0
-    nonneg_synCT_bg[nonneg_synCT_bg > maxHU - minHU] = maxHU - minHU
+#     # compute metrics of synCT_bg and ct
+#     nonneg_ct = ct_data - minHU
+#     nonneg_synCT_bg = synCT_bg - minHU
+#     # clip
+#     nonneg_ct[nonneg_ct < 0] = 0
+#     nonneg_ct[nonneg_ct > maxHU - minHU] = maxHU - minHU
+#     nonneg_synCT_bg[nonneg_synCT_bg < 0] = 0
+#     nonneg_synCT_bg[nonneg_synCT_bg > maxHU - minHU] = maxHU - minHU
 
-    # MAE based on body contour con_data
-    # case_mae = np.mean(np.abs(nonneg_synCT_bg[con_data > 0.5] - nonneg_ct[con_data > 0.5]))
-    # case_mae_mid = np.mean(np.abs(nonneg_synCT_bg[con_data > 0.5][:, :, 1:-1] - nonneg_ct[con_data > 0.5][:, :, 1:-1]))
-    # metric_mae += case_mae
-    # metric_mae_mid += case_mae_mid
+#     # MAE based on body contour con_data
+#     # case_mae = np.mean(np.abs(nonneg_synCT_bg[con_data > 0.5] - nonneg_ct[con_data > 0.5]))
+#     # case_mae_mid = np.mean(np.abs(nonneg_synCT_bg[con_data > 0.5][:, :, 1:-1] - nonneg_ct[con_data > 0.5][:, :, 1:-1]))
+#     # metric_mae += case_mae
+#     # metric_mae_mid += case_mae_mid
 
-    # SSIM and PSNRbased on body contour con_data [-1024, 3000]
-    len_z = con_data.shape[2]
-    case_mae = 0
-    case_ssim = 0
-    case_psnr = 0
-    for z in range(len_z):
-        masked_ct = nonneg_ct[:, :, z][mask_data[:, :, z] > 0.5]
-        masked_synCT_bg = nonneg_synCT_bg[:, :, z][mask_data[:, :, z] > 0.5]
+#     # SSIM and PSNRbased on body contour con_data [-1024, 3000]
+#     len_z = con_data.shape[2]
+#     case_mae = 0
+#     case_ssim = 0
+#     case_psnr = 0
+#     for z in range(len_z):
+#         masked_ct = nonneg_ct[:, :, z][mask_data[:, :, z] > 0.5]
+#         masked_synCT_bg = nonneg_synCT_bg[:, :, z][mask_data[:, :, z] > 0.5]
 
-        #compute if not empty
-        if len(masked_ct) == 0:
-            continue
+#         #compute if not empty
+#         if len(masked_ct) == 0:
+#             continue
         
-        case_mae += np.mean(np.abs(masked_ct - masked_synCT_bg))
-        case_ssim += ssim(masked_ct, masked_synCT_bg, data_range=maxHU - minHU)
-        case_psnr += psnr(masked_ct, masked_synCT_bg, data_range=maxHU - minHU)
+#         case_mae += np.mean(np.abs(masked_ct - masked_synCT_bg))
+#         case_ssim += ssim(masked_ct, masked_synCT_bg, data_range=maxHU - minHU)
+#         case_psnr += psnr(masked_ct, masked_synCT_bg, data_range=maxHU - minHU)
         
-    case_mae /= len_z
-    case_ssim /= len_z
-    case_psnr /= len_z
+#     case_mae /= len_z
+#     case_ssim /= len_z
+#     case_psnr /= len_z
 
-    # save the metric to the json
-    metric_dict["mae"][case_name] = case_mae
-    metric_dict["ssim"][case_name] = case_ssim
-    metric_dict["psnr"][case_name] = case_psnr
+#     # save the metric to the json
+#     metric_dict["mae"][case_name] = case_mae
+#     metric_dict["ssim"][case_name] = case_ssim
+#     metric_dict["psnr"][case_name] = case_psnr
 
-    print(f"Processed {case_name}: MAE {case_mae:.4f}, SSIM {case_ssim:.4f}, PSNR {case_psnr:.4f}, saved to {synCT_path}")
+#     print(f"Processed {case_name}: MAE {case_mae:.4f}, SSIM {case_ssim:.4f}, PSNR {case_psnr:.4f}, saved to {synCT_path}")
 
-with open(metric_json_path, "w") as f:
-    json.dump(metric_dict, f)
-print(f"Saved metric to {metric_json_path}")
+# with open(metric_json_path, "w") as f:
+#     json.dump(metric_dict, f)
+# print(f"Saved metric to {metric_json_path}")
 
 print("All done!")
