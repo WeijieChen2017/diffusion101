@@ -73,6 +73,9 @@ for case_name in case_name_list:
     body_contour = body_contour_file.get_fdata()
     synCT_file = nib.load(synCT_path)
     synCT_data = synCT_file.get_fdata()
+
+    # pad synCT_data according to ct_data
+    synCT_data = np.pad(synCT_data, ((0, 0), (0, 0), (0, ct_data.shape[2] - synCT_data.shape[2])), mode="constant", constant_values=-1024)
     
     # compute soft and bone masks from gt CT
     body_mask_path = f"{mask_dir}/mask_body_contour_{case_name}.nii.gz"
