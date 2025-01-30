@@ -35,10 +35,10 @@ mask_dir = f"NAC_CTAC_Spacing15/CT_mask"
 os.makedirs(mask_dir, exist_ok=True)
 ct_dir = f"{root_dir}"
 con_dir = f"{root_dir}"
-synCT_seg_dir = f"{root_dir}"
+synCT_seg_dir = f"{root_dir}/inference_20250128_noon"
 # save_dir = os.path.join(root_dir, "inference_20250128_noon")
 save_dir = f"{root_dir}"
-synCT_dir = f"{save_dir}/inference_20250128_noon"
+synCT_dir = f"{synCT_seg_dir}"
 
 body_contour_boundary = -500
 min_boundary = -1024
