@@ -118,6 +118,8 @@ for case_name in case_name_list:
     pred_bone_mask_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_mask_bone.nii.gz"
     pred_body_countour_file = nib.load(pred_body_countour_path)
     pred_body_countour_data = pred_body_countour_file.get_fdata()
+    # pad the mask according to body_mask
+    pred_body_countour_data = np.pad(pred_body_countour_data, ((0, 0), (0, 0), (0, ct_data.shape[2] - pred_body_countour_data.shape[2])), mode="constant", constant_values=0)
     pred_body_countour_binary = pred_body_countour_data > 0
 
     if os.path.exists(pred_soft_mask_path):
