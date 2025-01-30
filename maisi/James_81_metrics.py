@@ -42,8 +42,8 @@ synCT_dir = f"{synCT_seg_dir}"
 
 body_contour_boundary = -500
 min_boundary = -1024
-soft_boundary = -450
-bone_boundary = 150
+soft_boundary = -500
+bone_boundary = 300
 max_boundary = 3000
 
 metrics_dict = {
