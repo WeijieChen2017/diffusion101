@@ -63,7 +63,7 @@ for case_name in case_name_list:
 
     ct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
     # synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS_MAISI.nii.gz"
-    synCT_path = f"{synCT_dir}/inference_20250128_noon/CTAC_{case_name}_TS_MAISI.nii.gz"
+    synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS.nii.gz"
 
     ct_file = nib.load(ct_path)
     ct_data = ct_file.get_fdata()
