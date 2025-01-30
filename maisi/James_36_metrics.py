@@ -115,8 +115,17 @@ for case_name in case_name_list:
     pred_body_countour_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_body.nii.gz"
     pred_soft_mask_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_mask_soft.nii.gz"
     pred_bone_mask_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_mask_bone.nii.gz"
-    pred_body_countour_file = nib.load(pred_body_countour_path)
-    pred_body_countour_data = pred_body_countour_file.get_fdata()
+
+    if os.path.exists(pred_body_countour_path):
+        pred_body_countour_file = nib.load(pred_body_countour_path)
+        pred_body_countour_data = pred_body_countour_file.get_fdata()
+    else:
+        pred_body_countour_data = synCT_data >= body_contour_boundary
+        for i in range(pred_body_countour_data.shape[2]):
+            pred_body_countour_data[:, :, i] = binary_fill_holes(pred_body_countour_data[:, :, i])
+        pred_body_countour_nii = nib.Nifti1Image(pred_body_countour_data.astype(np.uint8), ct_file.affine, ct_file.header)
+        nib.save(pred_body_countour_nii, pred_body_countour_path)
+
     # pad the mask according to body_mask
     if ct_data.shape[2] > pred_body_countour_data.shape[2]:
         pred_body_countour_data = np.pad(pred_body_countour_data, ((0, 0), (0, 0), (0, ct_data.shape[2] - pred_body_countour_data.shape[2])), mode="constant", constant_values=0)
