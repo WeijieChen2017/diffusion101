@@ -7,15 +7,15 @@ case_name_list = [
     'E4120', 'E4124', 'E4125', 'E4128', 'E4129',
     'E4130', 'E4131', 'E4134', 'E4137', 'E4138',
     'E4139', 
-    'E4242', 'E4275', 'E4298', 'E4313',
-    'E4245', 'E4276', 'E4299', 'E4317', 'E4246',
-    'E4280', 'E4300', 'E4318', 'E4247', 'E4282',
-    'E4301', 'E4324', 'E4248', 'E4283', 'E4302',
-    'E4325', 'E4250', 'E4284', 'E4306', 'E4328',
-    'E4252', 'E4288', 'E4307', 'E4332', 'E4259',
-    'E4308', 'E4335', 'E4260', 'E4290', 'E4309',
-    'E4336', 'E4261', 'E4292', 'E4310', 'E4337',
-    'E4273', 'E4297', 'E4312', 'E4338',
+    # 'E4242', 'E4275', 'E4298', 'E4313',
+    # 'E4245', 'E4276', 'E4299', 'E4317', 'E4246',
+    # 'E4280', 'E4300', 'E4318', 'E4247', 'E4282',
+    # 'E4301', 'E4324', 'E4248', 'E4283', 'E4302',
+    # 'E4325', 'E4250', 'E4284', 'E4306', 'E4328',
+    # 'E4252', 'E4288', 'E4307', 'E4332', 'E4259',
+    # 'E4308', 'E4335', 'E4260', 'E4290', 'E4309',
+    # 'E4336', 'E4261', 'E4292', 'E4310', 'E4337',
+    # 'E4273', 'E4297', 'E4312', 'E4338',
 ]
 
 region_list = ["whole", "soft", "bone"]
@@ -35,7 +35,7 @@ mask_dir = f"James_36/CT_mask"
 os.makedirs(mask_dir, exist_ok=True)
 ct_dir = f"{root_dir}"
 con_dir = f"{root_dir}"
-synCT_seg_dir = f"{root_dir}"
+synCT_seg_dir = f"{root_dir}/inference_20250128_noon"
 # save_dir = os.path.join(root_dir, "inference_20250128_noon")
 save_dir = f"{root_dir}"
 synCT_dir = f"{save_dir}"
@@ -62,15 +62,11 @@ metrics_dict = {
 for case_name in case_name_list:
 
     ct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
-    body_contour_path = f"{root_dir}/SynCT_{case_name}_TS_body.nii.gz"
-    synCT_seg_path = f"{root_dir}/SynCT_{case_name}_TS_label.nii.gz"
     # synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS_MAISI.nii.gz"
-    synCT_path = f"{synCT_dir}/SynCT_{case_name}.nii.gz"
+    synCT_path = f"{synCT_dir}/inference_20250128_noon/CTAC_{case_name}_TS_MAISI.nii.gz"
 
     ct_file = nib.load(ct_path)
     ct_data = ct_file.get_fdata()
-    body_contour_file = nib.load(body_contour_path)
-    body_contour = body_contour_file.get_fdata()
     synCT_file = nib.load(synCT_path)
     synCT_data = synCT_file.get_fdata()
 
