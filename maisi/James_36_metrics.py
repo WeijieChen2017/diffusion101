@@ -74,8 +74,11 @@ for case_name in case_name_list:
     synCT_file = nib.load(synCT_path)
     synCT_data = synCT_file.get_fdata()
 
-    # pad synCT_data according to ct_data
-    synCT_data = np.pad(synCT_data, ((0, 0), (0, 0), (0, ct_data.shape[2] - synCT_data.shape[2])), mode="constant", constant_values=-1024)
+    # pad synCT_data according to ct_data, or crop synCT_data to ct_data according
+    if ct_data.shape[2] > synCT_data.shape[2]:
+        synCT_data = np.pad(synCT_data, ((0, 0), (0, 0), (0, ct_data.shape[2] - synCT_data.shape[2])), mode="constant", constant_values=-1024)
+    else:
+        synCT_data = synCT_data[:, :, :ct_data.shape[2]]
     
     # compute soft and bone masks from gt CT
     body_mask_path = f"{mask_dir}/mask_body_contour_{case_name}.nii.gz"
@@ -119,7 +122,10 @@ for case_name in case_name_list:
     pred_body_countour_file = nib.load(pred_body_countour_path)
     pred_body_countour_data = pred_body_countour_file.get_fdata()
     # pad the mask according to body_mask
-    pred_body_countour_data = np.pad(pred_body_countour_data, ((0, 0), (0, 0), (0, ct_data.shape[2] - pred_body_countour_data.shape[2])), mode="constant", constant_values=0)
+    if ct_data.shape[2] > pred_body_countour_data.shape[2]:
+        pred_body_countour_data = np.pad(pred_body_countour_data, ((0, 0), (0, 0), (0, ct_data.shape[2] - pred_body_countour_data.shape[2])), mode="constant", constant_values=0)
+    else:
+        pred_body_countour_data = pred_body_countour_data[:, :, :ct_data.shape[2]]
     pred_body_countour_binary = pred_body_countour_data > 0
 
     if os.path.exists(pred_soft_mask_path):
