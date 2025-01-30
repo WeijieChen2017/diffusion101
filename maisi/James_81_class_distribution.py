@@ -52,21 +52,34 @@ for case_name in case_name_list:
         seg_synCT_values = synCT_data[seg_mask]
         seg_ct_values = ct_data[seg_mask]
 
-        # save the distribution of the synCT and CT for 200 bins
-        synCT_hist, synCT_bin_edges = np.histogram(seg_synCT_values, bins=200)
-        ct_hist, ct_bin_edges = np.histogram(seg_ct_values, bins=200)
+        # # save the distribution of the synCT and CT for 200 bins
+        # synCT_hist, synCT_bin_edges = np.histogram(seg_synCT_values, bins=200)
+        # ct_hist, ct_bin_edges = np.histogram(seg_ct_values, bins=200)
 
-        # save the histogram to the a dict
+        # # save the histogram to the a dict
+        # HU_distribution_dict[seg_label] = {
+        #     "synCT_hist": synCT_hist,
+        #     "synCT_bin_edges": synCT_bin_edges,
+        #     "ct_hist": ct_hist,
+        #     "ct_bin_edges": ct_bin_edges,
+        #     "num_voxels": np.sum(seg_mask),
+        # }
+
+        # save the mean, standard deviation, min, max, num_voxels
         HU_distribution_dict[seg_label] = {
-            "synCT_hist": synCT_hist,
-            "synCT_bin_edges": synCT_bin_edges,
-            "ct_hist": ct_hist,
-            "ct_bin_edges": ct_bin_edges,
+            "synCT_mean": np.mean(seg_synCT_values),
+            "synCT_std": np.std(seg_synCT_values),
+            "synCT_min": np.min(seg_synCT_values),
+            "synCT_max": np.max(seg_synCT_values),
+            "ct_mean": np.mean(seg_ct_values),
+            "ct_std": np.std(seg_ct_values),
+            "ct_min": np.min(seg_ct_values),
+            "ct_max": np.max(seg_ct_values),
             "num_voxels": np.sum(seg_mask),
         }
 
     # save the dict to a npy file
-    save_path = f"{root_dir}/CTAC_{case_name}_HU_distribution.npy"
+    save_path = f"{root_dir}/CTAC_{case_name}_HU_stats.npy"
     np.save(save_path, HU_distribution_dict)
 
     print(f"Saved HU distribution to {save_path}")
