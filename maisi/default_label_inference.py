@@ -23,7 +23,7 @@ from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import peak_signal_noise_ratio as psnr
 
 case_name_list = [
-    'sample_20250121_025202_947050_combine_label.nii.gz',
+    'sample_20250121_025202_947050_combine_label',
 ]
 current_case_name_list = case_name_list
 device = torch.device(f"cuda:0")
