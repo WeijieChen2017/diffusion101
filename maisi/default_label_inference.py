@@ -389,18 +389,14 @@ for case_name in current_case_name_list:
     # print(f"Synthetic CT image saved to {synCT_path}, MAE: {mae.mean()}")
     # txtlog.write(f"{case_name}: {mae.mean()}\n")
 
-    synCT_data = synthetic_image
-    con_data = mask_data
-
-    minHU, maxHU = -1024, 3000
+    # minHU, maxHU = -1024, 3000
 
     # set background to -1024
-    synCT_bg = synCT_data
-    synCT_bg[con_data < 0.5] = -1024
-    synCT_bg_file = nib.Nifti1Image(synCT_bg, input_file.affine, input_file.header)
-    synCT_bg_path = synCT_path
-    nib.save(synCT_bg_file, synCT_bg_path)
-    print(f"{case_name} has been saved at {synCT_bg_path}")
+    # synCT_bg = synCT_data
+    # synCT_bg[mask_data < 0.5] = -1024
+    synCT_file = nib.Nifti1Image(synthetic_image, input_file.affine, input_file.header)
+    nib.save(synCT_file, synCT_path)
+    print(f"{case_name} has been saved at {synCT_path}")
 
     # compute metrics of synCT_bg and ct
     # nonneg_ct = ct_data - minHU
