@@ -121,6 +121,9 @@ for case_name in case_name_list:
 
         # adjust the HU value of synCT_data
         synCT_data[class_mask] = (synCT_data[class_mask] - class_synCT_mean) * class_CT_std / class_synCT_std + class_CT_mean
+    adjusted_nii = nib.Nifti1Image(synCT_data, synCT_file.affine, synCT_file.header)
+    adjusted_path = synCT_path.replace(".nii.gz", "_adjusted.nii.gz")
+    nib.save(adjusted_nii, adjusted_path)
 
     # compute metrics for whole, soft, and bone regions
     region_list = ["body", "soft", "bone"]
