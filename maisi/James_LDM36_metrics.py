@@ -61,10 +61,10 @@ metrics_dict = {
 
 HU_value_adjustment_path = "sCT_CT_stats.npy"
 HU_value_adjustment = np.load(HU_value_adjustment_path, allow_pickle=True).item()
-for key in HU_value_adjustment.keys():
-    print(f"In class {key}:", end="")
-    for subkey in HU_value_adjustment[key].keys():
-        print(f" {subkey} = {HU_value_adjustment[key][subkey]}.4f", end="")
+# for key in HU_value_adjustment.keys():
+#     print(f"In class {key}:", end="")
+#     for subkey in HU_value_adjustment[key].keys():
+#         print(f" {subkey} = {HU_value_adjustment[key][subkey]}.4f", end="")
 # this is a dict, 
 # In class 1.0:, sCT_mean = 116.61273716282123, sCT_std = 42.923457975871955, CT_mean = 49.06056585043337, CT_std = 18.051777867670253
 
@@ -115,8 +115,8 @@ for case_name in case_name_list:
 
     # HU value adjustment
     for key in HU_value_adjustment.keys():
-        class_synCT_mean = HU_value_adjustment[key]["synCT_mean"]
-        class_synCT_std = HU_value_adjustment[key]["synCT_std"]
+        class_synCT_mean = HU_value_adjustment[key]["sCT_mean"]
+        class_synCT_std = HU_value_adjustment[key]["sCT_std"]
         class_CT_mean = HU_value_adjustment[key]["CT_mean"]
         class_CT_std = HU_value_adjustment[key]["CT_std"]
         class_mask = synCT_data == key
