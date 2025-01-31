@@ -69,7 +69,7 @@ HU_value_adjustment = np.load(HU_value_adjustment_path, allow_pickle=True).item(
 # In class 1.0:, sCT_mean = 116.61273716282123, sCT_std = 42.923457975871955, CT_mean = 49.06056585043337, CT_std = 18.051777867670253
 
 ct_mask_overwrite = False
-pred_mask_overwrite = True
+pred_mask_overwrite = False
 
 for case_name in case_name_list:
 
@@ -91,6 +91,13 @@ for case_name in case_name_list:
         synCT_data = np.pad(synCT_data, ((0, 0), (0, 0), (0, ct_data.shape[2] - synCT_data.shape[2])), mode="constant", constant_values=-1024)
     else:
         synCT_data = synCT_data[:, :, :ct_data.shape[2]]
+
+    if ct_data.shape[2] > synCT_seg_data.shape[2]:
+        synCT_seg_data = np.pad(synCT_seg_data, ((0, 0), (0, 0), (0, ct_data.shape[2] - synCT_seg_data.shape[2])), mode="constant", constant_values=0)
+    else:
+        synCT_seg_data = synCT_seg_data[:, :, :ct_data.shape[2]]
+
+
     
     # compute soft and bone masks from gt CT
     body_mask_path = f"{mask_dir}/mask_body_contour_{case_name}.nii.gz"
