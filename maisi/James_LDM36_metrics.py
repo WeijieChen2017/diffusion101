@@ -74,11 +74,14 @@ for case_name in case_name_list:
     # synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS_MAISI.nii.gz"
     # synCT_path = f"{synCT_dir}/inference_20250128_noon/CTAC_{case_name}_TS_MAISI.nii.gz"
     synCT_path = f"{synCT_dir}/SynCT_{case_name}.nii.gz"
+    synCT_seg_path = f"{root_dir}/SynCT_{case_name}_TS_label.nii.gz"
 
     ct_file = nib.load(ct_path)
     ct_data = ct_file.get_fdata()
     synCT_file = nib.load(synCT_path)
     synCT_data = synCT_file.get_fdata()
+    synCT_seg_file = nib.load(synCT_seg_path)
+    synCT_seg_data = synCT_seg_file.get_fdata()
 
     # pad synCT_data according to ct_data, or crop synCT_data to ct_data according
     if ct_data.shape[2] > synCT_data.shape[2]:
@@ -119,7 +122,7 @@ for case_name in case_name_list:
         class_synCT_std = HU_value_adjustment[key]["sCT_std"]
         class_CT_mean = HU_value_adjustment[key]["CT_mean"]
         class_CT_std = HU_value_adjustment[key]["CT_std"]
-        class_mask = synCT_data == key
+        class_mask = synCT_seg_data == key
 
         # adjust the HU value of synCT_data
         synCT_data[class_mask] = (synCT_data[class_mask] - class_synCT_mean) * class_CT_std / class_synCT_std + class_CT_mean
