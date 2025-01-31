@@ -59,16 +59,24 @@ metrics_dict = {
     " acutance_by_region": {},
 }
 
+HU_value_adjustment_path = "sCT_CT_stats.npy"
+HU_value_adjustment = np.load(HU_value_adjustment_path, allow_pickle=True).item()
+ct_mask_overwrite = False
+sct_mask_overwrite = True
+
 for case_name in case_name_list:
 
     ct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
     # synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS_MAISI.nii.gz"
     synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS_MAISI.nii.gz"
+    synCT_seg_path = f"{root_dir}/CTAC_{case_name}_TS_label.nii.gz"
 
     ct_file = nib.load(ct_path)
     ct_data = ct_file.get_fdata()
     synCT_file = nib.load(synCT_path)
     synCT_data = synCT_file.get_fdata()
+    synCT_seg_file = nib.load(synCT_seg_path)
+    synCT_seg_data = synCT_seg_file.get_fdata()
 
     # pad synCT_data according to ct_data, or crop synCT_data to ct_data according
     if ct_data.shape[2] > synCT_data.shape[2]:
@@ -82,7 +90,7 @@ for case_name in case_name_list:
     bone_mask_path = f"{mask_dir}/mask_body_bone_{case_name}.nii.gz"
 
     # if exist, load the mask
-    if os.path.exists(soft_mask_path):
+    if os.path.exists(soft_mask_path) and not ct_mask_overwrite:
         body_mask = nib.load(body_mask_path).get_fdata()
         soft_mask = nib.load(soft_mask_path).get_fdata()
         bone_mask = nib.load(bone_mask_path).get_fdata()
@@ -103,6 +111,17 @@ for case_name in case_name_list:
         nib.save(bone_mask_nii, bone_mask_path)
         # print(f"Saved soft and bone mask for {case_name} at {soft_mask_path} and {bone_mask_path}")
 
+    # HU value adjustment
+    for key in HU_value_adjustment.keys():
+        class_synCT_mean = HU_value_adjustment[key]["sCT_mean"]
+        class_synCT_std = HU_value_adjustment[key]["sCT_std"]
+        class_CT_mean = HU_value_adjustment[key]["CT_mean"]
+        class_CT_std = HU_value_adjustment[key]["CT_std"]
+        class_mask = synCT_seg_data == key
+
+        # adjust the HU value of synCT_data
+        synCT_data[class_mask] = (synCT_data[class_mask] - class_synCT_mean) * class_CT_std / class_synCT_std + class_CT_mean
+
     # compute metrics for whole, soft, and bone regions
     region_list = ["body", "soft", "bone"]
     mask_body_binary = body_mask > 0
@@ -112,11 +131,11 @@ for case_name in case_name_list:
 
     # compute mask for each region for synCT
     pred_mask = []
-    pred_body_countour_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_body.nii.gz"
-    pred_soft_mask_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_mask_soft.nii.gz"
-    pred_bone_mask_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_mask_bone.nii.gz"
+    pred_body_countour_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_body_adjusted.nii.gz"
+    pred_soft_mask_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_mask_soft_adjusted.nii.gz"
+    pred_bone_mask_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_mask_bone_adjusted.nii.gz"
 
-    if os.path.exists(pred_body_countour_path):
+    if os.path.exists(pred_body_countour_path) and not sct_mask_overwrite:
         pred_body_countour_file = nib.load(pred_body_countour_path)
         pred_body_countour_data = pred_body_countour_file.get_fdata()
     else:
@@ -133,7 +152,7 @@ for case_name in case_name_list:
         pred_body_countour_data = pred_body_countour_data[:, :, :ct_data.shape[2]]
     pred_body_countour_binary = pred_body_countour_data > 0
 
-    if os.path.exists(pred_soft_mask_path):
+    if os.path.exists(pred_soft_mask_path) and not sct_mask_overwrite:
         pred_soft_mask = nib.load(pred_soft_mask_path).get_fdata()
         pred_bone_mask = nib.load(pred_bone_mask_path).get_fdata()
     else:
@@ -223,7 +242,7 @@ print(f"Accutance: {metrics_dict[' acutance_by_case']}")
 
 # Save metrics to json
 import json
-metrics_json_path = f"{root_dir}/metrics.json"
+metrics_json_path = f"{root_dir}/James81_metrics_adjusted.json"
 with open(metrics_json_path, "w") as f:
     json.dump(metrics_dict, f)
 
