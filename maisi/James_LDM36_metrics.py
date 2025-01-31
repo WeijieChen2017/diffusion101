@@ -68,6 +68,9 @@ HU_value_adjustment = np.load(HU_value_adjustment_path, allow_pickle=True).item(
 # this is a dict, 
 # In class 1.0:, sCT_mean = 116.61273716282123, sCT_std = 42.923457975871955, CT_mean = 49.06056585043337, CT_std = 18.051777867670253
 
+ct_mask_overwrite = False
+pred_mask_overwrite = True
+
 for case_name in case_name_list:
 
     ct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
@@ -95,7 +98,7 @@ for case_name in case_name_list:
     bone_mask_path = f"{mask_dir}/mask_body_bone_{case_name}.nii.gz"
 
     # if exist, load the mask
-    if os.path.exists(soft_mask_path):
+    if os.path.exists(soft_mask_path) and not ct_mask_overwrite:
         body_mask = nib.load(body_mask_path).get_fdata()
         soft_mask = nib.load(soft_mask_path).get_fdata()
         bone_mask = nib.load(bone_mask_path).get_fdata()
@@ -140,7 +143,7 @@ for case_name in case_name_list:
     pred_soft_mask_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_mask_sof_adjusted.nii.gz"
     pred_bone_mask_path = f"{synCT_seg_dir}/SynCT_{case_name}_TS_mask_bone_adjusted.nii.gz"
 
-    if os.path.exists(pred_body_countour_path):
+    if os.path.exists(pred_body_countour_path) and not pred_mask_overwrite:
         pred_body_countour_file = nib.load(pred_body_countour_path)
         pred_body_countour_data = pred_body_countour_file.get_fdata()
     else:
@@ -157,7 +160,7 @@ for case_name in case_name_list:
         pred_body_countour_data = pred_body_countour_data[:, :, :ct_data.shape[2]]
     pred_body_countour_binary = pred_body_countour_data > 0
 
-    if os.path.exists(pred_soft_mask_path):
+    if os.path.exists(pred_soft_mask_path) and not pred_mask_overwrite:
         pred_soft_mask = nib.load(pred_soft_mask_path).get_fdata()
         pred_bone_mask = nib.load(pred_bone_mask_path).get_fdata()
     else:
