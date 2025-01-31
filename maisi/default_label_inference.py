@@ -46,7 +46,7 @@ root_dir = "output"
 # device = torch.device(f"cuda:{GPU_mapping[case_list_division - 1]}")
 # root_dir = "NAC_CTAC_Spacing15"
 
-save_dir = os.path.join(root_dir, "inference_20250128_noon")
+save_dir = os.path.join(root_dir, "inference_20250131_noon")
 os.makedirs(save_dir, exist_ok=True)
 
 args = argparse.Namespace()
