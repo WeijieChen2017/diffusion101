@@ -325,12 +325,12 @@ spacing_tensor = torch.FloatTensor([1.5, 1.5, 1.5]).to(ldm_sampler.device)  # Ex
 
 print("The current device is", device)
 # use json to save the mae
-metric_json_path = f"{save_dir}/metric_div{case_list_division}.json"
-metric_dict = {
-    "mae":{},
-    "ssim": {},
-    "psnr": {},
-}
+# metric_json_path = f"{save_dir}/metric_div{case_list_division}.json"
+# metric_dict = {
+#     "mae":{},
+#     "ssim": {},
+#     "psnr": {},
+# }
 
 for case_name in current_case_name_list:
     # ct_path = f"{root_dir}/CTAC_{case_name}_cropped.nii.gz"
