@@ -70,21 +70,28 @@ HU_value_adjustment = np.load(HU_value_adjustment_path, allow_pickle=True).item(
 
 ct_mask_overwrite = False
 pred_mask_overwrite = True
+HU_adjustment = False
 
 for case_name in case_name_list:
 
     ct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
     # synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS_MAISI.nii.gz"
     # synCT_path = f"{synCT_dir}/inference_20250128_noon/CTAC_{case_name}_TS_MAISI.nii.gz"
-    synCT_path = f"{synCT_dir}/SynCT_{case_name}.nii.gz"
+    synCT_path = f"{synCT_dir}/sCT0_{case_name}.nii.gz"
     synCT_seg_path = f"{root_dir}/SynCT_{case_name}_TS_label.nii.gz"
 
     ct_file = nib.load(ct_path)
     ct_data = ct_file.get_fdata()
     synCT_file = nib.load(synCT_path)
     synCT_data = synCT_file.get_fdata()
-    synCT_seg_file = nib.load(synCT_seg_path)
-    synCT_seg_data = synCT_seg_file.get_fdata()
+    if HU_adjustment:
+        synCT_seg_file = nib.load(synCT_seg_path)
+        synCT_seg_data = synCT_seg_file.get_fdata()
+        if ct_data.shape[2] > synCT_seg_data.shape[2]:
+            synCT_seg_data = np.pad(synCT_seg_data, ((0, 0), (0, 0), (0, ct_data.shape[2] - synCT_seg_data.shape[2])), mode="constant", constant_values=0)
+        else:
+            synCT_seg_data = synCT_seg_data[:, :, :ct_data.shape[2]]
+
 
     # pad synCT_data according to ct_data, or crop synCT_data to ct_data according
     if ct_data.shape[2] > synCT_data.shape[2]:
@@ -92,13 +99,6 @@ for case_name in case_name_list:
     else:
         synCT_data = synCT_data[:, :, :ct_data.shape[2]]
 
-    if ct_data.shape[2] > synCT_seg_data.shape[2]:
-        synCT_seg_data = np.pad(synCT_seg_data, ((0, 0), (0, 0), (0, ct_data.shape[2] - synCT_seg_data.shape[2])), mode="constant", constant_values=0)
-    else:
-        synCT_seg_data = synCT_seg_data[:, :, :ct_data.shape[2]]
-
-
-    
     # compute soft and bone masks from gt CT
     body_mask_path = f"{mask_dir}/mask_body_contour_{case_name}.nii.gz"
     soft_mask_path = f"{mask_dir}/mask_body_soft_{case_name}.nii.gz"
@@ -127,18 +127,19 @@ for case_name in case_name_list:
         # print(f"Saved soft and bone mask for {case_name} at {soft_mask_path} and {bone_mask_path}")
 
     # HU value adjustment
-    for key in HU_value_adjustment.keys():
-        class_synCT_mean = HU_value_adjustment[key]["sCT_mean"]
-        class_synCT_std = HU_value_adjustment[key]["sCT_std"]
-        class_CT_mean = HU_value_adjustment[key]["CT_mean"]
-        class_CT_std = HU_value_adjustment[key]["CT_std"]
-        class_mask = synCT_seg_data == key
+    if HU_adjustment:
+        for key in HU_value_adjustment.keys():
+            class_synCT_mean = HU_value_adjustment[key]["sCT_mean"]
+            class_synCT_std = HU_value_adjustment[key]["sCT_std"]
+            class_CT_mean = HU_value_adjustment[key]["CT_mean"]
+            class_CT_std = HU_value_adjustment[key]["CT_std"]
+            class_mask = synCT_seg_data == key
 
-        # adjust the HU value of synCT_data
-        synCT_data[class_mask] = (synCT_data[class_mask] - class_synCT_mean) * class_CT_std / class_synCT_std + class_CT_mean
-    adjusted_nii = nib.Nifti1Image(synCT_data, synCT_file.affine, synCT_file.header)
-    adjusted_path = synCT_path.replace(".nii.gz", "_adjusted.nii.gz")
-    nib.save(adjusted_nii, adjusted_path)
+            # adjust the HU value of synCT_data
+            synCT_data[class_mask] = (synCT_data[class_mask] - class_synCT_mean) * class_CT_std / class_synCT_std + class_CT_mean
+        adjusted_nii = nib.Nifti1Image(synCT_data, synCT_file.affine, synCT_file.header)
+        adjusted_path = synCT_path.replace(".nii.gz", "_adjusted.nii.gz")
+        nib.save(adjusted_nii, adjusted_path)
 
     # compute metrics for whole, soft, and bone regions
     region_list = ["body", "soft", "bone"]
@@ -260,7 +261,7 @@ print(f"Accutance: {metrics_dict[' acutance_by_case']}")
 
 # Save metrics to json
 import json
-metrics_json_path = f"{root_dir}/LDM36v1_metrics_adjusted.json"
+metrics_json_path = f"{root_dir}/LDM36v0_metrics_adjusted.json"
 with open(metrics_json_path, "w") as f:
     json.dump(metrics_dict, f)
 
