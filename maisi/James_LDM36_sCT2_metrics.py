@@ -26,8 +26,9 @@ REGIONS = ["body", "soft", "bone"]
 ROOT_DIR = "James_36/synCT"
 CT_DIR = "NAC_CTAC_Spacing15"
 MASK_DIR = "James_36/CT_mask"
-SYNCT_DIR = os.path.join(ROOT_DIR, "inference_20250128_noon")
-SYNCT_SEG_DIR = ROOT_DIR
+# SYNCT_DIR = os.path.join(ROOT_DIR, "inference_20250128_noon")
+SYNCT_DIR = ROOT_DIR
+SYNCT_SEG_DIR = "James_36/overlap_seg"
 SAVE_DIR = ROOT_DIR
 
 
@@ -41,7 +42,7 @@ MAX_BOUNDARY = 3000
 # Flags
 CT_MASK_OVERWRITE = False
 PRED_MASK_OVERWRITE = True
-HU_ADJUSTMENT_ENABLED = False
+HU_ADJUSTMENT_ENABLED = True
 
 # Load HU adjustment parameters
 HU_ADJUSTMENT_PATH = "sCT_CT_stats.npy"
@@ -147,9 +148,9 @@ def get_or_create_pred_masks(case_name, synCT_data, ct_img, ct_data):
     Returns binary masks for body, soft, and bone regions.
     """
     if HU_ADJUSTMENT_ENABLED:
-        pred_body_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_body_adjusted.nii.gz")
-        pred_soft_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_mask_sof_adjusted.nii.gz")
-        pred_bone_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_mask_bone_adjusted.nii.gz")
+        pred_body_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_body_adjusted_vanilaoverlap.nii.gz")
+        pred_soft_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_mask_sof_adjusted_vanilaoverlap.nii.gz")
+        pred_bone_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_mask_bone_adjusted_vanilaoverlap.nii.gz")
     else:
         pred_body_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_body.nii.gz")
         pred_soft_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_mask_soft.nii.gz")
@@ -200,8 +201,8 @@ def process_case(case_name):
     print(f"Processing case {case_name}...")
     # Define file paths
     ct_path = os.path.join(CT_DIR, f"CTAC_{case_name}_cropped.nii.gz")
-    synCT_path = os.path.join(SYNCT_DIR, f"CTAC_{case_name}_TS_MAISI.nii.gz")
-    synCT_seg_path = os.path.join(ROOT_DIR, f"SynCT_{case_name}_TS_label.nii.gz")
+    synCT_path = os.path.join(SYNCT_DIR, f"SynCT_{case_name}.nii.gz")
+    synCT_seg_path = os.path.join(SYNCT_SEG_DIR, f"vanila_overlap_{case_name}_Spacing15.nii.gz")
     
     # Load images
     ct_img, ct_data = load_nifti(ct_path)
@@ -221,7 +222,7 @@ def process_case(case_name):
     # HU adjustment (if enabled)
     if HU_ADJUSTMENT_ENABLED:
         synCT_data = adjust_hu_values(synCT_data, synCT_seg_data)
-        adjusted_path = synCT_path.replace(".nii.gz", "_adjusted.nii.gz")
+        adjusted_path = synCT_path.replace(".nii.gz", "_adjusted_vanilaoverlap.nii.gz")
         save_nifti(synCT_data, synCT_img, adjusted_path)
     
     # Create or load predicted masks from synCT_data
@@ -305,7 +306,7 @@ def main():
     
     # Save the metrics to a JSON file
     # metrics_json_path = os.path.join(ROOT_DIR, "LDM36v2_metrics_adjusted.json")
-    metrics_json_path = os.path.join(ROOT_DIR, "LDM36v2_metrics_no_adjusted.json")
+    metrics_json_path = os.path.join(ROOT_DIR, "LDM36v1_metrics_adjusted_vanilaoverlap.json")
     with open(metrics_json_path, "w") as f:
         json.dump(metrics_dict, f, indent=4)
     print(f"\nSaved metrics to {metrics_json_path}")
