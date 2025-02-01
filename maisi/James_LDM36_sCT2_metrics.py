@@ -30,7 +30,7 @@ from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import peak_signal_noise_ratio as psnr
 
 
-root_dir = "sCT0_LDM36/"
+root_dir = "James_36/synCT/inference_20250128_noon"
 mask_dir = f"James_36/CT_mask"
 os.makedirs(mask_dir, exist_ok=True)
 ct_dir = f"{root_dir}"
@@ -70,14 +70,14 @@ HU_value_adjustment = np.load(HU_value_adjustment_path, allow_pickle=True).item(
 
 ct_mask_overwrite = False
 pred_mask_overwrite = True
-HU_adjustment = False
+HU_adjustment = True
 
 for case_name in case_name_list:
 
     ct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
     # synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS_MAISI.nii.gz"
     # synCT_path = f"{synCT_dir}/inference_20250128_noon/CTAC_{case_name}_TS_MAISI.nii.gz"
-    synCT_path = f"{synCT_dir}/sCT0_{case_name}_400.nii.gz"
+    synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS_MAIS.nii.gz" # CTAC_E4138_TS_MAISI.nii.gz
     synCT_seg_path = f"{root_dir}/SynCT_{case_name}_TS_label.nii.gz"
 
     ct_file = nib.load(ct_path)
