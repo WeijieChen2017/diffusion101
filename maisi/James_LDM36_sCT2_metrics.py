@@ -195,7 +195,7 @@ def process_case(case_name):
     print(f"Processing case {case_name}...")
     # Define file paths
     ct_path = os.path.join(CT_DIR, f"CTAC_{case_name}_cropped.nii.gz")
-    synCT_path = os.path.join(SYNCT_DIR, f"CTAC_{case_name}_TS_MAIS.nii.gz")
+    synCT_path = os.path.join(SYNCT_DIR, f"CTAC_{case_name}_TS_MAISI.nii.gz")
     synCT_seg_path = os.path.join(ROOT_DIR, f"SynCT_{case_name}_TS_label.nii.gz")
     
     # Load images
