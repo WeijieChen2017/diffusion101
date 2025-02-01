@@ -21,6 +21,8 @@ dst_dir = "sCT0_LDM36"
 import glob
 import os
 
+os.makedirs(dst_dir, exist_ok=True)
+
 for case_name in case_list_total:
     file_path = glob.glob(f"{work_dir}/{case_name}*_corrected.nii.gz")[0]
     print(file_path)
