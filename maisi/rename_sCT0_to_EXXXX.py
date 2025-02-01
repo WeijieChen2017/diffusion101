@@ -26,7 +26,7 @@ os.makedirs(dst_dir, exist_ok=True)
 for case_name in case_list_total:
     file_path = glob.glob(f"{work_dir}/{case_name}*_corrected.nii.gz")[0]
     print(file_path)
-    new_name = f"sCT0_E4{case_name[4:]}.nii.gz"
+    new_name = f"sCT0_E4{case_name[3:]}.nii.gz"
     cmd = f"cp {file_path} {dst_dir}/{new_name}"
     print(cmd)
     os.system(cmd)
