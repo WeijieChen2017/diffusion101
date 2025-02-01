@@ -41,7 +41,7 @@ MAX_BOUNDARY = 3000
 # Flags
 CT_MASK_OVERWRITE = False
 PRED_MASK_OVERWRITE = True
-HU_ADJUSTMENT_ENABLED = True
+HU_ADJUSTMENT_ENABLED = False
 
 # Load HU adjustment parameters
 HU_ADJUSTMENT_PATH = "sCT_CT_stats.npy"
@@ -146,9 +146,14 @@ def get_or_create_pred_masks(case_name, synCT_data, ct_img, ct_data):
     Get or create predicted masks from synCT_data.
     Returns binary masks for body, soft, and bone regions.
     """
-    pred_body_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_body_adjusted.nii.gz")
-    pred_soft_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_mask_sof_adjusted.nii.gz")
-    pred_bone_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_mask_bone_adjusted.nii.gz")
+    if HU_ADJUSTMENT_ENABLED:
+        pred_body_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_body_adjusted.nii.gz")
+        pred_soft_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_mask_sof_adjusted.nii.gz")
+        pred_bone_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_mask_bone_adjusted.nii.gz")
+    else:
+        pred_body_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_body.nii.gz")
+        pred_soft_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_mask_soft.nii.gz")
+        pred_bone_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_mask_bone.nii.gz")
     
     # Process body contour mask
     if os.path.exists(pred_body_path) and not PRED_MASK_OVERWRITE:
@@ -299,7 +304,8 @@ def main():
     print(f"Acutance: {metrics_dict['acutance_by_case']}")
     
     # Save the metrics to a JSON file
-    metrics_json_path = os.path.join(ROOT_DIR, "LDM36v2_metrics_adjusted.json")
+    # metrics_json_path = os.path.join(ROOT_DIR, "LDM36v2_metrics_adjusted.json")
+    metrics_json_path = os.path.join(ROOT_DIR, "LDM36v2_metrics_no_adjusted.json")
     with open(metrics_json_path, "w") as f:
         json.dump(metrics_dict, f, indent=4)
     print(f"\nSaved metrics to {metrics_json_path}")
