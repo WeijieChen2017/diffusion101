@@ -75,7 +75,7 @@ for case_name in case_name_list:
         }
 
     # save the dict to a npy file
-    save_path = f"{root_dir}/SynthRad_{case_name}_HU_stats.npy"
+    save_path = f"{root_dir}/SynthRad_HU_dist/SynthRad_{case_name}_HU_stats.npy"
     np.save(save_path, HU_distribution_dict)
 
     print(f"Saved HU distribution to {save_path}")
