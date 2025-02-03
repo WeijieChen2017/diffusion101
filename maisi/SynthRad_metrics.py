@@ -45,7 +45,7 @@ MAX_BOUNDARY = 3000
 
 # Flags
 CT_MASK_OVERWRITE = False
-PRED_MASK_OVERWRITE = False
+PRED_MASK_OVERWRITE = True
 HU_ADJUSTMENT_ENABLED = True
 
 # Load HU adjustment parameters
