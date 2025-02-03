@@ -25,7 +25,7 @@ root_dir = "SynthRad_nifti"
 for case_name in case_name_list:
 
     ct_path = f"{root_dir}/ct/{case_name}_ct.nii.gz"
-    maisi_label_path = f"{root_dir}/overlap/{case_name}_overlapl.nii.gz"
+    maisi_label_path = f"{root_dir}/overlap/{case_name}_overlap.nii.gz"
     synCT_path = f"{root_dir}/synCT_label_painting/{case_name}_bg.nii.gz"
 
     ct_file = nib.load(ct_path)
