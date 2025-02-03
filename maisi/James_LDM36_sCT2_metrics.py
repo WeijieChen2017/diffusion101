@@ -23,12 +23,12 @@ CASE_NAMES = [
 REGIONS = ["body", "soft", "bone"]
 
 # Directories
-ROOT_DIR = "James_36/synCT"
+ROOT_DIR = "James_36/synCT/inference_20250128_noon"
 CT_DIR = "NAC_CTAC_Spacing15"
 MASK_DIR = "James_36/CT_mask"
 # SYNCT_DIR = os.path.join(ROOT_DIR, "inference_20250128_noon")
 SYNCT_DIR = ROOT_DIR
-SYNCT_SEG_DIR = "James_36/overlap_seg"
+SYNCT_SEG_DIR = "James_36/synCT"
 SAVE_DIR = ROOT_DIR
 
 
@@ -201,8 +201,8 @@ def process_case(case_name):
     print(f"Processing case {case_name}...")
     # Define file paths
     ct_path = os.path.join(CT_DIR, f"CTAC_{case_name}_cropped.nii.gz")
-    synCT_path = os.path.join(SYNCT_DIR, f"SynCT_{case_name}.nii.gz")
-    synCT_seg_path = os.path.join(SYNCT_SEG_DIR, f"vanila_overlap_{case_name}_Spacing15.nii.gz")
+    synCT_path = os.path.join(SYNCT_DIR, f"CTAC_{case_name}_TS_MAISI.nii.gz")
+    synCT_seg_path = os.path.join(SYNCT_SEG_DIR, f"SynCT_{case_name}_TS_label.nii.gz")
     
     # Load images
     ct_img, ct_data = load_nifti(ct_path)
@@ -222,7 +222,7 @@ def process_case(case_name):
     # HU adjustment (if enabled)
     if HU_ADJUSTMENT_ENABLED:
         synCT_data = adjust_hu_values(synCT_data, synCT_seg_data)
-        adjusted_path = synCT_path.replace(".nii.gz", "_adjusted_vanilaoverlap.nii.gz")
+        adjusted_path = synCT_path.replace(".nii.gz", "_adjusted_no200.nii.gz")
         save_nifti(synCT_data, synCT_img, adjusted_path)
     
     # Create or load predicted masks from synCT_data
@@ -306,7 +306,7 @@ def main():
     
     # Save the metrics to a JSON file
     # metrics_json_path = os.path.join(ROOT_DIR, "LDM36v2_metrics_adjusted.json")
-    metrics_json_path = os.path.join(ROOT_DIR, "LDM36v1_metrics_adjusted_vanilaoverlap_no200.json")
+    metrics_json_path = os.path.join(ROOT_DIR, "LDM36v2_metrics_no200.json")
     with open(metrics_json_path, "w") as f:
         json.dump(metrics_dict, f, indent=4)
     print(f"\nSaved metrics to {metrics_json_path}")
