@@ -45,11 +45,11 @@ MAX_BOUNDARY = 3000
 
 # Flags
 CT_MASK_OVERWRITE = False
-PRED_MASK_OVERWRITE = True
-HU_ADJUSTMENT_ENABLED = False
+PRED_MASK_OVERWRITE = False
+HU_ADJUSTMENT_ENABLED = True
 
 # Load HU adjustment parameters
-HU_ADJUSTMENT_PATH = "sCT_CT_stats.npy"
+HU_ADJUSTMENT_PATH = "SynthRad_CT_stats.npy"
 HU_VALUE_ADJUSTMENT = np.load(HU_ADJUSTMENT_PATH, allow_pickle=True).item()
 
 # Initialize a dictionary for metrics
@@ -206,7 +206,7 @@ def process_case(case_name):
     # Define file paths
     ct_path = os.path.join(CT_DIR, f"{case_name}_ct.nii.gz")
     synCT_path = os.path.join(SYNCT_DIR, f"{case_name}_label_painting.nii.gz")
-    synCT_seg_path = os.path.join(SYNCT_SEG_DIR, f"{case_name}_overlap.nii.gz")
+    synCT_seg_path = os.path.join(SYNCT_SEG_DIR, f"{case_name}_label_painting.nii.gz")
     
     # Load images
     ct_img, ct_data = load_nifti(ct_path)
@@ -310,7 +310,7 @@ def main():
     
     # Save the metrics to a JSON file
     # metrics_json_path = os.path.join(ROOT_DIR, "LDM36v2_metrics_adjusted.json")
-    metrics_json_path = os.path.join(ROOT_DIR, "SynthRad_no_adjusted.json")
+    metrics_json_path = os.path.join(ROOT_DIR, "SynthRad_adjusted.json")
     with open(metrics_json_path, "w") as f:
         json.dump(metrics_dict, f, indent=4)
     print(f"\nSaved metrics to {metrics_json_path}")
