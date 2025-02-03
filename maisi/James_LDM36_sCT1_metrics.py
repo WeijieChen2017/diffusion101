@@ -59,7 +59,7 @@ metrics_dict = {
     " acutance_by_region": {},
 }
 
-HU_value_adjustment_path = "sCT_CT_stats.npy"
+HU_value_adjustment_path = "sCT_CT_stats_no200.npy"
 HU_value_adjustment = np.load(HU_value_adjustment_path, allow_pickle=True).item()
 # for key in HU_value_adjustment.keys():
 #     print(f"In class {key}:", end="")
@@ -260,7 +260,7 @@ print(f"Accutance: {metrics_dict[' acutance_by_case']}")
 
 # Save metrics to json
 import json
-metrics_json_path = f"{root_dir}/LDM36v1_metrics_adjusted.json"
+metrics_json_path = f"{root_dir}/LDM36v1_metrics_adjusted_no200.json"
 with open(metrics_json_path, "w") as f:
     json.dump(metrics_dict, f)
 
