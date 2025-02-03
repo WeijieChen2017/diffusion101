@@ -41,11 +41,11 @@ MAX_BOUNDARY = 3000
 
 # Flags
 CT_MASK_OVERWRITE = False
-PRED_MASK_OVERWRITE = True
+PRED_MASK_OVERWRITE = False
 HU_ADJUSTMENT_ENABLED = True
 
 # Load HU adjustment parameters
-HU_ADJUSTMENT_PATH = "sCT_CT_stats.npy"
+HU_ADJUSTMENT_PATH = "sCT_CT_stats_no200.npy"
 HU_VALUE_ADJUSTMENT = np.load(HU_ADJUSTMENT_PATH, allow_pickle=True).item()
 
 # Initialize a dictionary for metrics
@@ -306,7 +306,7 @@ def main():
     
     # Save the metrics to a JSON file
     # metrics_json_path = os.path.join(ROOT_DIR, "LDM36v2_metrics_adjusted.json")
-    metrics_json_path = os.path.join(ROOT_DIR, "LDM36v1_metrics_adjusted_vanilaoverlap.json")
+    metrics_json_path = os.path.join(ROOT_DIR, "LDM36v1_metrics_adjusted_vanilaoverlap_no200.json")
     with open(metrics_json_path, "w") as f:
         json.dump(metrics_dict, f, indent=4)
     print(f"\nSaved metrics to {metrics_json_path}")
