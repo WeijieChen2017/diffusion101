@@ -35,7 +35,7 @@ mask_dir = f"James_36/CT_mask"
 os.makedirs(mask_dir, exist_ok=True)
 ct_dir = f"{root_dir}"
 con_dir = f"{root_dir}"
-synCT_seg_dir = f"{root_dir}/"
+synCT_seg_dir = f"James_36/overlap_seg"
 # save_dir = os.path.join(root_dir, "inference_20250128_noon")
 save_dir = f"{root_dir}"
 synCT_dir = f"{save_dir}"
@@ -77,7 +77,8 @@ for case_name in case_name_list:
     # synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS_MAISI.nii.gz"
     # synCT_path = f"{synCT_dir}/inference_20250128_noon/CTAC_{case_name}_TS_MAISI.nii.gz"
     synCT_path = f"{synCT_dir}/SynCT_{case_name}.nii.gz"
-    synCT_seg_path = f"{root_dir}/SynCT_{case_name}_TS_label.nii.gz"
+    # synCT_seg_path = f"{root_dir}/SynCT_{case_name}_TS_label.nii.gz"
+    synCT_seg_path = f"{synCT_seg_dir}/vanila_overlap_{case_name}_Spacing15.nii.gz"
 
     ct_file = nib.load(ct_path)
     ct_data = ct_file.get_fdata()
