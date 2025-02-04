@@ -29,6 +29,7 @@ def generate_json_from_dir_v2(foldername, subjects_train, subjects_val, labels):
     json_dict['overwrite_image_reader_writer'] = 'NibabelIOWithReorient'
 
     json.dump(json_dict, open(out_base / "dataset.json", "w"), sort_keys=False, indent=4)
+    print(out_base / "dataset.json is saved.")
 
     print("Creating split_final.json...")
     output_folder_pkl = Path(os.environ['nnUNet_preprocessed']) / foldername
@@ -46,7 +47,7 @@ def generate_json_from_dir_v2(foldername, subjects_train, subjects_val, labels):
     print(f"nr val subjects (fold 0): {len(splits[0]['val'])}")
 
     json.dump(splits, open(output_folder_pkl / "splits_final.json", "w"), sort_keys=False, indent=4)
-
+    print(output_folder_pkl / "splits_final.json is saved.")
 
 def combine_labels(ref_img, file_out, masks):
     ref_img = nib.load(ref_img)
