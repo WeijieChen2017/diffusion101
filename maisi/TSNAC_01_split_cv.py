@@ -1,6 +1,3 @@
-import json
-import os
-
 case_name_list = sorted([
     "E4055", "E4058", "E4061", "E4063", "E4066",
     "E4068", "E4069", "E4073", "E4074", "E4077",
