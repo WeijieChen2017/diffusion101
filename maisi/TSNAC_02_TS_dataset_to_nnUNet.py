@@ -14,6 +14,7 @@ from TS_NAC.map_to_binary import class_map_5_parts
 def generate_json_from_dir_v2(foldername, subjects_train, subjects_val, labels):
     print("Creating dataset.json...")
     out_base = Path(os.environ['nnUNet_raw']) / foldername
+    out_base.mkdir(parents=True, exist_ok=True)
 
     json_dict = {}
     json_dict['name'] = "TS_NAC"
@@ -31,7 +32,7 @@ def generate_json_from_dir_v2(foldername, subjects_train, subjects_val, labels):
 
     print("Creating split_final.json...")
     output_folder_pkl = Path(os.environ['nnUNet_preprocessed']) / foldername
-    output_folder_pkl.mkdir(exist_ok=True)
+    output_folder_pkl.mkdir(parents=True, exist_ok=True)
 
     # Create splits format expected by nnUNet
     splits = []
