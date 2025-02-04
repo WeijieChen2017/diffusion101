@@ -11,11 +11,6 @@ from tqdm import tqdm
 
 from TS_NAC.map_to_binary import class_map_5_parts
 
-# Set environment variables
-os.environ['nnUNet_preprocessed'] = str(Path('.') / 'nnUNet_preprocessed')
-os.environ['nnUNet_results'] = str(Path('.') / 'nnUNet_results')
-os.environ['nnUNet_raw'] = str(Path('.') / 'nnUNet_raw')
-
 def generate_json_from_dir_v2(foldername, subjects_train, subjects_val, labels):
     print("Creating dataset.json...")
     out_base = Path(os.environ['nnUNet_raw']) / foldername
@@ -104,12 +99,17 @@ if __name__ == "__main__":
     nnunet_path = Path(sys.argv[2])  # directory of the new nnunet dataset
     class_map_name = sys.argv[3]  # which class map to use from map_to_binary
 
+    # Set environment variables
+    os.environ['nnUNet_raw'] = '/local/diffusion101/maisi/TS_NAC'
+    os.environ['nnUNet_results'] = '/local/diffusion101/maisi/TS_NAC/results'
+    os.environ['nnUNet_preprocessed'] = str(nnunet_path)
+
+    (os.environ['nnUNet_results']).mkdir(parents=True, exist_ok=True)
     split_json = dataset_path / "TS_NAC_split_cv0.json"
     
     # Get the class map from map_to_binary based on the provided name
     class_map = class_map_5_parts[class_map_name]
 
-    (nnunet_path).mkdir(parents=True, exist_ok=True)
     (nnunet_path / "imagesTr").mkdir(parents=True, exist_ok=True)
     (nnunet_path / "labelsTr").mkdir(parents=True, exist_ok=True)
     (nnunet_path / "imagesTs").mkdir(parents=True, exist_ok=True)
