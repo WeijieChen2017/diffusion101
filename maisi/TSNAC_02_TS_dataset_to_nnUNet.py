@@ -103,6 +103,7 @@ if __name__ == "__main__":
     # Get the class map from map_to_binary based on the provided name
     class_map = class_map_5_parts[class_map_name]
 
+    (nnunet_path).mkdir(parents=True, exist_ok=True)
     (nnunet_path / "imagesTr").mkdir(parents=True, exist_ok=True)
     (nnunet_path / "labelsTr").mkdir(parents=True, exist_ok=True)
     (nnunet_path / "imagesTs").mkdir(parents=True, exist_ok=True)
