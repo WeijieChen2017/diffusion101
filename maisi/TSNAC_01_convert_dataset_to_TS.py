@@ -2,7 +2,7 @@ import os
 import shutil
 from pathlib import Path
 
-case_name_list = [
+case_name_list = sorted([
     "E4055", "E4058", "E4061", "E4063", "E4066",
     "E4068", "E4069", "E4073", "E4074", "E4077",
     "E4078", "E4079", "E4080", "E4081", "E4084",
@@ -23,7 +23,7 @@ case_name_list = [
     'E4260', 'E4290', 'E4309', 'E4336',
     'E4261', 'E4292', 'E4310', 'E4337',
     'E4273', 'E4297', 'E4312', 'E4338',
-]
+])
 
 def organize_files(source_dir, output_base_dir):
     # Create output base directory if it doesn't exist
