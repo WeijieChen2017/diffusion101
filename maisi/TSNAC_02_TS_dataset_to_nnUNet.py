@@ -33,9 +33,12 @@ def generate_json_from_dir_v2(foldername, subjects_train, subjects_val, labels):
     output_folder_pkl = Path(os.environ['nnUNet_preprocessed']) / foldername
     output_folder_pkl.mkdir(exist_ok=True)
 
-    # Load existing split from the split_json file
-    with open(split_json, 'r') as f:
-        splits = json.load(f)
+    # Create splits format expected by nnUNet
+    splits = []
+    splits.append({
+        "train": subjects_train,
+        "val": subjects_val
+    })
 
     print(f"nr of folds: {len(splits)}")
     print(f"nr train subjects (fold 0): {len(splits[0]['train'])}")
@@ -107,11 +110,11 @@ if __name__ == "__main__":
 
     # Load split information
     with open(split_json, 'r') as f:
-        splits = json.load(f)
+        split_data = json.load(f)
     
-    subjects_train = splits[0]['train']
-    subjects_val = splits[0]['val']
-    subjects_test = splits[0]['test']
+    subjects_train = split_data['train']
+    subjects_val = split_data['val']
+    subjects_test = split_data['test']
 
     print("Copying train data...")
     for subject in tqdm(subjects_train + subjects_val):
