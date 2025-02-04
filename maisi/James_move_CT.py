@@ -96,7 +96,7 @@ old_case_name_list = [
 TOFNAC_folder = "James_data_v3/TOFNAC"
 CTACIVV_folder = "James_data_v3/CTACIVV"
 
-for case_name in case_name_list:
+for case_name in old_case_name_list:
     TOFNAC_path = f"{TOFNAC_folder}/TOFNAC_{case_name}.nii"
     CTACIVV_path = f"{CTACIVV_folder}/CTACIVV_{case_name}.nii"
     new_TOFNAC_path = f"{TOFNAC_folder}/NAC_{case_name}_256.nii.gz"

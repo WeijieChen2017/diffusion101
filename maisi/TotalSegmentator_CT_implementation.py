@@ -18,7 +18,11 @@ for file in file_list:
 
 num_files = len(file_list)
 # call TotalSegmentator to segment them (TS has been installed in the system)
+# not run the commands, just print it
 for i, file in enumerate(file_list):
-    command = f"[{i+1}]/[{num_files}] TotalSegmentator -i {target_folder}/{file} -o {seg_result_folder}/{file} --ml"
-    print(f"Executing command: {command}")
-    os.system(command)
+    # command = f"[{i+1}]/[{num_files}] TotalSegmentator -i {target_folder}/{file} -o {seg_result_folder}/{file} --ml"
+    # print(f"Executing command: {command}")
+    # os.system(command)
+
+    print(f"TotalSegmentator -i {target_folder}/{file} -o {seg_result_folder}/{file} --ml")
+

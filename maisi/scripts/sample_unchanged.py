@@ -700,6 +700,7 @@ class LDMSampler:
                 pass_quality_check = self.quality_check(
                     synthetic_images.cpu().detach().numpy(), combine_label_or.cpu().detach().numpy()
                 )
+                
                 if pass_quality_check or try_time > self.max_try_time:
                     # save image/label pairs
                     output_postfix = datetime.now().strftime("%Y%m%d_%H%M%S_%f")

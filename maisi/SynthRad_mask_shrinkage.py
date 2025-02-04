@@ -3,6 +3,7 @@ import glob
 import os
 
 from scipy.ndimage import binary_erosion, generate_binary_structure
+from skimage.morphology import disk
 
 work_dir = "."
 mr_list = sorted(glob.glob(f"{work_dir}/*_mask.nii.gz"))
