@@ -101,11 +101,6 @@ if __name__ == "__main__":
     class_map_name = sys.argv[3]  # which class map to use from map_to_binary
 
     # Set environment variables
-    os.environ['nnUNet_raw'] = '/local/diffusion101/maisi/TS_NAC'
-    os.environ['nnUNet_results'] = '/local/diffusion101/maisi/TS_NAC/results'
-    os.environ['nnUNet_preprocessed'] = str(nnunet_path)
-
-    os.makedirs(os.environ['nnUNet_results'], exist_ok=True)
     split_json = dataset_path / "TS_NAC_split_cv0.json"
     
     # Get the class map from map_to_binary based on the provided name
