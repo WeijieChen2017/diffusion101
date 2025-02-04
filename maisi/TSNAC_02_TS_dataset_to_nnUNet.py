@@ -11,6 +11,11 @@ from tqdm import tqdm
 
 from TS_NAC.map_to_binary import class_map_5_parts
 
+# Set environment variables
+os.environ['nnUNet_preprocessed'] = str(Path('.') / 'nnUNet_preprocessed')
+os.environ['nnUNet_results'] = str(Path('.') / 'nnUNet_results')
+os.environ['nnUNet_raw'] = str(Path('.') / 'nnUNet_raw')
+
 def generate_json_from_dir_v2(foldername, subjects_train, subjects_val, labels):
     print("Creating dataset.json...")
     out_base = Path(os.environ['nnUNet_raw']) / foldername
