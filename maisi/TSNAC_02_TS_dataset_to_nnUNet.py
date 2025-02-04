@@ -9,8 +9,7 @@ import nibabel as nib
 import pandas as pd
 from tqdm import tqdm
 
-from TS_NAC import map_to_binary
-
+from TS_NAC.map_to_binary import class_map_5_parts
 
 def generate_json_from_dir_v2(foldername, subjects_train, subjects_val, labels):
     print("Creating dataset.json...")
@@ -58,6 +57,33 @@ def combine_labels(ref_img, file_out, masks):
     nib.save(nib.Nifti1Image(combined.astype(np.uint8), ref_img.affine), file_out)
 
 
+def extract_selected_labels(label_file, output_file, class_map):
+    """
+    Create a new label file containing only the selected organ classes
+    
+    Args:
+        label_file: Path to the full label file
+        output_file: Path to save the new label file with selected classes only
+        class_map: Dictionary mapping label values to organ names (e.g., {1: "spleen", 2: "kidney_right", ...})
+    """
+    img = nib.load(label_file)
+    data = img.get_fdata()
+    
+    # Create empty array for new labels
+    new_data = np.zeros_like(data)
+    
+    # Map of original label values to new consecutive values starting from 1
+    new_label_mapping = {orig_val: idx+1 for idx, orig_val in enumerate(class_map.keys())}
+    
+    # Copy only the selected organ classes with new label values
+    for orig_val, new_val in new_label_mapping.items():
+        new_data[data == orig_val] = new_val
+    
+    # Save the new label file
+    new_img = nib.Nifti1Image(new_data.astype(np.uint8), img.affine)
+    nib.save(new_img, output_file)
+
+
 if __name__ == "__main__":
     """
     Convert the TS_NAC dataset to nnUNet format and generate dataset.json and splits_final.json
@@ -72,7 +98,7 @@ if __name__ == "__main__":
     split_json = dataset_path / "TS_NAC_split_cv0.json"
     
     # Get the class map from map_to_binary based on the provided name
-    class_map = getattr(map_to_binary, class_map_name)
+    class_map = class_map_5_parts[class_map_name]
 
     (nnunet_path / "imagesTr").mkdir(parents=True, exist_ok=True)
     (nnunet_path / "labelsTr").mkdir(parents=True, exist_ok=True)
@@ -91,16 +117,28 @@ if __name__ == "__main__":
     for subject in tqdm(subjects_train + subjects_val):
         subject_path = dataset_path / subject
         shutil.copy(subject_path / "ct.nii.gz", nnunet_path / "imagesTr" / f"{subject}_0000.nii.gz")
-        shutil.copy(subject_path / "label.nii.gz", nnunet_path / "labelsTr" / f"{subject}.nii.gz")
+        
+        # Create new label file with selected organs only
+        extract_selected_labels(
+            subject_path / "label.nii.gz",
+            nnunet_path / "labelsTr" / f"{subject}.nii.gz",
+            class_map
+        )
 
     print("Copying test data...")
     for subject in tqdm(subjects_test):
         subject_path = dataset_path / subject
         shutil.copy(subject_path / "ct.nii.gz", nnunet_path / "imagesTs" / f"{subject}_0000.nii.gz")
-        shutil.copy(subject_path / "label.nii.gz", nnunet_path / "labelsTs" / f"{subject}.nii.gz")
+        
+        # Create new label file with selected organs only
+        extract_selected_labels(
+            subject_path / "label.nii.gz",
+            nnunet_path / "labelsTs" / f"{subject}.nii.gz",
+            class_map
+        )
 
-    # Use the labels from the selected class map
-    labels = list(class_map.values())
+    # Use the original label values (keys) as labels for dataset.json
+    labels = list(class_map.keys())
     generate_json_from_dir_v2(nnunet_path.name, subjects_train, subjects_val, labels)
 
 
