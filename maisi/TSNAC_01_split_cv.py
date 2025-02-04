@@ -21,7 +21,7 @@ case_name_list = sorted([
     'E4273', 'E4312', 'E4338',
 ])
 
-
+import os
 
 # Create 5 folds based on index % 5
 folds = [[] for _ in range(5)]
