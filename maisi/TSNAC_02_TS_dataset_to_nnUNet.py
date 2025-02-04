@@ -120,26 +120,26 @@ if __name__ == "__main__":
     print("Copying train data...")
     for subject in tqdm(subjects_train + subjects_val):
         subject_path = dataset_path / subject
-        shutil.copy(subject_path / "ct.nii.gz", nnunet_path / "imagesTr" / f"{subject}_0000.nii.gz")
+        # shutil.copy(subject_path / "ct.nii.gz", nnunet_path / "imagesTr" / f"{subject}_0000.nii.gz")
         
         # Create new label file with selected organs only
-        extract_selected_labels(
-            subject_path / "label.nii.gz",
-            nnunet_path / "labelsTr" / f"{subject}.nii.gz",
-            class_map
-        )
+        # extract_selected_labels(
+        #     subject_path / "label.nii.gz",
+        #     nnunet_path / "labelsTr" / f"{subject}.nii.gz",
+        #     class_map
+        # )
 
     print("Copying test data...")
     for subject in tqdm(subjects_test):
         subject_path = dataset_path / subject
-        shutil.copy(subject_path / "ct.nii.gz", nnunet_path / "imagesTs" / f"{subject}_0000.nii.gz")
+        # shutil.copy(subject_path / "ct.nii.gz", nnunet_path / "imagesTs" / f"{subject}_0000.nii.gz")
         
-        # Create new label file with selected organs only
-        extract_selected_labels(
-            subject_path / "label.nii.gz",
-            nnunet_path / "labelsTs" / f"{subject}.nii.gz",
-            class_map
-        )
+        # # Create new label file with selected organs only
+        # extract_selected_labels(
+        #     subject_path / "label.nii.gz",
+        #     nnunet_path / "labelsTs" / f"{subject}.nii.gz",
+        #     class_map
+        # )
 
     # Use the original label values (keys) as labels for dataset.json
     labels = list(class_map.keys())
