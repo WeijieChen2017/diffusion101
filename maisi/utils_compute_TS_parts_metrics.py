@@ -179,15 +179,23 @@ def compute_parts_metrics():
     metrics_dict = {
         "original": {
             "mae_by_part": {},
-            "mae_std_by_part": {},  # Added std metrics
+            "mae_std_by_part": {},
             "mae_class_200": 0,
-            "mae_std_class_200": 0  # Added std for class 200
+            "mae_std_class_200": 0,
+            "raw_data": {  # Added raw data storage
+                "mae_by_part": {},
+                "mae_class_200": []
+            }
         },
         "adjusted": {
             "mae_by_part": {},
-            "mae_std_by_part": {},  # Added std metrics
+            "mae_std_by_part": {},
             "mae_class_200": 0,
-            "mae_std_class_200": 0  # Added std for class 200
+            "mae_std_class_200": 0,
+            "raw_data": {  # Added raw data storage
+                "mae_by_part": {},
+                "mae_class_200": []
+            }
         }
     }
     
@@ -202,6 +210,11 @@ def compute_parts_metrics():
     adjusted_mae_values = {part_name: [] for part_name in converted_maps.keys()}
     original_class_200_values = []
     adjusted_class_200_values = []
+    
+    # Initialize raw data storage
+    for part_name in converted_maps.keys():
+        metrics_dict["original"]["raw_data"]["mae_by_part"][part_name] = {}
+        metrics_dict["adjusted"]["raw_data"]["mae_by_part"][part_name] = {}
     
     for case_name in case_name_list:
         # Load CT and both synCT predictions
@@ -240,10 +253,12 @@ def compute_parts_metrics():
                 # Original prediction
                 mae_orig = np.mean(np.abs(ct_data[part_mask] - synCT_data[part_mask]))
                 original_mae_values[part_name].append(mae_orig)
+                metrics_dict["original"]["raw_data"]["mae_by_part"][part_name][case_name] = mae_orig
                 
                 # Adjusted prediction
                 mae_adj = np.mean(np.abs(ct_data[part_mask] - synCT_adjusted_data[part_mask]))
                 adjusted_mae_values[part_name].append(mae_adj)
+                metrics_dict["adjusted"]["raw_data"]["mae_by_part"][part_name][case_name] = mae_adj
                 
                 print(f"{part_name}:")
                 print(f"  Original MAE: {mae_orig:.4f}")
@@ -251,15 +266,23 @@ def compute_parts_metrics():
             else:
                 print(f"Warning: No voxels found for {part_name} in {case_name}")
         
-        # Compute MAE for class 200 for both predictions
+        # Compute MAE for class 200
         class_200_mask = seg_data == 200
         if np.any(class_200_mask):
-            # Original prediction
             mae_200_orig = np.mean(np.abs(ct_data[class_200_mask] - synCT_data[class_200_mask]))
-            original_class_200_values.append(mae_200_orig)
-            
-            # Adjusted prediction
             mae_200_adj = np.mean(np.abs(ct_data[class_200_mask] - synCT_adjusted_data[class_200_mask]))
+            
+            # Store raw data
+            metrics_dict["original"]["raw_data"]["mae_class_200"].append({
+                "case": case_name,
+                "mae": mae_200_orig
+            })
+            metrics_dict["adjusted"]["raw_data"]["mae_class_200"].append({
+                "case": case_name,
+                "mae": mae_200_adj
+            })
+            
+            original_class_200_values.append(mae_200_orig)
             adjusted_class_200_values.append(mae_200_adj)
             
             print(f"Class 200:")
@@ -296,10 +319,10 @@ def compute_parts_metrics():
         metrics_dict["adjusted"]["mae_class_200"] = np.mean(adjusted_class_200_values)
         metrics_dict["adjusted"]["mae_std_class_200"] = np.std(adjusted_class_200_values)
     
-    # Save metrics to json
+    # Save both summary metrics and raw data to json
     metrics_json_path = f"{root_dir}/parts_mae_metrics.json"
     with open(metrics_json_path, "w") as f:
-        json.dump(metrics_dict, f)
+        json.dump(metrics_dict, f, indent=2)  # Added indent for better readability
     
     # Print results
     for pred_type in ["original", "adjusted"]:
