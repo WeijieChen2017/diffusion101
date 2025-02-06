@@ -220,6 +220,9 @@ def compute_parts_metrics():
             synCT_data = synCT_data[:, :, :ct_data.shape[2]]
             synCT_adjusted_data = synCT_adjusted_data[:, :, :ct_data.shape[2]]
         
+        print(f"\nProcessing {case_name}:")
+        print("-" * 50)
+        
         # Compute MAE for each part for both predictions
         for part_name, part_map in converted_maps.items():
             part_mask = np.zeros_like(seg_data, dtype=bool)
@@ -237,6 +240,10 @@ def compute_parts_metrics():
                 # Adjusted prediction
                 mae_adj = np.mean(np.abs(ct_data[part_mask] - synCT_adjusted_data[part_mask]))
                 adjusted_mae_values[part_name].append(mae_adj)
+                
+                print(f"{part_name}:")
+                print(f"  Original MAE: {mae_orig:.4f}")
+                print(f"  Adjusted MAE: {mae_adj:.4f}")
             else:
                 print(f"Warning: No voxels found for {part_name} in {case_name}")
         
@@ -250,6 +257,10 @@ def compute_parts_metrics():
             # Adjusted prediction
             mae_200_adj = np.mean(np.abs(ct_data[class_200_mask] - synCT_adjusted_data[class_200_mask]))
             adjusted_class_200_values.append(mae_200_adj)
+            
+            print(f"Class 200:")
+            print(f"  Original MAE: {mae_200_orig:.4f}")
+            print(f"  Adjusted MAE: {mae_200_adj:.4f}")
         else:
             print(f"Warning: No voxels found for class 200 in {case_name}")
     
