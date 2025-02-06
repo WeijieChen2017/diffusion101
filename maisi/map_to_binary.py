@@ -757,7 +757,7 @@ class_map_5_parts = {
         26: "costal_cartilages"
     },
 
-    "test": class_map["test"]
+    # "test": class_map["test"]
 }
 
 
