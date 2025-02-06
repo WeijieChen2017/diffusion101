@@ -173,17 +173,21 @@ def convert_class_maps_using_T2M():
     return converted_maps
 
 def compute_parts_metrics():
-    """Compute MAE metrics for both original and adjusted synthetic CTs"""
+    """Compute MAE metrics (mean and std) for both original and adjusted synthetic CTs"""
     
     # Initialize metrics dictionary for both predictions
     metrics_dict = {
         "original": {
             "mae_by_part": {},
-            "mae_class_200": 0
+            "mae_std_by_part": {},  # Added std metrics
+            "mae_class_200": 0,
+            "mae_std_class_200": 0  # Added std for class 200
         },
         "adjusted": {
             "mae_by_part": {},
-            "mae_class_200": 0
+            "mae_std_by_part": {},  # Added std metrics
+            "mae_class_200": 0,
+            "mae_std_class_200": 0  # Added std for class 200
         }
     }
     
@@ -264,27 +268,33 @@ def compute_parts_metrics():
         else:
             print(f"Warning: No voxels found for class 200 in {case_name}")
     
-    # Compute average MAE for each part for both predictions
+    # After collecting all values, compute mean and std
     for part_name in converted_maps.keys():
         # Original prediction
         if original_mae_values[part_name]:
             metrics_dict["original"]["mae_by_part"][part_name] = np.mean(original_mae_values[part_name])
+            metrics_dict["original"]["mae_std_by_part"][part_name] = np.std(original_mae_values[part_name])
         else:
             metrics_dict["original"]["mae_by_part"][part_name] = 0
+            metrics_dict["original"]["mae_std_by_part"][part_name] = 0
             print(f"Warning: No valid MAE values for {part_name} in original prediction")
         
         # Adjusted prediction
         if adjusted_mae_values[part_name]:
             metrics_dict["adjusted"]["mae_by_part"][part_name] = np.mean(adjusted_mae_values[part_name])
+            metrics_dict["adjusted"]["mae_std_by_part"][part_name] = np.std(adjusted_mae_values[part_name])
         else:
             metrics_dict["adjusted"]["mae_by_part"][part_name] = 0
+            metrics_dict["adjusted"]["mae_std_by_part"][part_name] = 0
             print(f"Warning: No valid MAE values for {part_name} in adjusted prediction")
     
-    # Compute average MAE for class 200 for both predictions
+    # Compute mean and std for class 200
     if original_class_200_values:
         metrics_dict["original"]["mae_class_200"] = np.mean(original_class_200_values)
+        metrics_dict["original"]["mae_std_class_200"] = np.std(original_class_200_values)
     if adjusted_class_200_values:
         metrics_dict["adjusted"]["mae_class_200"] = np.mean(adjusted_class_200_values)
+        metrics_dict["adjusted"]["mae_std_class_200"] = np.std(adjusted_class_200_values)
     
     # Save metrics to json
     metrics_json_path = f"{root_dir}/parts_mae_metrics.json"
@@ -293,10 +303,17 @@ def compute_parts_metrics():
     
     # Print results
     for pred_type in ["original", "adjusted"]:
-        print(f"\nAverage MAE for {pred_type} prediction:")
-        for part_name, mae in metrics_dict[pred_type]["mae_by_part"].items():
-            print(f"{part_name}: {mae:.4f}")
-        print(f"Class 200: {metrics_dict[pred_type]['mae_class_200']:.4f}")
+        print(f"\nMetrics for {pred_type} prediction:")
+        for part_name in converted_maps.keys():
+            mean = metrics_dict[pred_type]["mae_by_part"][part_name]
+            std = metrics_dict[pred_type]["mae_std_by_part"][part_name]
+            print(f"{part_name}:")
+            print(f"  Mean MAE: {mean:.4f} ± {std:.4f}")
+        
+        mean_200 = metrics_dict[pred_type]["mae_class_200"]
+        std_200 = metrics_dict[pred_type]["mae_std_class_200"]
+        print(f"Class 200:")
+        print(f"  Mean MAE: {mean_200:.4f} ± {std_200:.4f}")
     
     print(f"\nSaved metrics to {metrics_json_path}")
     return metrics_dict
