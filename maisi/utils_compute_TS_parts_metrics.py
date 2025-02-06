@@ -147,7 +147,7 @@ T2M_mapping = {
 
 def convert_class_maps_using_T2M():
     """Convert the class maps from map_to_binary using T2M_mapping and print the results"""
-    from .map_to_binary import class_map_5_parts
+    # from .map_to_binary import class_map_5_parts
     
     converted_maps = {}
     
