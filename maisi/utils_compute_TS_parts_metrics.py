@@ -1,4 +1,4 @@
-from .map_to_binary import class_map_5_parts
+from map_to_binary import class_map_5_parts
 import os
 import nibabel as nib
 import numpy as np
