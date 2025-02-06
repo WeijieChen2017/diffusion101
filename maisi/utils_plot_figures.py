@@ -25,7 +25,7 @@ for case_name in case_name_list:
     sCT0_path = f"sCT0_LDM36/sCT0_{case_name}_400.nii.gz"
     sCT0_seg_path = f"James_36/overlap_seg/vanila_overlap_{case_name}_Spacing15.nii.gz"
     sCT1_path = f"James_36/synCT/SynCT_{case_name}.nii.gz"
-    sCT1_adjusted_path = f"James_36/synCT/SynCT_{case_name}.nii.gz"
+    sCT1_adjusted_path = f"James_36/synCT/SynCT_{case_name}_adjusted_vanilaoverlap.nii.gz.nii.gz"
     sCT2_path = f"James_36/synCT/inference_20250128_noon/CTAC_{case_name}_TS_MAISI.nii.gz"
     sCT2_adjusted_path = f"James_36/synCT/inference_20250128_noon/CTAC_{case_name}_TS_MAISI_adjusted.nii.gz"
     
