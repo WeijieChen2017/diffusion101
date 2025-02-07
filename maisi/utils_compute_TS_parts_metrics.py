@@ -24,153 +24,14 @@ case_name_list = [
     'E4273', 'E4297', 'E4312', 'E4338',
 ]
 
-# Mapping dictionary (unchanged)
-T2M_mapping = {
-    1: 3,
-    2: 5,
-    3: 14,
-    4: 10,
-    5: 1,
-    6: 12,
-    7: 4,
-    8: 8,
-    9: 9,
-    10: 28,
-    11: 29,
-    12: 30,
-    13: 31,
-    14: 32,
-    15: 11,
-    16: 57,
-    17: 126,
-    18: 19,
-    19: 13,
-    20: 62,
-    21: 15,
-    22: 118,
-    23: 116,
-    24: 117,
-    25: 97,
-    26: 127,
-    27: 33,
-    28: 34,
-    29: 35,
-    30: 36,
-    31: 37,
-    32: 38,
-    33: 39,
-    34: 40,
-    35: 41,
-    36: 42,
-    37: 43,
-    38: 44,
-    39: 45,
-    40: 46,
-    41: 47,
-    42: 48,
-    43: 49,
-    44: 50,
-    45: 51,
-    46: 52,
-    47: 53,
-    48: 54,
-    49: 55,
-    50: 56,
-    51: 115,
-    52: 6,
-    53: 119,
-    54: 109,
-    55: 123,
-    56: 124,
-    57: 112,
-    58: 113,
-    59: 110,
-    60: 111,
-    61: 108,
-    62: 125,
-    63: 7,
-    64: 17,
-    65: 58,
-    66: 59,
-    67: 60,
-    68: 61,
-    69: 87,
-    70: 88,
-    71: 89,
-    72: 90,
-    73: 91,
-    74: 92,
-    75: 93,
-    76: 94,
-    77: 95,
-    78: 96,
-    79: 121,
-    80: 98,
-    81: 99,
-    82: 100,
-    83: 101,
-    84: 102,
-    85: 103,
-    86: 104,
-    87: 105,
-    88: 106,
-    89: 107,
-    90: 22,
-    91: 120,
-    92: 63,
-    93: 64,
-    94: 65,
-    95: 66,
-    96: 67,
-    97: 68,
-    98: 69,
-    99: 70,
-    100: 71,
-    101: 72,
-    102: 73,
-    103: 74,
-    104: 75,
-    105: 76,
-    106: 77,
-    107: 78,
-    108: 79,
-    109: 80,
-    110: 81,
-    111: 82,
-    112: 83,
-    113: 84,
-    114: 85,
-    115: 86,
-    116: 122,
-    117: 114
+class_map_5_parts = {
+    'organs': [3, 5, 14, 10, 1, 12, 4, 8, 9, 28, 29, 30, 31, 32, 11, 57, 126, 19, 13, 62, 15, 118, 116, 117],
+    'vertebrae': [97, 127, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56],
+    'cardiac': [115, 6, 119, 109, 123, 124, 112, 113, 110, 111, 108, 125, 7, 17, 58, 59, 60, 61],
+    'muscles': [95, 96, 121, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 22, 120],
+    'ribs': [63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 122, 114],
+    'body_contour': [200],
 }
-
-def convert_class_maps_using_T2M():
-    """Convert the class maps from map_to_binary using T2M_mapping and print the results"""
-    # from .map_to_binary import class_map_5_parts
-    
-    converted_maps = {}
-    
-    # Convert and print each part map
-    for part_name, part_map in class_map_5_parts.items():
-        converted_part = {}
-        
-        print(f"\n{part_name}:")
-        print("-" * 50)
-        
-        # Convert each class ID using T2M_mapping
-        for orig_id, class_name in part_map.items():
-            if orig_id in T2M_mapping:
-                new_id = T2M_mapping[orig_id]
-                converted_part[new_id] = class_name
-                print(f"Original ID: {orig_id:3d} -> New ID: {new_id:3d} | {class_name}")
-            else:
-                print(f"Warning: ID {orig_id} not found in T2M_mapping | {class_name}")
-                converted_part[orig_id] = class_name
-                
-        converted_maps[part_name] = converted_part
-        
-    return converted_maps
 
 def compute_parts_metrics():
     """Compute MAE metrics (mean and std) for both original and adjusted synthetic CTs"""
@@ -182,7 +43,7 @@ def compute_parts_metrics():
             "mae_std_by_part": {},
             "mae_class_200": 0,
             "mae_std_class_200": 0,
-            "raw_data": {  # Added raw data storage
+            "raw_data": {
                 "mae_by_part": {},
                 "mae_class_200": []
             }
@@ -192,7 +53,7 @@ def compute_parts_metrics():
             "mae_std_by_part": {},
             "mae_class_200": 0,
             "mae_std_class_200": 0,
-            "raw_data": {  # Added raw data storage
+            "raw_data": {
                 "mae_by_part": {},
                 "mae_class_200": []
             }
@@ -202,17 +63,14 @@ def compute_parts_metrics():
     root_dir = "NAC_CTAC_Spacing15"
     synCT_dir = f"{root_dir}/inference_20250128_noon"
     
-    # Convert class maps using T2M mapping
-    converted_maps = convert_class_maps_using_T2M()
-    
     # Initialize lists to store MAE values for each prediction
-    original_mae_values = {part_name: [] for part_name in converted_maps.keys()}
-    adjusted_mae_values = {part_name: [] for part_name in converted_maps.keys()}
+    original_mae_values = {part_name: [] for part_name in class_map_5_parts.keys()}
+    adjusted_mae_values = {part_name: [] for part_name in class_map_5_parts.keys()}
     original_class_200_values = []
     adjusted_class_200_values = []
     
     # Initialize raw data storage
-    for part_name in converted_maps.keys():
+    for part_name in class_map_5_parts.keys():
         metrics_dict["original"]["raw_data"]["mae_by_part"][part_name] = {}
         metrics_dict["adjusted"]["raw_data"]["mae_by_part"][part_name] = {}
     
@@ -241,11 +99,11 @@ def compute_parts_metrics():
         print("-" * 50)
         
         # Compute MAE for each part for both predictions
-        for part_name, part_map in converted_maps.items():
+        for part_name, class_ids in class_map_5_parts.items():
             part_mask = np.zeros_like(seg_data, dtype=bool)
             
-            # Create mask for current part
-            for class_id in part_map.keys():
+            # Create mask for current part using the class IDs list
+            for class_id in class_ids:
                 part_mask |= (seg_data == class_id)
                 
             # Compute MAE for both predictions
@@ -266,13 +124,12 @@ def compute_parts_metrics():
             else:
                 print(f"Warning: No voxels found for {part_name} in {case_name}")
         
-        # Compute MAE for class 200
+        # Compute MAE for class 200 (body_contour)
         class_200_mask = seg_data == 200
         if np.any(class_200_mask):
             mae_200_orig = np.mean(np.abs(ct_data[class_200_mask] - synCT_data[class_200_mask]))
             mae_200_adj = np.mean(np.abs(ct_data[class_200_mask] - synCT_adjusted_data[class_200_mask]))
             
-            # Store raw data
             metrics_dict["original"]["raw_data"]["mae_class_200"].append({
                 "case": case_name,
                 "mae": mae_200_orig
@@ -285,14 +142,14 @@ def compute_parts_metrics():
             original_class_200_values.append(mae_200_orig)
             adjusted_class_200_values.append(mae_200_adj)
             
-            print(f"Class 200:")
+            print(f"Body contour (class 200):")
             print(f"  Original MAE: {mae_200_orig:.4f}")
             print(f"  Adjusted MAE: {mae_200_adj:.4f}")
         else:
-            print(f"Warning: No voxels found for class 200 in {case_name}")
+            print(f"Warning: No voxels found for body contour in {case_name}")
     
     # After collecting all values, compute mean and std
-    for part_name in converted_maps.keys():
+    for part_name in class_map_5_parts.keys():
         # Original prediction
         if original_mae_values[part_name]:
             metrics_dict["original"]["mae_by_part"][part_name] = np.mean(original_mae_values[part_name])
@@ -327,7 +184,7 @@ def compute_parts_metrics():
     # Print results
     for pred_type in ["original", "adjusted"]:
         print(f"\nMetrics for {pred_type} prediction:")
-        for part_name in converted_maps.keys():
+        for part_name in class_map_5_parts.keys():
             mean = metrics_dict[pred_type]["mae_by_part"][part_name]
             std = metrics_dict[pred_type]["mae_std_by_part"][part_name]
             print(f"{part_name}:")
