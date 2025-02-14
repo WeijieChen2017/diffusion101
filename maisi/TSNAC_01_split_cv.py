@@ -24,44 +24,39 @@ case_name_list = sorted([
 import os
 import json
 
-# Create 5 folds based on index % 5
-folds = [[] for _ in range(5)]
-for i, case in enumerate(case_name_list):
-    fold_idx = i % 5
-    folds[fold_idx].append(case)
+test_cases = [
+    "E4055", "E4058", "E4061", "E4066",
+    "E4068", "E4069", "E4073", "E4074", "E4077",
+    "E4078", "E4079", "E4081", "E4084",
+    "E4091", "E4092", "E4094", "E4096",
+    "E4098", "E4099", "E4103",
+    "E4105", "E4106", "E4114", "E4115", "E4118",
+    "E4120", "E4124", "E4125", "E4128", "E4129",
+    "E4130", "E4131", "E4134", "E4137", "E4138",
+    "E4139"
+]
 
-# Create and save 5 different CV splits
-for i in range(5):
-    # For each split, create train/val/test sets
-    # Train: 3 consecutive folds
-    # Val: 1 fold
-    # Test: 1 fold
-    split_dict = {
-        "train": [],
-        "val": [],
-        "test": []
-    }
-    
-    # Rotate the folds for each split configuration
-    train_indices = [(i + j) % 5 for j in range(3)]  # Get 3 consecutive folds
-    val_index = (i + 3) % 5
-    test_index = (i + 4) % 5
-    
-    # Populate the splits
-    for train_idx in train_indices:
-        split_dict["train"].extend(folds[train_idx])
-    split_dict["val"].extend(folds[val_index])
-    split_dict["test"].extend(folds[test_index])
-    
-    # Sort the lists for consistency
-    split_dict["train"].sort()
-    split_dict["val"].sort()
-    split_dict["test"].sort()
-    
-    # Save to JSON file
-    output_dir = "./TS_NAC"
-    os.makedirs(output_dir, exist_ok=True)  # Create directory if it doesn't exist
-    output_file = os.path.join(output_dir, f"TS_NAC_split_cv{i}.json")
-    with open(output_file, 'w') as f:
-        json.dump(split_dict, f, indent=4)
+# Create train/test split
+split_dict = {
+    "train": [],
+    "test": []
+}
+
+# Populate the splits
+for case in case_name_list:
+    if case in test_cases:
+        split_dict["test"].append(case)
+    else:
+        split_dict["train"].append(case)
+
+# Sort the lists for consistency
+split_dict["train"].sort()
+split_dict["test"].sort()
+
+# Save to JSON file
+output_dir = "./TS_NAC"
+os.makedirs(output_dir, exist_ok=True)  # Create directory if it doesn't exist
+output_file = os.path.join(output_dir, "James36.json")
+with open(output_file, 'w') as f:
+    json.dump(split_dict, f, indent=4)
 
