@@ -11,6 +11,172 @@ from tqdm import tqdm
 
 from TS_NAC.map_to_binary import class_map_5_parts
 
+class_map_5_parts = {
+    # 24 classes
+    "class_map_part_organs": {
+        1: "spleen",
+        2: "kidney_right",
+        3: "kidney_left",
+        4: "gallbladder",
+        5: "liver",
+        6: "stomach",
+        7: "pancreas",
+        8: "adrenal_gland_right",
+        9: "adrenal_gland_left",
+        10: "lung_upper_lobe_left",
+        11: "lung_lower_lobe_left",
+        12: "lung_upper_lobe_right",
+        13: "lung_middle_lobe_right",
+        14: "lung_lower_lobe_right",
+        15: "esophagus",
+        16: "trachea",
+        17: "thyroid_gland",
+        18: "small_bowel",
+        19: "duodenum",
+        20: "colon",
+        21: "urinary_bladder",
+        22: "prostate",
+        23: "kidney_cyst_left",
+        24: "kidney_cyst_right"
+    },
+
+    # 26 classes
+    "class_map_part_vertebrae": {
+        1: "sacrum",
+        2: "vertebrae_S1",
+        3: "vertebrae_L5",
+        4: "vertebrae_L4",
+        5: "vertebrae_L3",
+        6: "vertebrae_L2",
+        7: "vertebrae_L1",
+        8: "vertebrae_T12",
+        9: "vertebrae_T11",
+        10: "vertebrae_T10",
+        11: "vertebrae_T9",
+        12: "vertebrae_T8",
+        13: "vertebrae_T7",
+        14: "vertebrae_T6",
+        15: "vertebrae_T5",
+        16: "vertebrae_T4",
+        17: "vertebrae_T3",
+        18: "vertebrae_T2",
+        19: "vertebrae_T1",
+        20: "vertebrae_C7",
+        21: "vertebrae_C6",
+        22: "vertebrae_C5",
+        23: "vertebrae_C4",
+        24: "vertebrae_C3",
+        25: "vertebrae_C2",
+        26: "vertebrae_C1"
+    },
+
+    # 18
+    "class_map_part_cardiac": {
+        1: "heart",
+        2: "aorta",
+        3: "pulmonary_vein",
+        4: "brachiocephalic_trunk",
+        5: "subclavian_artery_right",
+        6: "subclavian_artery_left",
+        7: "common_carotid_artery_right",
+        8: "common_carotid_artery_left",
+        9: "brachiocephalic_vein_left",
+        10: "brachiocephalic_vein_right",
+        11: "atrial_appendage_left",
+        12: "superior_vena_cava",
+        13: "inferior_vena_cava",
+        14: "portal_vein_and_splenic_vein",
+        15: "iliac_artery_left",
+        16: "iliac_artery_right",
+        17: "iliac_vena_left",
+        18: "iliac_vena_right"
+    },
+
+    # 23
+    "class_map_part_muscles": {
+        1: "humerus_left",
+        2: "humerus_right",
+        3: "scapula_left",
+        4: "scapula_right",
+        5: "clavicula_left",
+        6: "clavicula_right",
+        7: "femur_left",
+        8: "femur_right",
+        9: "hip_left",
+        10: "hip_right",
+        11: "spinal_cord",
+        12: "gluteus_maximus_left",
+        13: "gluteus_maximus_right",
+        14: "gluteus_medius_left",
+        15: "gluteus_medius_right",
+        16: "gluteus_minimus_left",
+        17: "gluteus_minimus_right",
+        18: "autochthon_left",
+        19: "autochthon_right",
+        20: "iliopsoas_left",
+        21: "iliopsoas_right",
+        22: "brain",
+        23: "skull"
+    },
+
+    # 26 classes
+    # 12. ribs start from vertebrae T12
+    # Small subset of population (roughly 8%) have 13. rib below 12. rib
+    #  (would start from L1 then)
+    #  -> this has label rib_12
+    # Even smaller subset (roughly 1%) has extra rib above 1. rib   ("Halsrippe")
+    #  (the extra rib would start from C7)
+    #  -> this has label rib_1
+    #
+    # Quite often only 11 ribs (12. ribs probably so small that not found). Those
+    # cases often wrongly segmented.
+    "class_map_part_ribs": {
+        1: "rib_left_1",
+        2: "rib_left_2",
+        3: "rib_left_3",
+        4: "rib_left_4",
+        5: "rib_left_5",
+        6: "rib_left_6",
+        7: "rib_left_7",
+        8: "rib_left_8",
+        9: "rib_left_9",
+        10: "rib_left_10",
+        11: "rib_left_11",
+        12: "rib_left_12",
+        13: "rib_right_1",
+        14: "rib_right_2",
+        15: "rib_right_3",
+        16: "rib_right_4",
+        17: "rib_right_5",
+        18: "rib_right_6",
+        19: "rib_right_7",
+        20: "rib_right_8",
+        21: "rib_right_9",
+        22: "rib_right_10",
+        23: "rib_right_11",
+        24: "rib_right_12",
+        25: "sternum",
+        26: "costal_cartilages"
+    },   # "test": class_map["test"]
+}
+
+offset_labels = [
+    0,
+    len(class_map_5_parts["class_map_part_organs"]),
+    len(class_map_5_parts["class_map_part_organs"])+len(class_map_5_parts["class_map_part_vertebrae"]),
+    len(class_map_5_parts["class_map_part_organs"])+len(class_map_5_parts["class_map_part_vertebrae"])+len(class_map_5_parts["class_map_part_cardiac"]),
+    len(class_map_5_parts["class_map_part_organs"])+len(class_map_5_parts["class_map_part_vertebrae"])+len(class_map_5_parts["class_map_part_cardiac"])+len(class_map_5_parts["class_map_part_muscles"]),
+]
+
+offset_labels = [
+    0,
+    24,
+    24+26,
+    24+26+28,
+    24+26+28+23,
+]
+
+
 def generate_json_from_dir_v2(foldername, subjects_train, subjects_val, labels):
     print("Creating dataset.json...")
     out_base = Path(os.environ['nnUNet_raw']) / foldername
@@ -62,14 +228,25 @@ def combine_labels(ref_img, file_out, masks):
     nib.save(nib.Nifti1Image(combined.astype(np.uint8), ref_img.affine), file_out)
 
 
-def extract_selected_labels(label_file, output_file, class_map):
+def get_label_offset(class_map_name):
     """
-    Create a new label file containing only the selected organ classes
-    
-    Args:
-        label_file: Path to the full label file
-        output_file: Path to save the new label file with selected classes only
-        class_map: Dictionary mapping label values to organ names (e.g., {1: "spleen", 2: "kidney_right", ...})
+    Get the label offset based on the class map part
+    """
+    if class_map_name == "class_map_part_organs":
+        return 0
+    elif class_map_name == "class_map_part_vertebrae":
+        return len(class_map_5_parts["class_map_part_organs"])
+    elif class_map_name == "class_map_part_cardiac":
+        return len(class_map_5_parts["class_map_part_organs"]) + len(class_map_5_parts["class_map_part_vertebrae"])
+    elif class_map_name == "class_map_part_muscles":
+        return len(class_map_5_parts["class_map_part_organs"]) + len(class_map_5_parts["class_map_part_vertebrae"]) + len(class_map_5_parts["class_map_part_cardiac"])
+    elif class_map_name == "class_map_part_ribs":
+        return len(class_map_5_parts["class_map_part_organs"]) + len(class_map_5_parts["class_map_part_vertebrae"]) + len(class_map_5_parts["class_map_part_cardiac"]) + len(class_map_5_parts["class_map_part_muscles"])
+    return 0
+
+def extract_selected_labels(label_file, output_file, class_map, class_map_name):
+    """
+    Create a new label file containing only the selected organ classes with proper offset
     """
     img = nib.load(label_file)
     data = img.get_fdata()
@@ -77,8 +254,23 @@ def extract_selected_labels(label_file, output_file, class_map):
     # Create empty array for new labels
     new_data = np.zeros_like(data)
     
-    # Map of original label values to new consecutive values starting from 1
-    new_label_mapping = {orig_val: idx+1 for idx, orig_val in enumerate(class_map.keys())}
+    # Get the offset for this class map part
+    offset = get_label_offset(class_map_name)
+    
+    # Map of original label values to new consecutive values starting from 1 + offset
+    new_label_mapping = {orig_val: idx + 1 + offset for idx, orig_val in enumerate(class_map.keys())}
+    
+    # Print mapping for verification
+    print(f"\nLabel mapping for {class_map_name}:")
+    for orig_val, new_val in new_label_mapping.items():
+        organ_name = class_map[orig_val]
+        print(f"Original label {orig_val} ({organ_name}) -> New label {new_val}")
+    
+    # Ask for confirmation before proceeding
+    proceed = input("\nDoes the mapping look correct? (yes/no): ")
+    if proceed.lower() != 'yes':
+        print("Aborting operation...")
+        sys.exit(1)
     
     # Copy only the selected organ classes with new label values
     for orig_val, new_val in new_label_mapping.items():
@@ -122,26 +314,28 @@ if __name__ == "__main__":
     print("Copying train data...")
     for subject in tqdm(subjects_train + subjects_val):
         subject_path = dataset_path / subject
-        # shutil.copy(subject_path / "ct.nii.gz", nnunet_path / "imagesTr" / f"{subject}_0000.nii.gz")
+        shutil.copy(subject_path / "ct.nii.gz", nnunet_path / "imagesTr" / f"{subject}_0000.nii.gz")
         
         # Create new label file with selected organs only
-        # extract_selected_labels(
-        #     subject_path / "label.nii.gz",
-        #     nnunet_path / "labelsTr" / f"{subject}.nii.gz",
-        #     class_map
-        # )
+        extract_selected_labels(
+            subject_path / "label.nii.gz",
+            nnunet_path / "labelsTr" / f"{subject}.nii.gz",
+            class_map,
+            class_map_name
+        )
 
     print("Copying test data...")
     for subject in tqdm(subjects_test):
         subject_path = dataset_path / subject
-        # shutil.copy(subject_path / "ct.nii.gz", nnunet_path / "imagesTs" / f"{subject}_0000.nii.gz")
+        shutil.copy(subject_path / "ct.nii.gz", nnunet_path / "imagesTs" / f"{subject}_0000.nii.gz")
         
-        # # Create new label file with selected organs only
-        # extract_selected_labels(
-        #     subject_path / "label.nii.gz",
-        #     nnunet_path / "labelsTs" / f"{subject}.nii.gz",
-        #     class_map
-        # )
+        # Create new label file with selected organs only
+        extract_selected_labels(
+            subject_path / "label.nii.gz",
+            nnunet_path / "labelsTs" / f"{subject}.nii.gz",
+            class_map,
+            class_map_name
+        )
 
     # Use the original label values (keys) as labels for dataset.json
     labels = list(class_map.keys())
