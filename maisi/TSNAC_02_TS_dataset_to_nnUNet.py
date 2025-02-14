@@ -308,7 +308,7 @@ if __name__ == "__main__":
     class_map_name = sys.argv[3]  # which class map to use from map_to_binary
 
     # Set environment variables
-    split_json = dataset_path / "TS_NAC_split_cv0.json"
+    split_json = dataset_path / "James36.json"
     
     # Get the class map from map_to_binary based on the provided name
     class_map = class_map_5_parts[class_map_name]
