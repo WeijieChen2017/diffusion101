@@ -9,7 +9,7 @@ import nibabel as nib
 import pandas as pd
 from tqdm import tqdm
 
-from TS_NAC.map_to_binary import class_map_5_parts
+# from TS_NAC.map_to_binary import class_map_5_parts
 
 class_map_5_parts = {
     # 24 classes
@@ -252,17 +252,10 @@ def get_label_range(class_map_name):
         return range(start, end + 1)
     return range(0)
 
-def extract_selected_labels(label_file, output_file, class_map, class_map_name):
+def get_label_mapping(class_map_name, class_map):
     """
-    Create a new label file containing only the selected organ classes
-    Maps from offset labels to consecutive numbers starting from 1
+    Get and verify the label mapping for the given class map part
     """
-    img = nib.load(label_file)
-    data = img.get_fdata()
-    
-    # Create empty array for new labels
-    new_data = np.zeros_like(data)
-    
     # Get the label range for this class map part
     label_range = get_label_range(class_map_name)
     
@@ -281,8 +274,21 @@ def extract_selected_labels(label_file, output_file, class_map, class_map_name):
         print("Aborting operation...")
         sys.exit(1)
     
+    return new_label_mapping
+
+def extract_selected_labels(label_file, output_file, label_mapping):
+    """
+    Create a new label file containing only the selected organ classes
+    Maps from offset labels to consecutive numbers starting from 1
+    """
+    img = nib.load(label_file)
+    data = img.get_fdata()
+    
+    # Create empty array for new labels
+    new_data = np.zeros_like(data)
+    
     # Copy only the selected organ classes with new label values
-    for orig_val, new_val in new_label_mapping.items():
+    for orig_val, new_val in label_mapping.items():
         new_data[data == orig_val] = new_val
     
     # Save the new label file
@@ -320,6 +326,9 @@ if __name__ == "__main__":
     subjects_val = split_data['val']
     subjects_test = split_data['test']
 
+    # Get and verify label mapping once
+    label_mapping = get_label_mapping(class_map_name, class_map)
+
     print("Copying train data...")
     for subject in tqdm(subjects_train + subjects_val):
         subject_path = dataset_path / subject
@@ -329,8 +338,7 @@ if __name__ == "__main__":
         extract_selected_labels(
             subject_path / "label.nii.gz",
             nnunet_path / "labelsTr" / f"{subject}.nii.gz",
-            class_map,
-            class_map_name
+            label_mapping
         )
 
     print("Copying test data...")
@@ -342,8 +350,7 @@ if __name__ == "__main__":
         extract_selected_labels(
             subject_path / "label.nii.gz",
             nnunet_path / "labelsTs" / f"{subject}.nii.gz",
-            class_map,
-            class_map_name
+            label_mapping
         )
 
     # Use the original label values (keys) as labels for dataset.json
