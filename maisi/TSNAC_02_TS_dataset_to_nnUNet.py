@@ -228,25 +228,34 @@ def combine_labels(ref_img, file_out, masks):
     nib.save(nib.Nifti1Image(combined.astype(np.uint8), ref_img.affine), file_out)
 
 
-def get_label_offset(class_map_name):
+def get_label_range(class_map_name):
     """
-    Get the label offset based on the class map part
+    Get the label range for the given class map part
     """
     if class_map_name == "class_map_part_organs":
-        return 0
+        return range(1, len(class_map_5_parts["class_map_part_organs"]) + 1)
     elif class_map_name == "class_map_part_vertebrae":
-        return len(class_map_5_parts["class_map_part_organs"])
+        start = len(class_map_5_parts["class_map_part_organs"]) + 1
+        end = start + len(class_map_5_parts["class_map_part_vertebrae"])
+        return range(start, end + 1)
     elif class_map_name == "class_map_part_cardiac":
-        return len(class_map_5_parts["class_map_part_organs"]) + len(class_map_5_parts["class_map_part_vertebrae"])
+        start = len(class_map_5_parts["class_map_part_organs"]) + len(class_map_5_parts["class_map_part_vertebrae"]) + 1
+        end = start + len(class_map_5_parts["class_map_part_cardiac"])
+        return range(start, end + 1)
     elif class_map_name == "class_map_part_muscles":
-        return len(class_map_5_parts["class_map_part_organs"]) + len(class_map_5_parts["class_map_part_vertebrae"]) + len(class_map_5_parts["class_map_part_cardiac"])
+        start = len(class_map_5_parts["class_map_part_organs"]) + len(class_map_5_parts["class_map_part_vertebrae"]) + len(class_map_5_parts["class_map_part_cardiac"]) + 1
+        end = start + len(class_map_5_parts["class_map_part_muscles"])
+        return range(start, end + 1)
     elif class_map_name == "class_map_part_ribs":
-        return len(class_map_5_parts["class_map_part_organs"]) + len(class_map_5_parts["class_map_part_vertebrae"]) + len(class_map_5_parts["class_map_part_cardiac"]) + len(class_map_5_parts["class_map_part_muscles"])
-    return 0
+        start = len(class_map_5_parts["class_map_part_organs"]) + len(class_map_5_parts["class_map_part_vertebrae"]) + len(class_map_5_parts["class_map_part_cardiac"]) + len(class_map_5_parts["class_map_part_muscles"]) + 1
+        end = start + len(class_map_5_parts["class_map_part_ribs"])
+        return range(start, end + 1)
+    return range(0)
 
 def extract_selected_labels(label_file, output_file, class_map, class_map_name):
     """
-    Create a new label file containing only the selected organ classes with proper offset
+    Create a new label file containing only the selected organ classes
+    Maps from offset labels to consecutive numbers starting from 1
     """
     img = nib.load(label_file)
     data = img.get_fdata()
@@ -254,16 +263,16 @@ def extract_selected_labels(label_file, output_file, class_map, class_map_name):
     # Create empty array for new labels
     new_data = np.zeros_like(data)
     
-    # Get the offset for this class map part
-    offset = get_label_offset(class_map_name)
+    # Get the label range for this class map part
+    label_range = get_label_range(class_map_name)
     
-    # Map of original label values to new consecutive values starting from 1 + offset
-    new_label_mapping = {orig_val: idx + 1 + offset for idx, orig_val in enumerate(class_map.keys())}
+    # Map of original label values (with offset) to new consecutive values starting from 1
+    new_label_mapping = {orig_val: idx + 1 for idx, orig_val in enumerate(label_range)}
     
     # Print mapping for verification
     print(f"\nLabel mapping for {class_map_name}:")
     for orig_val, new_val in new_label_mapping.items():
-        organ_name = class_map[orig_val]
+        organ_name = class_map[new_val]  # Use new_val as key for class_map since it matches the original class numbering
         print(f"Original label {orig_val} ({organ_name}) -> New label {new_val}")
     
     # Ask for confirmation before proceeding
