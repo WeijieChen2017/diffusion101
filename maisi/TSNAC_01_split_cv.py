@@ -36,21 +36,32 @@ test_cases = [
     "E4139"
 ]
 
-# Create train/test split
+# Create train/val/test split
 split_dict = {
     "train": [],
+    "val": [],
     "test": []
 }
 
-# Populate the splits
+# First separate test cases
 for case in case_name_list:
     if case in test_cases:
         split_dict["test"].append(case)
-    else:
-        split_dict["train"].append(case)
 
-# Sort the lists for consistency
+# Get remaining cases for train/val split
+remaining_cases = [case for case in case_name_list if case not in test_cases]
+remaining_cases.sort()  # Sort for consistency
+
+# Calculate split point for 3:1 ratio
+train_size = int(len(remaining_cases) * 0.75)  # 75% for training
+
+# Split remaining cases into train and val
+split_dict["train"] = remaining_cases[:train_size]
+split_dict["val"] = remaining_cases[train_size:]
+
+# Sort all lists for consistency
 split_dict["train"].sort()
+split_dict["val"].sort()
 split_dict["test"].sort()
 
 # Save to JSON file
