@@ -239,15 +239,15 @@ def get_label_range(class_map_name):
         end = start + len(class_map_5_parts["class_map_part_vertebrae"])
         return range(start, end)
     elif class_map_name == "class_map_part_cardiac":
-        start = offset_labels[1] + 1
+        start = offset_labels[1]
         end = start + len(class_map_5_parts["class_map_part_cardiac"])
         return range(start, end)
     elif class_map_name == "class_map_part_muscles":
-        start = offset_labels[2] + 1
+        start = offset_labels[2]
         end = start + len(class_map_5_parts["class_map_part_muscles"])
         return range(start, end)
     elif class_map_name == "class_map_part_ribs":
-        start = offset_labels[3] + 1
+        start = offset_labels[3]
         end = start + len(class_map_5_parts["class_map_part_ribs"])
         return range(start, end)
     return range(0)
