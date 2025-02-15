@@ -265,8 +265,13 @@ def get_label_mapping(class_map_name, class_map):
     # Print mapping for verification
     print(f"\nLabel mapping for {class_map_name}:")
     for orig_val, new_val in new_label_mapping.items():
-        organ_name = class_map[new_val]  # Use new_val as key for class_map since it matches the original class numbering
-        print(f"Original label {orig_val} ({organ_name}) -> New label {new_val}")
+        try:
+            # Try to get the organ name from the class map
+            organ_name = class_map[orig_val - offset_labels[list(class_map_5_parts.keys()).index(class_map_name)]]
+            print(f"Original label {orig_val} ({organ_name}) -> New label {new_val}")
+        except KeyError:
+            print(f"Warning: No organ name found for label {orig_val} -> New label {new_val}")
+            continue
     
     # Ask for confirmation before proceeding
     proceed = input("\nDoes the mapping look correct? (yes/no): ")
