@@ -235,21 +235,21 @@ def get_label_range(class_map_name):
     if class_map_name == "class_map_part_organs":
         return range(1, len(class_map_5_parts["class_map_part_organs"]) + 1)
     elif class_map_name == "class_map_part_vertebrae":
-        start = len(class_map_5_parts["class_map_part_organs"]) + 1
+        start = offset_labels[0] + 1
         end = start + len(class_map_5_parts["class_map_part_vertebrae"])
-        return range(start, end + 1)
+        return range(start, end)
     elif class_map_name == "class_map_part_cardiac":
-        start = len(class_map_5_parts["class_map_part_organs"]) + len(class_map_5_parts["class_map_part_vertebrae"]) + 1
+        start = offset_labels[1] + 1
         end = start + len(class_map_5_parts["class_map_part_cardiac"])
-        return range(start, end + 1)
+        return range(start, end)
     elif class_map_name == "class_map_part_muscles":
-        start = len(class_map_5_parts["class_map_part_organs"]) + len(class_map_5_parts["class_map_part_vertebrae"]) + len(class_map_5_parts["class_map_part_cardiac"]) + 1
+        start = offset_labels[2] + 1
         end = start + len(class_map_5_parts["class_map_part_muscles"])
-        return range(start, end + 1)
+        return range(start, end)
     elif class_map_name == "class_map_part_ribs":
-        start = len(class_map_5_parts["class_map_part_organs"]) + len(class_map_5_parts["class_map_part_vertebrae"]) + len(class_map_5_parts["class_map_part_cardiac"]) + len(class_map_5_parts["class_map_part_muscles"]) + 1
+        start = offset_labels[3] + 1
         end = start + len(class_map_5_parts["class_map_part_ribs"])
-        return range(start, end + 1)
+        return range(start, end)
     return range(0)
 
 def get_label_mapping(class_map_name, class_map):
