@@ -239,15 +239,15 @@ def get_label_range(class_map_name):
         end = start + len(class_map_5_parts["class_map_part_vertebrae"])
         return range(start, end)
     elif class_map_name == "class_map_part_cardiac":
-        start = offset_labels[1]
+        start = offset_labels[1] + 1
         end = start + len(class_map_5_parts["class_map_part_cardiac"])
         return range(start, end)
     elif class_map_name == "class_map_part_muscles":
-        start = offset_labels[2]
+        start = offset_labels[2] + 1
         end = start + len(class_map_5_parts["class_map_part_muscles"])
         return range(start, end)
     elif class_map_name == "class_map_part_ribs":
-        start = offset_labels[3]
+        start = offset_labels[3] + 1
         end = start + len(class_map_5_parts["class_map_part_ribs"])
         return range(start, end)
     return range(0)
@@ -255,22 +255,28 @@ def get_label_range(class_map_name):
 def get_label_mapping(class_map_name, class_map):
     """
     Get and verify the label mapping for the given class map part
+    First gets the offset for the class map part, then maps the offset label index from 1
     """
-    # Get the label range for this class map part
-    label_range = get_label_range(class_map_name)
+    # Get the part index to determine the offset
+    part_index = list(class_map_5_parts.keys()).index(class_map_name)
+    offset = offset_labels[part_index]
     
-    # Map of original label values (with offset) to new consecutive values starting from 1
-    new_label_mapping = {orig_val: idx + 1 for idx, orig_val in enumerate(label_range)}
+    # Create mapping from offset labels to consecutive numbers starting from 1
+    new_label_mapping = {}
+    for idx, (label_val, organ_name) in enumerate(class_map.items(), start=1):
+        offset_label = label_val + offset
+        new_label_mapping[offset_label] = idx
     
     # Print mapping for verification
     print(f"\nLabel mapping for {class_map_name}:")
-    for orig_val, new_val in new_label_mapping.items():
+    for offset_label, new_val in new_label_mapping.items():
         try:
-            # Try to get the organ name from the class map
-            organ_name = class_map[orig_val - offset_labels[list(class_map_5_parts.keys()).index(class_map_name)]]
-            print(f"Original label {orig_val} ({organ_name}) -> New label {new_val}")
+            # Get the original label value (without offset)
+            orig_label = offset_label - offset
+            organ_name = class_map[orig_label]
+            print(f"Offset label {offset_label} ({organ_name}) -> New label {new_val}")
         except KeyError:
-            print(f"Warning: No organ name found for label {orig_val} -> New label {new_val}")
+            print(f"Warning: No organ name found for offset label {offset_label} -> New label {new_val}")
             continue
     
     # Ask for confirmation before proceeding
