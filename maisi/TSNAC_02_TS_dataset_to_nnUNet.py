@@ -168,13 +168,13 @@ offset_labels = [
     len(class_map_5_parts["class_map_part_organs"])+len(class_map_5_parts["class_map_part_vertebrae"])+len(class_map_5_parts["class_map_part_cardiac"])+len(class_map_5_parts["class_map_part_muscles"]),
 ]
 
-offset_labels = [
-    0,
-    24,
-    24+26,
-    24+26+28,
-    24+26+28+23,
-]
+# offset_labels = [
+#     0,
+#     24,
+#     24+26,
+#     24+26+28,
+#     24+26+28+23,
+# ]
 
 
 def generate_json_from_dir_v2(foldername, subjects_train, subjects_val, labels):
