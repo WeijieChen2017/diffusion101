@@ -30,6 +30,11 @@ for case_name in case_name_list:
     # Get pixel dimensions from the header
     dx, dy, dz = CT_bed_nifti.header['pixdim'][1:4]
     
+    # Format dimensions to 4 decimal places
+    dx = f"{dx:.4f}"
+    dy = f"{dy:.4f}"
+    dz = f"{dz:.4f}"
+    
     # 3dresample commands for both sCT1 and sCT2
     command1 = f"3dresample -dxyz {dx} {dy} {dz} -prefix {sCT1_dst_path} -input {sCT1_src_path}"
     command2 = f"3dresample -dxyz {dx} {dy} {dz} -prefix {sCT2_dst_path} -input {sCT2_src_path}"
