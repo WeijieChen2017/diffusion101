@@ -24,7 +24,7 @@ for case_name in case_name_list:
     nii_file = sorted(glob.glob(f'Test_1sub_sCTnii/{nii_folder}/*{case_name}*.nii.gz'))[0]
     dicom_output_directory = f'Test_1sub_sCTdcm/{nii_folder}/PETLYMPH_{case_name[1:]}'
     reference_dicom_file = f'Duetto_Output_B100/PETLYMPH_{case_name[1:]}'
-    # command = f'nii2dcm {nii_file} {dicom_output_directory} --dicom-type CT -r {reference_dicom_file}'
+    command = f'nii2dcm {nii_file} {dicom_output_directory} --dicom-type CT -r {reference_dicom_file}'    
 
     print(f"[{case_name_list.index(case_name)+1}/{len(case_name_list)}]")
     print(f"nii_file: {nii_file}")
