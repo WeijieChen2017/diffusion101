@@ -1,4 +1,5 @@
 import os
+import glob
 import shutil
 
 # List of cases to process
@@ -14,14 +15,15 @@ case_name_list = [
 ]
 
 # Define input/output directories
-src_folder = "../../SharkSeagrass/B100/DLCTAC_bed/"
+CT_bed_folder = "CTAC_bed/"
+# src_folder = "../../SharkSeagrass/B100/DLCTAC_bed/"
 dst_folder = "James_36/CTAC_MLAA"
 
 # Create destination folders if they don't exist
 os.makedirs(dst_folder, exist_ok=True)
 
 for idx, case_name in enumerate(case_name_list, 1):
-    src_path = f"{src_folder}/{case_name}_CTAC_DL_bed.nii.gz"
+    src_path = sorted(glob.glob(f"{CT_bed_folder}*_{case_name[1:]}_*.nii"))[0]
     dst_path = f"{dst_folder}/CTAC_{case_name}_bed.nii.gz"
     
     # Copy file and show progress
