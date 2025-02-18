@@ -15,7 +15,7 @@ case_name_list = [
 
 sCT1_dst_folder = "James_36/sCT1_MLAA"
 sCT2_dst_folder = "James_36/sCT2_MLAA"
-CT_bed_folder = "CTAC_bed"
+CT_bed_folder = "CTAC_bed/"
 
 for case_name in case_name_list:
     sCT1_src_path = f"James_36/synCT/SynCT_{case_name}.nii.gz"
