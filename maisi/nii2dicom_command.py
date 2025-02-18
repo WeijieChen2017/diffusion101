@@ -30,3 +30,4 @@ for case_name in case_name_list:
     print(f"nii_file: {nii_file}")
     print(f"dicom_output_directory: {dicom_output_directory}")
     print(f"reference_dicom_file: {reference_dicom_file}")
+    print(f"command: {command}")
