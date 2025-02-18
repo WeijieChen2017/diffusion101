@@ -30,3 +30,6 @@ for idx, case_name in enumerate(case_name_list, 1):
     shutil.copy2(src_path, dst_path)
     print(f"[{idx}/{len(case_name_list)}] Copied {case_name}")
     
+    file_size = os.path.getsize(dst_path)
+    print(f"File size: {file_size/1024/1024:.2f} MB")
+
