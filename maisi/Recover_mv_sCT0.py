@@ -1,8 +1,4 @@
-import glob
 import os
-import nibabel as nib
-import numpy as np
-from scipy.ndimage import binary_fill_holes
 import shutil
 
 # List of cases to process
