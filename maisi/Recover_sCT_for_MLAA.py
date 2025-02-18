@@ -26,15 +26,15 @@ body_contour_HU_th = -500
 
 print(f"Starting processing {len(case_name_list)} cases")
 
-for case_name in case_name_list:
-    print(f"Processing case: {case_name}")
+for idx, case_name in enumerate(case_name_list, 1):
+    print(f"[{idx}/{len(case_name_list)}] Processing case: {case_name}")
 
     # Load input files
     sCT1_src_path = f"{sCT1_src_folder}/sCT1_{case_name}_v1_3dresample.nii.gz"
     sCT2_src_path = f"{sCT2_src_folder}/sCT2_{case_name}_v1_3dresample.nii.gz"
     CT_bed_path = sorted(glob.glob(f"{CT_bed_folder}*_{case_name[1:]}_*.nii"))[0]
     
-    print(f"  Loading nifti files...")
+    print(f"  [{idx}/{len(case_name_list)}] Loading nifti files...")
     CT_bed_nifti = nib.load(CT_bed_path)
     sCT1_nifti = nib.load(sCT1_src_path)
     sCT2_nifti = nib.load(sCT2_src_path)
