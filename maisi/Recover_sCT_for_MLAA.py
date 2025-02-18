@@ -46,6 +46,26 @@ for case_name in case_name_list:
 
     print(f"  Data shapes - CT_bed: {CT_bed_data.shape}, sCT1: {sCT1_data.shape}, sCT2: {sCT2_data.shape}")
 
+    # Pad sCT1 and sCT2 to match CT_bed dimensions
+    pad_width1 = ((CT_bed_data.shape[0] - sCT1_data.shape[0])//2,
+                  (CT_bed_data.shape[1] - sCT1_data.shape[1])//2)
+    pad_width2 = ((CT_bed_data.shape[0] - sCT2_data.shape[0])//2,
+                  (CT_bed_data.shape[1] - sCT2_data.shape[1])//2)
+    
+    sCT1_data = np.pad(sCT1_data, 
+                       ((pad_width1[0], CT_bed_data.shape[0]-sCT1_data.shape[0]-pad_width1[0]),
+                        (pad_width1[1], CT_bed_data.shape[1]-sCT1_data.shape[1]-pad_width1[1]),
+                        (0, 0)), 
+                       mode='constant', constant_values=-1024)
+    
+    sCT2_data = np.pad(sCT2_data,
+                       ((pad_width2[0], CT_bed_data.shape[0]-sCT2_data.shape[0]-pad_width2[0]),
+                        (pad_width2[1], CT_bed_data.shape[1]-sCT2_data.shape[1]-pad_width2[1]),
+                        (0, 0)),
+                       mode='constant', constant_values=-1024)
+
+    print(f"  After padding - CT_bed: {CT_bed_data.shape}, sCT1: {sCT1_data.shape}, sCT2: {sCT2_data.shape}")
+
     # Create body contour arrays
     sCT1_body_contour = np.zeros_like(sCT1_data)
     sCT2_body_contour = np.zeros_like(sCT2_data)
