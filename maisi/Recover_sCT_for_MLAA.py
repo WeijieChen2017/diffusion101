@@ -70,13 +70,20 @@ for idx, case_name in enumerate(case_name_list, 1):
     sCT1_body_contour = np.zeros_like(sCT1_data)
     sCT2_body_contour = np.zeros_like(sCT2_data)
     
-    print(f"  Processing {CT_bed_data.shape[2]} slices for body contours...")
+    print(f"  [{idx}/{len(case_name_list)}] Processing {CT_bed_data.shape[2]} slices for body contours...")
     # Process each z-slice
     for z in range(CT_bed_data.shape[2]):
-        body_mask = CT_bed_data[:,:,z] > body_contour_HU_th
-        filled_mask = binary_fill_holes(body_mask)
-        sCT1_body_contour[:,:,z] = filled_mask
-        sCT2_body_contour[:,:,z] = filled_mask
+        # Create masks from sCT data using HU threshold
+        sCT1_mask = sCT1_data[:,:,z] > body_contour_HU_th
+        sCT2_mask = sCT2_data[:,:,z] > body_contour_HU_th
+        
+        # Fill holes in the masks
+        sCT1_filled_mask = binary_fill_holes(sCT1_mask)
+        sCT2_filled_mask = binary_fill_holes(sCT2_mask)
+        
+        # Save the filled masks
+        sCT1_body_contour[:,:,z] = sCT1_filled_mask
+        sCT2_body_contour[:,:,z] = sCT2_filled_mask
 
     print(f"  Saving body contour masks...")
     # Save body contour masks
