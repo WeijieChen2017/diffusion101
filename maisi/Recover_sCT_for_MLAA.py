@@ -44,6 +44,8 @@ for case_name in case_name_list:
     sCT1_data = sCT1_nifti.get_fdata()
     sCT2_data = sCT2_nifti.get_fdata()
 
+    print(f"  Data shapes - CT_bed: {CT_bed_data.shape}, sCT1: {sCT1_data.shape}, sCT2: {sCT2_data.shape}")
+
     # Create body contour arrays
     sCT1_body_contour = np.zeros_like(sCT1_data)
     sCT2_body_contour = np.zeros_like(sCT2_data)
