@@ -5,7 +5,7 @@ import numpy as np
 from scipy.ndimage import binary_fill_holes
 
 # Define input/output directories
-CTAC_maisi_src_folder = "NAC_CTAC_Spacing15/inference_20250128_noon"
+CTAC_maisi_src_folder = "James_36/CTAC_maisi"
 CTAC_maisi_dst_folder = "James_36/CTAC_maisi"
 CT_bed_folder = "CTAC_bed/"
 
