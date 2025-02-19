@@ -7,7 +7,7 @@ from scipy.ndimage import binary_fill_holes
 # Define input/output directories
 CTAC_maisi_src_folder = "NAC_CTAC_Spacing15/inference_20250128_noon"
 CTAC_maisi_dst_folder = "James_36/CTAC_maisi"
-CT_bed_folder = "James_36/CT_bed/"
+CT_bed_folder = "CTAC_bed/"
 
 case_name_list = [
     'E4055', 'E4058', 'E4061', 'E4066', 'E4068',
