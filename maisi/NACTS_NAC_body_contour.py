@@ -1,7 +1,7 @@
 import os
 import nibabel as nib
 import numpy as np
-from scipy.ndimage import binary_fill_holes
+from scipy.ndimage import binary_fill_holes, gaussian_filter
 
 case_name_list = [
     'E4058',
@@ -24,6 +24,9 @@ os.makedirs(output_folder, exist_ok=True)
 # Different thresholds to try
 thresholds = [250, 500, 750, 1000, 1250]
 
+# Different sigma values to try
+sigma_values = [0.5, 1.0, 1.5, 2.0, 3.0]
+
 for case_name in case_name_list:
     print(f"Processing case: {case_name}")
     NAC_path = f"{folder_name}/NAC_{case_name}_256.nii.gz"
@@ -35,32 +38,48 @@ for case_name in case_name_list:
     
     print(f"  NAC data shape: {NAC_data.shape}")
     
-    # Process each threshold
-    for threshold in thresholds:
-        print(f"  Processing threshold: {threshold}")
+    # Process each sigma value
+    for sigma in sigma_values:
+        print(f"  Processing with sigma={sigma}")
         
-        # Create empty contour array
-        contour = np.zeros_like(NAC_data, dtype=bool)
+        # Apply Gaussian blurring to the entire volume
+        print(f"    Applying Gaussian blur...")
+        NAC_blurred = gaussian_filter(NAC_data, sigma=sigma)
         
-        # Process each z-slice
-        for z in range(NAC_data.shape[2]):
-            # Create mask using threshold
-            mask = NAC_data[:,:,z] > threshold
+        # Save blurred NAC data for reference
+        blurred_path = f"{output_folder}/NAC_{case_name}_sigma{sigma}_blurred.nii.gz"
+        blurred_nifti = nib.Nifti1Image(NAC_blurred, NAC_nifti.affine, NAC_nifti.header)
+        nib.save(blurred_nifti, blurred_path)
+        print(f"    Saved blurred NAC data to: {blurred_path}")
+        
+        # Process each threshold
+        for threshold in thresholds:
+            print(f"    Processing threshold: {threshold}")
             
-            # Fill holes in the mask
-            filled_mask = binary_fill_holes(mask)
+            # Create empty contour array
+            contour = np.zeros_like(NAC_data, dtype=bool)
             
-            # Save the filled mask
-            contour[:,:,z] = filled_mask
+            # Process each z-slice
+            for z in range(NAC_data.shape[2]):
+                # Create mask using threshold on blurred data
+                mask = NAC_blurred[:,:,z] > threshold
+                
+                # Fill holes in the mask
+                filled_mask = binary_fill_holes(mask)
+                
+                # Save the filled mask
+                contour[:,:,z] = filled_mask
+            
+            # Save the contour mask
+            output_path = f"{output_folder}/NAC_{case_name}_sigma{sigma}_th{threshold}.nii.gz"
+            contour_nifti = nib.Nifti1Image(contour.astype(np.int16), 
+                                            NAC_nifti.affine, 
+                                            NAC_nifti.header)
+            
+            print(f"    Saving contour to: {output_path}")
+            nib.save(contour_nifti, output_path)
         
-        # Save the contour mask
-        output_path = f"{output_folder}/NAC_{case_name}_contour_th{threshold}.nii.gz"
-        contour_nifti = nib.Nifti1Image(contour.astype(np.int16), 
-                                        NAC_nifti.affine, 
-                                        NAC_nifti.header)
-        
-        print(f"  Saving contour to: {output_path}")
-        nib.save(contour_nifti, output_path)
+        print(f"  Completed processing for sigma={sigma}")
     
     print(f"Completed case: {case_name}\n")
 
