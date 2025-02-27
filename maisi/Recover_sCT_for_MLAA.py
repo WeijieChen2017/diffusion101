@@ -2,7 +2,7 @@ import glob
 import os
 import nibabel as nib
 import numpy as np
-from scipy.ndimage import binary_fill_holes
+from scipy.ndimage import binary_fill_holes, gaussian_filter
 
 # List of cases to process
 case_name_list = [
@@ -23,6 +23,9 @@ CT_bed_folder = "CTAC_bed/"
 
 # HU threshold for body contour
 body_contour_HU_th = -500
+
+# Edge blurring parameters
+blur_sigma = 1.0  # Sigma for Gaussian blur (higher = more blurring)
 
 print(f"Starting processing {len(case_name_list)} cases")
 
@@ -66,9 +69,10 @@ for idx, case_name in enumerate(case_name_list, 1):
 
     print(f"  After padding - CT_bed: {CT_bed_data.shape}, sCT1: {sCT1_data.shape}, sCT2: {sCT2_data.shape}")
 
-    # Create body contour arrays
-    sCT1_body_contour = np.zeros_like(sCT1_data)
-    sCT2_body_contour = np.zeros_like(sCT2_data)
+    # Create body contour arrays for both CT_bed and sCT data
+    sCT1_contour = np.zeros_like(sCT1_data, dtype=bool)
+    sCT2_contour = np.zeros_like(sCT2_data, dtype=bool)
+    CT_bed_contour = np.zeros_like(CT_bed_data, dtype=bool)
     
     print(f"  [{idx}/{len(case_name_list)}] Processing {CT_bed_data.shape[2]} slices for body contours...")
     # Process each z-slice
@@ -76,45 +80,76 @@ for idx, case_name in enumerate(case_name_list, 1):
         # Create masks from sCT data using HU threshold
         sCT1_mask = sCT1_data[:,:,z] > body_contour_HU_th
         sCT2_mask = sCT2_data[:,:,z] > body_contour_HU_th
+        CT_bed_mask = CT_bed_data[:,:,z] > body_contour_HU_th
         
         # Fill holes in the masks
         sCT1_filled_mask = binary_fill_holes(sCT1_mask)
         sCT2_filled_mask = binary_fill_holes(sCT2_mask)
+        CT_bed_filled_mask = binary_fill_holes(CT_bed_mask)
         
         # Save the filled masks
-        sCT1_body_contour[:,:,z] = sCT1_filled_mask
-        sCT2_body_contour[:,:,z] = sCT2_filled_mask
+        sCT1_contour[:,:,z] = sCT1_filled_mask
+        sCT2_contour[:,:,z] = sCT2_filled_mask
+        CT_bed_contour[:,:,z] = CT_bed_filled_mask
 
-    print(f"  Saving body contour masks...")
-    # Save body contour masks
-    sCT1_contour_nifti = nib.Nifti1Image(sCT1_body_contour, sCT1_nifti.affine, sCT1_nifti.header)
-    sCT2_contour_nifti = nib.Nifti1Image(sCT2_body_contour, sCT2_nifti.affine, sCT2_nifti.header)
+    # Take the intersection of the contours
+    intersection_contour1 = sCT1_contour & CT_bed_contour
+    intersection_contour2 = sCT2_contour & CT_bed_contour
+    
+    # Create blurred versions of the intersection contours for edge blending
+    print(f"  Creating blurred edge masks...")
+    # Convert boolean masks to float for blurring
+    intersection_float1 = intersection_contour1.astype(np.float32)
+    intersection_float2 = intersection_contour2.astype(np.float32)
+    
+    # Apply Gaussian blur to create soft edges
+    blurred_contour1 = gaussian_filter(intersection_float1, sigma=blur_sigma)
+    blurred_contour2 = gaussian_filter(intersection_float2, sigma=blur_sigma)
+    
+    print(f"  Saving intersection body contour masks...")
+    # Save intersection body contour masks
+    intersection_nifti1 = nib.Nifti1Image(intersection_contour1.astype(np.int16), 
+                                         sCT1_nifti.affine, sCT1_nifti.header)
+    intersection_nifti2 = nib.Nifti1Image(intersection_contour2.astype(np.int16), 
+                                         sCT2_nifti.affine, sCT2_nifti.header)
+    
+    intersection_path1 = f"{sCT1_src_folder}/sCT1_{case_name}_v2_intersection_contour.nii.gz"
+    intersection_path2 = f"{sCT2_src_folder}/sCT2_{case_name}_v2_intersection_contour.nii.gz"
+    
+    nib.save(intersection_nifti1, intersection_path1)
+    nib.save(intersection_nifti2, intersection_path2)
+    
+    # Save blurred contours for visualization/debugging
+    blurred_nifti1 = nib.Nifti1Image(blurred_contour1, sCT1_nifti.affine, sCT1_nifti.header)
+    blurred_nifti2 = nib.Nifti1Image(blurred_contour2, sCT2_nifti.affine, sCT2_nifti.header)
+    
+    blurred_path1 = f"{sCT1_src_folder}/sCT1_{case_name}_v2_blurred_contour.nii.gz"
+    blurred_path2 = f"{sCT2_src_folder}/sCT2_{case_name}_v2_blurred_contour.nii.gz"
+    
+    nib.save(blurred_nifti1, blurred_path1)
+    nib.save(blurred_nifti2, blurred_path2)
 
-    sCT1_contour_path = f"{sCT1_src_folder}/sCT1_{case_name}_v2_body_contour.nii.gz"
-    sCT2_contour_path = f"{sCT2_src_folder}/sCT2_{case_name}_v2_body_contour.nii.gz"
+    print(f"  Creating masked bed data with blurred edges...")
+    # Memory-efficient blending approach
+    print(f"  Applying blending with blurred edges...")
+    
+    # Process the entire volumes directly using the blurred contours as weights
+    sCT1_v4_bed = (blurred_contour1 * sCT1_data + 
+                  (1 - blurred_contour1) * CT_bed_data)
+    
+    sCT2_v4_bed = (blurred_contour2 * sCT2_data + 
+                  (1 - blurred_contour2) * CT_bed_data)
 
-    nib.save(sCT1_contour_nifti, sCT1_contour_path)
-    nib.save(sCT2_contour_nifti, sCT2_contour_path)
-
-    print(f"  Creating masked bed data...")
-    # Create masked versions of CT bed data
-    sCT1_v3_bed = CT_bed_data.copy()
-    sCT2_v3_bed = CT_bed_data.copy()
-
-    # Replace CT bed data with sCT data where body contour is True
-    sCT1_v3_bed[sCT1_body_contour == 1] = sCT1_data[sCT1_body_contour == 1]
-    sCT2_v3_bed[sCT2_body_contour == 1] = sCT2_data[sCT2_body_contour == 1]
-
-    print(f"  Saving masked bed data...")
+    print(f"  Saving masked bed data with blurred edges...")
     # Save masked bed data
-    sCT1_v3_bed_nifti = nib.Nifti1Image(sCT1_v3_bed, CT_bed_nifti.affine, CT_bed_nifti.header)
-    sCT2_v3_bed_nifti = nib.Nifti1Image(sCT2_v3_bed, CT_bed_nifti.affine, CT_bed_nifti.header)
-
-    sCT1_v3_bed_path = f"{sCT1_src_folder}/sCT1_{case_name}_v3_bed.nii.gz"
-    sCT2_v3_bed_path = f"{sCT2_src_folder}/sCT2_{case_name}_v3_bed.nii.gz"
-
-    nib.save(sCT1_v3_bed_nifti, sCT1_v3_bed_path)
-    nib.save(sCT2_v3_bed_nifti, sCT2_v3_bed_path)
+    sCT1_v4_bed_nifti = nib.Nifti1Image(sCT1_v4_bed, CT_bed_nifti.affine, CT_bed_nifti.header)
+    sCT2_v4_bed_nifti = nib.Nifti1Image(sCT2_v4_bed, CT_bed_nifti.affine, CT_bed_nifti.header)
+    
+    sCT1_v4_bed_path = f"{sCT1_src_folder}/sCT1_{case_name}_v4_bed_blurred_edge.nii.gz"
+    sCT2_v4_bed_path = f"{sCT2_src_folder}/sCT2_{case_name}_v4_bed_blurred_edge.nii.gz"
+    
+    nib.save(sCT1_v4_bed_nifti, sCT1_v4_bed_path)
+    nib.save(sCT2_v4_bed_nifti, sCT2_v4_bed_path)
     
     print(f"Completed case: {case_name}\n")
 
