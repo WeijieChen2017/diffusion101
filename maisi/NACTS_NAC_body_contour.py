@@ -22,27 +22,20 @@ output_folder = "NAC_body_contour_thresholds"
 # Create output directory if it doesn't exist
 os.makedirs(output_folder, exist_ok=True)
 
-# Fixed threshold value
-threshold = 500
+# Different threshold values to try
+thresholds = [300, 400, 500, 600, 700]
 
 # Fixed sigma value for Gaussian blur
 sigma = 1.0
 
-# Parameters for dilation and erosion
-dilation_iterations = 3
-erosion_iterations = 2
+# Parameters for dilation and erosion (equal iterations)
+morph_iterations = 3
 
-# Create larger structuring elements for better connectivity
+# Create 7x7 structuring element for better connectivity
 # Start with basic 3x3 connectivity (8-connected in 2D)
 basic_struct = generate_binary_structure(2, 2)  # 8-connectivity in 2D
-
-# Create different sized structuring elements by iterating
-struct_sizes = {
-    "5x5": iterate_structure(basic_struct, 2),
-    "7x7": iterate_structure(basic_struct, 3),
-    "9x9": iterate_structure(basic_struct, 4),
-    "11x11": iterate_structure(basic_struct, 5)
-}
+# Create 7x7 structuring element
+struct_element = iterate_structure(basic_struct, 3)  # 7x7 kernel
 
 for case_name in case_name_list:
     print(f"Processing case: {case_name}")
@@ -59,13 +52,13 @@ for case_name in case_name_list:
     print(f"  Applying Gaussian blur with sigma={sigma}...")
     NAC_blurred = gaussian_filter(NAC_data, sigma=sigma)
     
-    # Create initial threshold mask
-    print(f"  Creating initial threshold mask with threshold={threshold}...")
-    initial_mask = NAC_blurred > threshold
-    
-    # Try different kernel sizes
-    for kernel_name, struct_element in struct_sizes.items():
-        print(f"  Processing with kernel size {kernel_name}")
+    # Try different threshold values
+    for threshold in thresholds:
+        print(f"  Processing with threshold={threshold}")
+        
+        # Create initial threshold mask
+        print(f"    Creating initial threshold mask...")
+        initial_mask = NAC_blurred > threshold
         
         # Process in each dimension
         print(f"    Processing contours in each dimension...")
@@ -81,9 +74,9 @@ for case_name in case_name_list:
             # Get the slice
             slice_mask = initial_mask[:,:,z]
             
-            # Dilate with current kernel then erode (close operation)
-            dilated_mask = binary_dilation(slice_mask, structure=struct_element, iterations=dilation_iterations)
-            eroded_mask = binary_erosion(dilated_mask, structure=struct_element, iterations=erosion_iterations)
+            # Dilate then erode (close operation) with equal iterations
+            dilated_mask = binary_dilation(slice_mask, structure=struct_element, iterations=morph_iterations)
+            eroded_mask = binary_erosion(dilated_mask, structure=struct_element, iterations=morph_iterations)
             
             # Fill holes after morphological operations
             final_mask = binary_fill_holes(eroded_mask)
@@ -97,9 +90,9 @@ for case_name in case_name_list:
             # Get the slice
             slice_mask = initial_mask[:,y,:]
             
-            # Dilate with current kernel then erode (close operation)
-            dilated_mask = binary_dilation(slice_mask, structure=struct_element, iterations=dilation_iterations)
-            eroded_mask = binary_erosion(dilated_mask, structure=struct_element, iterations=erosion_iterations)
+            # Dilate then erode (close operation) with equal iterations
+            dilated_mask = binary_dilation(slice_mask, structure=struct_element, iterations=morph_iterations)
+            eroded_mask = binary_erosion(dilated_mask, structure=struct_element, iterations=morph_iterations)
             
             # Fill holes after morphological operations
             final_mask = binary_fill_holes(eroded_mask)
@@ -113,9 +106,9 @@ for case_name in case_name_list:
             # Get the slice
             slice_mask = initial_mask[x,:,:]
             
-            # Dilate with current kernel then erode (close operation)
-            dilated_mask = binary_dilation(slice_mask, structure=struct_element, iterations=dilation_iterations)
-            eroded_mask = binary_erosion(dilated_mask, structure=struct_element, iterations=erosion_iterations)
+            # Dilate then erode (close operation) with equal iterations
+            dilated_mask = binary_dilation(slice_mask, structure=struct_element, iterations=morph_iterations)
+            eroded_mask = binary_erosion(dilated_mask, structure=struct_element, iterations=morph_iterations)
             
             # Fill holes after morphological operations
             final_mask = binary_fill_holes(eroded_mask)
@@ -143,9 +136,9 @@ for case_name in case_name_list:
         y_contour_nifti = nib.Nifti1Image(y_contour.astype(np.int16), NAC_nifti.affine, NAC_nifti.header)
         z_contour_nifti = nib.Nifti1Image(z_contour.astype(np.int16), NAC_nifti.affine, NAC_nifti.header)
         
-        nib.save(x_contour_nifti, f"{output_folder}/NAC_{case_name}_kernel{kernel_name}_x_contour.nii.gz")
-        nib.save(y_contour_nifti, f"{output_folder}/NAC_{case_name}_kernel{kernel_name}_y_contour.nii.gz")
-        nib.save(z_contour_nifti, f"{output_folder}/NAC_{case_name}_kernel{kernel_name}_z_contour.nii.gz")
+        nib.save(x_contour_nifti, f"{output_folder}/NAC_{case_name}_th{threshold}_x_contour.nii.gz")
+        nib.save(y_contour_nifti, f"{output_folder}/NAC_{case_name}_th{threshold}_y_contour.nii.gz")
+        nib.save(z_contour_nifti, f"{output_folder}/NAC_{case_name}_th{threshold}_z_contour.nii.gz")
         
         # Save combined contours
         print(f"    Saving combined contours...")
@@ -154,11 +147,11 @@ for case_name in case_name_list:
         union_nifti = nib.Nifti1Image(union_contour.astype(np.int16), NAC_nifti.affine, NAC_nifti.header)
         majority_nifti = nib.Nifti1Image(majority_contour.astype(np.int16), NAC_nifti.affine, NAC_nifti.header)
         
-        nib.save(intersection_nifti, f"{output_folder}/NAC_{case_name}_kernel{kernel_name}_intersection_contour.nii.gz")
-        nib.save(union_nifti, f"{output_folder}/NAC_{case_name}_kernel{kernel_name}_union_contour.nii.gz")
-        nib.save(majority_nifti, f"{output_folder}/NAC_{case_name}_kernel{kernel_name}_majority_contour.nii.gz")
+        nib.save(intersection_nifti, f"{output_folder}/NAC_{case_name}_th{threshold}_intersection_contour.nii.gz")
+        nib.save(union_nifti, f"{output_folder}/NAC_{case_name}_th{threshold}_union_contour.nii.gz")
+        nib.save(majority_nifti, f"{output_folder}/NAC_{case_name}_th{threshold}_majority_contour.nii.gz")
         
-        print(f"  Completed processing for kernel size {kernel_name}")
+        print(f"  Completed processing for threshold={threshold}")
     
     print(f"Completed case: {case_name}\n")
 
