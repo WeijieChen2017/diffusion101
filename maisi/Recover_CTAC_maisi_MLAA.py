@@ -2,7 +2,7 @@ import glob
 import os
 import nibabel as nib
 import numpy as np
-from scipy.ndimage import binary_fill_holes
+from scipy.ndimage import binary_fill_holes, gaussian_filter
 
 # Define input/output directories
 CTAC_maisi_src_folder = "James_36/CTAC_maisi"
@@ -22,6 +22,10 @@ case_name_list = [
 
 # HU threshold for body contour
 body_contour_HU_th = -500
+
+# Edge blurring parameters
+blur_sigma = 1.0  # Sigma for Gaussian blur (higher = more blurring)
+edge_width = 5    # Width of the edge transition zone in pixels
 
 print(f"Starting processing {len(case_name_list)} cases")
 
@@ -77,25 +81,57 @@ for idx, case_name in enumerate(case_name_list, 1):
     # Take the intersection of the two body contours
     intersection_contour = CTAC_maisi_contour & CT_bed_contour
     
+    # Create a blurred version of the intersection contour for edge blending
+    print(f"  Creating blurred edge mask...")
+    # Convert boolean mask to float for blurring
+    intersection_float = intersection_contour.astype(np.float32)
+    
+    # Apply Gaussian blur to create soft edges
+    blurred_contour = gaussian_filter(intersection_float, sigma=blur_sigma)
+    
+    # Create edge mask (values between 0 and 1 at the edges)
+    edge_mask = np.zeros_like(blurred_contour)
+    edge_mask[(blurred_contour > 0) & (blurred_contour < 1)] = blurred_contour[(blurred_contour > 0) & (blurred_contour < 1)]
+    
+    # Normalize edge mask to range [0,1]
+    if np.max(edge_mask) > 0:
+        edge_mask = edge_mask / np.max(edge_mask)
+    
     print(f"  Saving intersection body contour mask...")
     # Save intersection body contour mask
     intersection_nifti = nib.Nifti1Image(intersection_contour.astype(np.int16), 
                                         CTAC_maisi_nifti.affine, CTAC_maisi_nifti.header)
     intersection_path = f"{CTAC_maisi_dst_folder}/CTAC_maisi_{case_name}_v2_intersection_contour.nii.gz"
     nib.save(intersection_nifti, intersection_path)
+    
+    # Save edge mask for visualization/debugging
+    edge_mask_nifti = nib.Nifti1Image(edge_mask, CTAC_maisi_nifti.affine, CTAC_maisi_nifti.header)
+    edge_mask_path = f"{CTAC_maisi_dst_folder}/CTAC_maisi_{case_name}_v2_edge_mask.nii.gz"
+    nib.save(edge_mask_nifti, edge_mask_path)
 
-    print(f"  Creating masked bed data...")
-    # Create masked version of CT bed data
-    CTAC_maisi_v3_bed = CT_bed_data.copy()
+    print(f"  Creating masked bed data with blurred edges...")
+    # Create masked version of CT bed data with blurred edges
+    CTAC_maisi_v4_bed = CT_bed_data.copy()
 
-    # Replace CT bed data with CTAC data where intersection contour is True
-    CTAC_maisi_v3_bed[intersection_contour] = CTAC_maisi_data[intersection_contour]
+    # Apply the core intersection mask (hard boundary)
+    core_mask = blurred_contour > 0.9  # Values close to 1 are considered core
+    CTAC_maisi_v4_bed[core_mask] = CTAC_maisi_data[core_mask]
+    
+    # Apply blending at the edges
+    edge_region = (blurred_contour > 0) & (blurred_contour <= 0.9)
+    blend_weights = blurred_contour[edge_region].reshape(-1, 1)
+    
+    # Blend the values at the edges
+    CTAC_maisi_v4_bed[edge_region] = (
+        blend_weights * CTAC_maisi_data[edge_region] + 
+        (1 - blend_weights) * CT_bed_data[edge_region]
+    )
 
-    print(f"  Saving masked bed data...")
+    print(f"  Saving masked bed data with blurred edges...")
     # Save masked bed data
-    CTAC_maisi_v3_bed_nifti = nib.Nifti1Image(CTAC_maisi_v3_bed, CT_bed_nifti.affine, CT_bed_nifti.header)
-    CTAC_maisi_v3_bed_path = f"{CTAC_maisi_dst_folder}/CTAC_maisi_{case_name}_v4_bed_intersection.nii.gz"
-    nib.save(CTAC_maisi_v3_bed_nifti, CTAC_maisi_v3_bed_path)
+    CTAC_maisi_v4_bed_nifti = nib.Nifti1Image(CTAC_maisi_v4_bed, CT_bed_nifti.affine, CT_bed_nifti.header)
+    CTAC_maisi_v4_bed_path = f"{CTAC_maisi_dst_folder}/CTAC_maisi_{case_name}_v4_bed_blurred_edge.nii.gz"
+    nib.save(CTAC_maisi_v4_bed_nifti, CTAC_maisi_v4_bed_path)
     
     print(f"Completed case: {case_name}\n")
 
