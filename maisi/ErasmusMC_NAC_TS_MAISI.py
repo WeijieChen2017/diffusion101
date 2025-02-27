@@ -8,6 +8,11 @@ NAC_TS_body_contour_PET_path = "NAC_body_contour_thresholds/NAC_E4058_final_cont
 NAC_TS_body_contour_CT_path = "James_36/CT_mask/mask_body_contour_E4058.nii.gz"
 CT_TS_label_path = "NAC_CTAC_Spacing15/CTAC_E4058_TS.nii.gz"
 
+# Default output directory
+DEFAULT_OUTPUT_DIR = "ErasmusMC"
+
+# Overall Dice (all foreground vs background): 0.8680
+
 # Mapping dictionary from TS to MAISI
 T2M_mapping = {
     1: 3,
@@ -136,13 +141,14 @@ def compute_dice_coefficient(y_true, y_pred):
     intersection = np.sum(y_true * y_pred)
     return (2. * intersection) / (np.sum(y_true) + np.sum(y_pred))
 
-def compute_class_dice(nac_path, ct_path):
+def compute_class_dice(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DIR):
     """
     Compute Dice coefficients for each class between NAC and CT tissue segmentations
     
     Args:
         nac_path: Path to the NAC tissue segmentation file
         ct_path: Path to the CT tissue segmentation file
+        output_dir: Directory to save results
         
     Returns:
         dict: Dictionary containing Dice scores for each class and overall
@@ -152,6 +158,9 @@ def compute_class_dice(nac_path, ct_path):
         raise FileNotFoundError(f"NAC segmentation file not found: {nac_path}")
     if not os.path.exists(ct_path):
         raise FileNotFoundError(f"CT segmentation file not found: {ct_path}")
+    
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
     
     # Load the segmentation files
     print("Loading segmentation files...")
@@ -208,9 +217,25 @@ def compute_class_dice(nac_path, ct_path):
     print(f"\nOverall Dice (all foreground vs background): {overall_dice:.4f}")
     results["overall"] = overall_dice
     
+    # Save results to a text file
+    results_path = os.path.join(output_dir, "dice_results.txt")
+    with open(results_path, 'w') as f:
+        f.write("Dice Coefficient Results\n")
+        f.write("=======================\n\n")
+        f.write(f"NAC file: {nac_path}\n")
+        f.write(f"CT file: {ct_path}\n\n")
+        f.write("Class-wise Dice coefficients:\n")
+        for label in all_labels:
+            if label == 0:
+                continue
+            if f"class_{label}" in results:
+                f.write(f"Class {label}: {results[f'class_{label}']}\n")
+        f.write(f"\nOverall Dice: {overall_dice:.4f}\n")
+    
+    print(f"Dice results saved to {results_path}")
     return results
 
-def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, output_dir=None):
+def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, output_dir=DEFAULT_OUTPUT_DIR):
     """
     Convert tissue segmentation (TS) labels to MAISI labels and add body contour
     
@@ -218,7 +243,7 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
         ts_path: Path to the TS segmentation file
         body_contour_pet_path: Path to the PET body contour file
         body_contour_ct_path: Path to the CT body contour file
-        output_dir: Directory to save output files (default: same as input)
+        output_dir: Directory to save output files
         
     Returns:
         tuple: Paths to the saved MAISI segmentation files with PET and CT body contours
@@ -231,9 +256,7 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
     if not os.path.exists(body_contour_ct_path):
         raise FileNotFoundError(f"CT body contour file not found: {body_contour_ct_path}")
     
-    # Set output directory
-    if output_dir is None:
-        output_dir = os.path.dirname(ts_path)
+    # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
     # Load the segmentation files
@@ -295,6 +318,22 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
     print(f"Unique MAISI labels in PET body contour version: {maisi_pet_unique}")
     print(f"Unique MAISI labels in CT body contour version: {maisi_ct_unique}")
     
+    # Save mapping information to a text file
+    mapping_path = os.path.join(output_dir, "ts_to_maisi_mapping.txt")
+    with open(mapping_path, 'w') as f:
+        f.write("TS to MAISI Label Mapping\n")
+        f.write("========================\n\n")
+        f.write(f"TS file: {ts_path}\n")
+        f.write(f"PET body contour: {body_contour_pet_path}\n")
+        f.write(f"CT body contour: {body_contour_ct_path}\n\n")
+        f.write("Mapping used:\n")
+        f.write("TS Label -> MAISI Label\n")
+        for ts_label in sorted(T2M_mapping.keys()):
+            f.write(f"{ts_label} -> {T2M_mapping[ts_label]}\n")
+        f.write("\nBody contour -> 200\n")
+        f.write(f"\nOutput files:\n{maisi_pet_path}\n{maisi_ct_path}\n")
+    
+    print(f"Mapping information saved to {mapping_path}")
     return maisi_pet_path, maisi_ct_path
 
 def main():
@@ -305,12 +344,16 @@ def main():
     parser.add_argument('--ct_path', type=str, default=CT_TS_label_path, help='Path to CT tissue segmentation file')
     parser.add_argument('--pet_contour_path', type=str, default=NAC_TS_body_contour_PET_path, help='Path to PET body contour file')
     parser.add_argument('--ct_contour_path', type=str, default=NAC_TS_body_contour_CT_path, help='Path to CT body contour file')
-    parser.add_argument('--output_dir', type=str, default=None, help='Directory to save output files')
+    parser.add_argument('--output_dir', type=str, default=DEFAULT_OUTPUT_DIR, help='Directory to save output files')
     
     args = parser.parse_args()
     
+    # Create output directory if it doesn't exist
+    os.makedirs(args.output_dir, exist_ok=True)
+    print(f"Output directory set to: {args.output_dir}")
+    
     if args.compute_dice:
-        dice_results = compute_class_dice(args.nac_path, args.ct_path)
+        dice_results = compute_class_dice(args.nac_path, args.ct_path, args.output_dir)
         print("Dice computation completed.")
     
     if args.convert_ts_to_maisi:
@@ -320,10 +363,12 @@ def main():
             args.ct_contour_path,
             args.output_dir
         )
-        print(f"TS to MAISI conversion completed. Files saved to {maisi_pet_path} and {maisi_ct_path}")
+        print(f"TS to MAISI conversion completed. Files saved to {args.output_dir}")
     
     if not (args.compute_dice or args.convert_ts_to_maisi):
         print("No action specified. Use --compute_dice or --convert_ts_to_maisi to activate functions.")
+        print("Example usage:")
+        print(f"  python {os.path.basename(__file__)} --compute_dice --convert_ts_to_maisi")
 
 if __name__ == "__main__":
     main()
