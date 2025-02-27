@@ -153,9 +153,14 @@ task_105 = "uuUNet/Dataset105_RI0/imagesTs_pred/"
 
 # Define test case names
 Ts_namelist = [
-    "E4068", "E4078", "E4092", "E4103", "E4118",
-    "E4129", "E4138", "E4247", "E4260", "E4280",
-    "E4290", "E4300", "E4308", "E4317", "E4332",
+    'E4055', 'E4058', 'E4061', 'E4066', 'E4068',
+    'E4069', 'E4073', 'E4074', 'E4077', 'E4078',
+    'E4079', 'E4081', 'E4084', 'E4091', 'E4092',
+    'E4094', 'E4096', 'E4098', 'E4099', 'E4103',
+    'E4105', 'E4106', 'E4114', 'E4115', 'E4118',
+    'E4120', 'E4124', 'E4125', 'E4128', 'E4129',
+    'E4130', 'E4131', 'E4134', 'E4137', 'E4138',
+    'E4139', 
 ]
 
 def combine_predictions(output_dir="combined_predictions"):
@@ -197,22 +202,29 @@ def combine_predictions(output_dir="combined_predictions"):
     with open(os.path.join(output_dir, "combined_class_map.json"), "w") as f:
         json.dump(combined_class_map, f, indent=4)
     
+    print(f"Starting to process {len(Ts_namelist)} test cases...")
+    
     # Process each test case
-    for case_name in Ts_namelist:
+    for idx, case_name in enumerate(Ts_namelist):
+        print(f"Processing case [{idx+1}/{len(Ts_namelist)}]: {case_name}")
+        
         # Get reference image from first task to determine dimensions
         ref_img_path = os.path.join(tasks[0][0], f"{case_name}.nii.gz")
         if not os.path.exists(ref_img_path):
-            print(f"Reference image not found: {ref_img_path}")
+            print(f"  ERROR: Reference image not found: {ref_img_path}")
             continue
         
         ref_img = nib.load(ref_img_path)
         combined_seg = np.zeros(ref_img.shape, dtype=np.uint16)
         
         # Process each task
-        for i, (task_path, class_map) in enumerate(tasks):
+        for task_idx, (task_path, class_map) in enumerate(tasks):
+            task_name = os.path.basename(os.path.dirname(task_path.rstrip('/')))
+            print(f"  Processing task {task_idx+1}/{len(tasks)}: {task_name}")
+            
             img_path = os.path.join(task_path, f"{case_name}.nii.gz")
             if not os.path.exists(img_path):
-                print(f"Image not found: {img_path}")
+                print(f"  WARNING: Image not found: {img_path}")
                 continue
             
             # Load segmentation
@@ -220,17 +232,24 @@ def combine_predictions(output_dir="combined_predictions"):
             seg_data = seg_img.get_fdata().astype(np.int32)
             
             # Map classes to new indices with appropriate offset
-            offset = offsets[i]
+            offset = offsets[task_idx]
+            classes_found = 0
             for original_id in range(1, len(class_map) + 1):
                 mask = seg_data == original_id
                 if np.any(mask):
                     combined_seg[mask] = original_id + offset
+                    classes_found += 1
+            
+            print(f"    Found {classes_found} classes in this task")
         
         # Save combined segmentation
         combined_nib = nib.Nifti1Image(combined_seg, ref_img.affine, ref_img.header)
         output_path = os.path.join(output_dir, f"{case_name}_combined.nii.gz")
         nib.save(combined_nib, output_path)
-        print(f"Saved combined prediction for {case_name}")
+        print(f"  Saved combined prediction for {case_name}")
+        print(f"  Completed case [{idx+1}/{len(Ts_namelist)}]")
+    
+    print(f"All {len(Ts_namelist)} cases processed successfully!")
 
 if __name__ == "__main__":
     combine_predictions()
