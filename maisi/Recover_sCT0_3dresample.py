@@ -43,4 +43,3 @@ for case_name in case_name_list:
     
     # output commands
     print(command1)
-    print()
