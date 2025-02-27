@@ -25,7 +25,6 @@ body_contour_HU_th = -500
 
 # Edge blurring parameters
 blur_sigma = 1.0  # Sigma for Gaussian blur (higher = more blurring)
-edge_width = 5    # Width of the edge transition zone in pixels
 
 print(f"Starting processing {len(case_name_list)} cases")
 
@@ -89,14 +88,6 @@ for idx, case_name in enumerate(case_name_list, 1):
     # Apply Gaussian blur to create soft edges
     blurred_contour = gaussian_filter(intersection_float, sigma=blur_sigma)
     
-    # Create edge mask (values between 0 and 1 at the edges)
-    edge_mask = np.zeros_like(blurred_contour)
-    edge_mask[(blurred_contour > 0) & (blurred_contour < 1)] = blurred_contour[(blurred_contour > 0) & (blurred_contour < 1)]
-    
-    # Normalize edge mask to range [0,1]
-    if np.max(edge_mask) > 0:
-        edge_mask = edge_mask / np.max(edge_mask)
-    
     print(f"  Saving intersection body contour mask...")
     # Save intersection body contour mask
     intersection_nifti = nib.Nifti1Image(intersection_contour.astype(np.int16), 
@@ -104,28 +95,23 @@ for idx, case_name in enumerate(case_name_list, 1):
     intersection_path = f"{CTAC_maisi_dst_folder}/CTAC_maisi_{case_name}_v2_intersection_contour.nii.gz"
     nib.save(intersection_nifti, intersection_path)
     
-    # Save edge mask for visualization/debugging
-    edge_mask_nifti = nib.Nifti1Image(edge_mask, CTAC_maisi_nifti.affine, CTAC_maisi_nifti.header)
-    edge_mask_path = f"{CTAC_maisi_dst_folder}/CTAC_maisi_{case_name}_v2_edge_mask.nii.gz"
-    nib.save(edge_mask_nifti, edge_mask_path)
+    # Save blurred contour for visualization/debugging
+    blurred_nifti = nib.Nifti1Image(blurred_contour, CTAC_maisi_nifti.affine, CTAC_maisi_nifti.header)
+    blurred_path = f"{CTAC_maisi_dst_folder}/CTAC_maisi_{case_name}_v2_blurred_contour.nii.gz"
+    nib.save(blurred_nifti, blurred_path)
 
     print(f"  Creating masked bed data with blurred edges...")
     # Create masked version of CT bed data with blurred edges
     CTAC_maisi_v4_bed = CT_bed_data.copy()
 
-    # Apply the core intersection mask (hard boundary)
-    core_mask = blurred_contour > 0.9  # Values close to 1 are considered core
-    CTAC_maisi_v4_bed[core_mask] = CTAC_maisi_data[core_mask]
+    # Memory-efficient blending approach
+    # We'll directly compute the weighted average without creating large intermediate arrays
+    print(f"  Applying blending with blurred edges...")
     
-    # Apply blending at the edges
-    edge_region = (blurred_contour > 0) & (blurred_contour <= 0.9)
-    blend_weights = blurred_contour[edge_region].reshape(-1, 1)
-    
-    # Blend the values at the edges
-    CTAC_maisi_v4_bed[edge_region] = (
-        blend_weights * CTAC_maisi_data[edge_region] + 
-        (1 - blend_weights) * CT_bed_data[edge_region]
-    )
+    # Process the entire volume directly using the blurred contour as weights
+    # This avoids creating large intermediate arrays
+    CTAC_maisi_v4_bed = (blurred_contour * CTAC_maisi_data + 
+                         (1 - blurred_contour) * CT_bed_data)
 
     print(f"  Saving masked bed data with blurred edges...")
     # Save masked bed data
