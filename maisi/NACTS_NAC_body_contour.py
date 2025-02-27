@@ -1,7 +1,7 @@
 import os
 import nibabel as nib
 import numpy as np
-from scipy.ndimage import binary_fill_holes, gaussian_filter
+from scipy.ndimage import binary_fill_holes, gaussian_filter, binary_dilation, binary_erosion
 
 case_name_list = [
     'E4058',
@@ -21,11 +21,15 @@ output_folder = "NAC_body_contour_thresholds"
 # Create output directory if it doesn't exist
 os.makedirs(output_folder, exist_ok=True)
 
-# Different thresholds to try
-thresholds = [250, 500, 750, 1000, 1250]
+# Fixed threshold value
+threshold = 500
 
-# Different sigma values to try
-sigma_values = [0.5, 1.0, 1.5, 2.0, 3.0]
+# Sigma value for Gaussian blur
+sigma = 1.0
+
+# Parameters for dilation and erosion
+dilation_iterations = 3
+erosion_iterations = 2
 
 for case_name in case_name_list:
     print(f"Processing case: {case_name}")
@@ -38,48 +42,104 @@ for case_name in case_name_list:
     
     print(f"  NAC data shape: {NAC_data.shape}")
     
-    # Process each sigma value
-    for sigma in sigma_values:
-        print(f"  Processing with sigma={sigma}")
+    # Apply Gaussian blurring to the entire volume
+    print(f"  Applying Gaussian blur with sigma={sigma}...")
+    NAC_blurred = gaussian_filter(NAC_data, sigma=sigma)
+    
+    # Create initial threshold mask
+    print(f"  Creating initial threshold mask with threshold={threshold}...")
+    initial_mask = NAC_blurred > threshold
+    
+    # Process in each dimension
+    print(f"  Processing contours in each dimension...")
+    
+    # Initialize contours for each dimension
+    x_contour = np.zeros_like(initial_mask, dtype=bool)
+    y_contour = np.zeros_like(initial_mask, dtype=bool)
+    z_contour = np.zeros_like(initial_mask, dtype=bool)
+    
+    # Process along Z dimension (axial slices)
+    print(f"  Processing Z dimension (axial slices)...")
+    for z in range(NAC_data.shape[2]):
+        # Get the slice
+        slice_mask = initial_mask[:,:,z]
         
-        # Apply Gaussian blurring to the entire volume
-        print(f"    Applying Gaussian blur...")
-        NAC_blurred = gaussian_filter(NAC_data, sigma=sigma)
+        # Fill holes
+        filled_mask = binary_fill_holes(slice_mask)
         
-        # Save blurred NAC data for reference
-        blurred_path = f"{output_folder}/NAC_{case_name}_sigma{sigma}_blurred.nii.gz"
-        blurred_nifti = nib.Nifti1Image(NAC_blurred, NAC_nifti.affine, NAC_nifti.header)
-        nib.save(blurred_nifti, blurred_path)
-        print(f"    Saved blurred NAC data to: {blurred_path}")
+        # Dilate then erode (close operation)
+        dilated_mask = binary_dilation(filled_mask, iterations=dilation_iterations)
+        final_mask = binary_erosion(dilated_mask, iterations=erosion_iterations)
         
-        # Process each threshold
-        for threshold in thresholds:
-            print(f"    Processing threshold: {threshold}")
-            
-            # Create empty contour array
-            contour = np.zeros_like(NAC_data, dtype=bool)
-            
-            # Process each z-slice
-            for z in range(NAC_data.shape[2]):
-                # Create mask using threshold on blurred data
-                mask = NAC_blurred[:,:,z] > threshold
-                
-                # Fill holes in the mask
-                filled_mask = binary_fill_holes(mask)
-                
-                # Save the filled mask
-                contour[:,:,z] = filled_mask
-            
-            # Save the contour mask
-            output_path = f"{output_folder}/NAC_{case_name}_sigma{sigma}_th{threshold}.nii.gz"
-            contour_nifti = nib.Nifti1Image(contour.astype(np.int16), 
-                                            NAC_nifti.affine, 
-                                            NAC_nifti.header)
-            
-            print(f"    Saving contour to: {output_path}")
-            nib.save(contour_nifti, output_path)
+        # Save to z_contour
+        z_contour[:,:,z] = final_mask
+    
+    # Process along Y dimension (coronal slices)
+    print(f"  Processing Y dimension (coronal slices)...")
+    for y in range(NAC_data.shape[1]):
+        # Get the slice
+        slice_mask = initial_mask[:,y,:]
         
-        print(f"  Completed processing for sigma={sigma}")
+        # Fill holes
+        filled_mask = binary_fill_holes(slice_mask)
+        
+        # Dilate then erode (close operation)
+        dilated_mask = binary_dilation(filled_mask, iterations=dilation_iterations)
+        final_mask = binary_erosion(dilated_mask, iterations=erosion_iterations)
+        
+        # Save to y_contour
+        y_contour[:,y,:] = final_mask
+    
+    # Process along X dimension (sagittal slices)
+    print(f"  Processing X dimension (sagittal slices)...")
+    for x in range(NAC_data.shape[0]):
+        # Get the slice
+        slice_mask = initial_mask[x,:,:]
+        
+        # Fill holes
+        filled_mask = binary_fill_holes(slice_mask)
+        
+        # Dilate then erode (close operation)
+        dilated_mask = binary_dilation(filled_mask, iterations=dilation_iterations)
+        final_mask = binary_erosion(dilated_mask, iterations=erosion_iterations)
+        
+        # Save to x_contour
+        x_contour[x,:,:] = final_mask
+    
+    # Combine contours using different methods
+    print(f"  Combining contours using different methods...")
+    
+    # Intersection (logical AND)
+    intersection_contour = x_contour & y_contour & z_contour
+    
+    # Union (logical OR)
+    union_contour = x_contour | y_contour | z_contour
+    
+    # Majority vote (at least 2 out of 3)
+    vote_sum = x_contour.astype(np.uint8) + y_contour.astype(np.uint8) + z_contour.astype(np.uint8)
+    majority_contour = vote_sum >= 2
+    
+    # Save individual dimension contours
+    print(f"  Saving individual dimension contours...")
+    
+    x_contour_nifti = nib.Nifti1Image(x_contour.astype(np.int16), NAC_nifti.affine, NAC_nifti.header)
+    y_contour_nifti = nib.Nifti1Image(y_contour.astype(np.int16), NAC_nifti.affine, NAC_nifti.header)
+    z_contour_nifti = nib.Nifti1Image(z_contour.astype(np.int16), NAC_nifti.affine, NAC_nifti.header)
+    
+    nib.save(x_contour_nifti, f"{output_folder}/NAC_{case_name}_x_contour.nii.gz")
+    nib.save(y_contour_nifti, f"{output_folder}/NAC_{case_name}_y_contour.nii.gz")
+    nib.save(z_contour_nifti, f"{output_folder}/NAC_{case_name}_z_contour.nii.gz")
+    
+    # Save combined contours
+    print(f"  Saving combined contours...")
+    
+    intersection_nifti = nib.Nifti1Image(intersection_contour.astype(np.int16), NAC_nifti.affine, NAC_nifti.header)
+    union_nifti = nib.Nifti1Image(union_contour.astype(np.int16), NAC_nifti.affine, NAC_nifti.header)
+    majority_nifti = nib.Nifti1Image(majority_contour.astype(np.int16), NAC_nifti.affine, NAC_nifti.header)
+    
+    nib.save(intersection_nifti, f"{output_folder}/NAC_{case_name}_intersection_contour.nii.gz")
+    nib.save(union_nifti, f"{output_folder}/NAC_{case_name}_union_contour.nii.gz")
+    nib.save(majority_nifti, f"{output_folder}/NAC_{case_name}_majority_contour.nii.gz")
     
     print(f"Completed case: {case_name}\n")
 
