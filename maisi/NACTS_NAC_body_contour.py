@@ -31,12 +31,14 @@ sigma = 1.0
 # Parameters for dilation and erosion
 morph_iterations = 3
 
-# Create 7x7 structuring element for better connectivity
-basic_struct = generate_binary_structure(2, 2)  # 8-connectivity in 2D
-struct_element = iterate_structure(basic_struct, 3)  # 7x7 kernel
+# Create 3D structuring elements for better connectivity
+# 2D structuring element for slice processing
+basic_struct_2d = generate_binary_structure(2, 2)  # 8-connectivity in 2D
+struct_element_2d = iterate_structure(basic_struct_2d, 3)  # 7x7 kernel
 
-# Create smaller structuring element for edge refinement
-small_struct = generate_binary_structure(2, 1)  # 4-connectivity in 2D
+# 3D structuring element for volume processing
+basic_struct_3d = generate_binary_structure(3, 1)  # 6-connectivity in 3D
+small_struct_3d = basic_struct_3d  # Basic 3x3x3 with 6-connectivity
 
 for case_name in case_name_list:
     print(f"Processing case: {case_name}")
@@ -72,8 +74,8 @@ for case_name in case_name_list:
         slice_mask = initial_mask[:,:,z]
         
         # Dilate then erode (close operation) with equal iterations
-        dilated_mask = binary_dilation(slice_mask, structure=struct_element, iterations=morph_iterations)
-        eroded_mask = binary_erosion(dilated_mask, structure=struct_element, iterations=morph_iterations)
+        dilated_mask = binary_dilation(slice_mask, structure=struct_element_2d, iterations=morph_iterations)
+        eroded_mask = binary_erosion(dilated_mask, structure=struct_element_2d, iterations=morph_iterations)
         
         # Fill holes after morphological operations
         final_mask = binary_fill_holes(eroded_mask)
@@ -88,8 +90,8 @@ for case_name in case_name_list:
         slice_mask = initial_mask[:,y,:]
         
         # Dilate then erode (close operation) with equal iterations
-        dilated_mask = binary_dilation(slice_mask, structure=struct_element, iterations=morph_iterations)
-        eroded_mask = binary_erosion(dilated_mask, structure=struct_element, iterations=morph_iterations)
+        dilated_mask = binary_dilation(slice_mask, structure=struct_element_2d, iterations=morph_iterations)
+        eroded_mask = binary_erosion(dilated_mask, structure=struct_element_2d, iterations=morph_iterations)
         
         # Fill holes after morphological operations
         final_mask = binary_fill_holes(eroded_mask)
@@ -104,8 +106,8 @@ for case_name in case_name_list:
         slice_mask = initial_mask[x,:,:]
         
         # Dilate then erode (close operation) with equal iterations
-        dilated_mask = binary_dilation(slice_mask, structure=struct_element, iterations=morph_iterations)
-        eroded_mask = binary_erosion(dilated_mask, structure=struct_element, iterations=morph_iterations)
+        dilated_mask = binary_dilation(slice_mask, structure=struct_element_2d, iterations=morph_iterations)
+        eroded_mask = binary_erosion(dilated_mask, structure=struct_element_2d, iterations=morph_iterations)
         
         # Fill holes after morphological operations
         final_mask = binary_fill_holes(eroded_mask)
@@ -124,10 +126,10 @@ for case_name in case_name_list:
     print(f"    Applying 3D median filter...")
     union_filtered = median_filter(union_contour.astype(np.uint8), size=3)
     
-    # 2. Small erosion followed by dilation to remove thin spikes
+    # 2. Small erosion followed by dilation to remove thin spikes (using 3D structuring element)
     print(f"    Applying small erosion and dilation to remove thin spikes...")
-    union_eroded = binary_erosion(union_filtered, structure=small_struct, iterations=1)
-    union_refined = binary_dilation(union_eroded, structure=small_struct, iterations=1)
+    union_eroded = binary_erosion(union_filtered, structure=small_struct_3d, iterations=1)
+    union_refined = binary_dilation(union_eroded, structure=small_struct_3d, iterations=1)
     
     # 3. Fill holes in each dimension again
     print(f"    Filling holes in each dimension...")
@@ -145,10 +147,10 @@ for case_name in case_name_list:
     for x in range(NAC_data.shape[0]):
         refined_contour[x,:,:] = binary_fill_holes(refined_contour[x,:,:])
     
-    # 4. Final smoothing with small closing operation
+    # 4. Final smoothing with small closing operation (using 3D structuring element)
     print(f"    Performing final smoothing...")
-    final_contour = binary_dilation(refined_contour, structure=small_struct, iterations=1)
-    final_contour = binary_erosion(final_contour, structure=small_struct, iterations=1)
+    final_contour = binary_dilation(refined_contour, structure=small_struct_3d, iterations=1)
+    final_contour = binary_erosion(final_contour, structure=small_struct_3d, iterations=1)
     
     # Save the original contours
     print(f"  Saving original dimension contours...")
