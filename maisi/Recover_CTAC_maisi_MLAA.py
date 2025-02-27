@@ -54,38 +54,47 @@ for idx, case_name in enumerate(case_name_list, 1):
 
     print(f"  After padding - CT_bed: {CT_bed_data.shape}, CTAC_maisi: {CTAC_maisi_data.shape}")
 
-    # Create body contour array
-    CTAC_maisi_body_contour = np.zeros_like(CTAC_maisi_data)
+    # Create body contour arrays for both CT_bed and CTAC_maisi
+    CTAC_maisi_contour = np.zeros_like(CTAC_maisi_data, dtype=bool)
+    CT_bed_contour = np.zeros_like(CT_bed_data, dtype=bool)
     
     print(f"  [{idx}/{len(case_name_list)}] Processing {CT_bed_data.shape[2]} slices for body contours...")
     # Process each z-slice
     for z in range(CT_bed_data.shape[2]):
         # Create mask from CTAC data using HU threshold
         CTAC_maisi_mask = CTAC_maisi_data[:,:,z] > body_contour_HU_th
+        # Create mask from CT_bed data using HU threshold
+        CT_bed_mask = CT_bed_data[:,:,z] > body_contour_HU_th
         
-        # Fill holes in the mask
+        # Fill holes in both masks
         CTAC_maisi_filled_mask = binary_fill_holes(CTAC_maisi_mask)
+        CT_bed_filled_mask = binary_fill_holes(CT_bed_mask)
         
-        # Save the filled mask
-        CTAC_maisi_body_contour[:,:,z] = CTAC_maisi_filled_mask
+        # Save the filled masks
+        CTAC_maisi_contour[:,:,z] = CTAC_maisi_filled_mask
+        CT_bed_contour[:,:,z] = CT_bed_filled_mask
 
-    print(f"  Saving body contour mask...")
-    # Save body contour mask
-    CTAC_maisi_contour_nifti = nib.Nifti1Image(CTAC_maisi_body_contour, CTAC_maisi_nifti.affine, CTAC_maisi_nifti.header)
-    CTAC_maisi_contour_path = f"{CTAC_maisi_dst_folder}/CTAC_maisi_{case_name}_v2_body_contour.nii.gz"
-    nib.save(CTAC_maisi_contour_nifti, CTAC_maisi_contour_path)
+    # Take the intersection of the two body contours
+    intersection_contour = CTAC_maisi_contour & CT_bed_contour
+    
+    print(f"  Saving intersection body contour mask...")
+    # Save intersection body contour mask
+    intersection_nifti = nib.Nifti1Image(intersection_contour.astype(np.int16), 
+                                        CTAC_maisi_nifti.affine, CTAC_maisi_nifti.header)
+    intersection_path = f"{CTAC_maisi_dst_folder}/CTAC_maisi_{case_name}_v2_intersection_contour.nii.gz"
+    nib.save(intersection_nifti, intersection_path)
 
     print(f"  Creating masked bed data...")
     # Create masked version of CT bed data
     CTAC_maisi_v3_bed = CT_bed_data.copy()
 
-    # Replace CT bed data with CTAC data where body contour is True
-    CTAC_maisi_v3_bed[CTAC_maisi_body_contour == 1] = CTAC_maisi_data[CTAC_maisi_body_contour == 1]
+    # Replace CT bed data with CTAC data where intersection contour is True
+    CTAC_maisi_v3_bed[intersection_contour] = CTAC_maisi_data[intersection_contour]
 
     print(f"  Saving masked bed data...")
     # Save masked bed data
     CTAC_maisi_v3_bed_nifti = nib.Nifti1Image(CTAC_maisi_v3_bed, CT_bed_nifti.affine, CT_bed_nifti.header)
-    CTAC_maisi_v3_bed_path = f"{CTAC_maisi_dst_folder}/CTAC_maisi_{case_name}_v3_bed.nii.gz"
+    CTAC_maisi_v3_bed_path = f"{CTAC_maisi_dst_folder}/CTAC_maisi_{case_name}_v4_bed_intersection.nii.gz"
     nib.save(CTAC_maisi_v3_bed_nifti, CTAC_maisi_v3_bed_path)
     
     print(f"Completed case: {case_name}\n")
