@@ -197,6 +197,10 @@ def compute_segmentation_metrics(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DI
     
     # Compute metrics for each class
     print("\nComputing segmentation metrics for each class...")
+    print("=" * 80)
+    print(f"{'TS Label':<8} {'Class Name':<20} {'Status':<10} {'Dice':<10} {'Jaccard':<10} {'Precision':<10} {'Recall':<10} {'F1 Score':<10} {'Specificity':<10} {'Hausdorff':<10}")
+    print("-" * 80)
+    
     for label in all_labels:
         if label == 0:  # Skip background
             continue
@@ -226,12 +230,18 @@ def compute_segmentation_metrics(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DI
                 hausdorff = float('nan')
                 
             status = "Common"
+            
+            # Print metrics with 4 decimal places
+            print(f"{label:<8} {class_name:<20} {status:<10} {dice:.4f}     {jaccard:.4f}     {precision:.4f}     {recall:.4f}     {f1:.4f}     {specificity:.4f}     {hausdorff:.4f}")
         else:
             dice = jaccard = precision = recall = f1 = specificity = hausdorff = float('nan')
             if label in nac_unique_labels:
                 status = "NAC only"
             else:
                 status = "CT only"
+            
+            # Print status for labels that exist in only one segmentation
+            print(f"{label:<8} {class_name:<20} {status:<10} {'N/A':<10} {'N/A':<10} {'N/A':<10} {'N/A':<10} {'N/A':<10} {'N/A':<10} {'N/A':<10}")
         
         # Add results to data list
         results_data.append({
@@ -263,6 +273,11 @@ def compute_segmentation_metrics(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DI
         overall_hausdorff = compute_hausdorff_distance(ct_foreground, nac_foreground, voxel_spacing)
     except:
         overall_hausdorff = float('nan')
+    
+    # Print overall metrics
+    print("-" * 80)
+    print(f"{'Overall':<8} {'All Tissues':<20} {'Foreground':<10} {overall_dice:.4f}     {overall_jaccard:.4f}     {overall_precision:.4f}     {overall_recall:.4f}     {overall_f1:.4f}     {overall_specificity:.4f}     {overall_hausdorff:.4f}")
+    print("=" * 80)
     
     # Add overall results to data list
     results_data.append({
