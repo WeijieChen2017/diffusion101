@@ -3,10 +3,22 @@ import numpy as np
 import argparse
 import os
 
-NAC_TS_label_path = "combined_predictions/E4058_combined.nii.gz" # no 200
-NAC_TS_body_contour_PET_path = "NAC_body_contour_thresholds/NAC_E4058_final_contour.nii.gz"
-NAC_TS_body_contour_CT_path = "James_36/CT_mask/mask_body_contour_E4058.nii.gz"
-CT_TS_label_path = "NAC_CTAC_Spacing15/CTAC_E4058_TS.nii.gz"
+case_name_list = [
+    # 'E4058',
+    'E4055',          'E4061', 'E4066', 'E4068',
+    'E4069', 'E4073', 'E4074', 'E4077', 'E4078',
+    'E4079', 'E4081', 'E4084', 'E4091', 'E4092',
+    'E4094', 'E4096', 'E4098', 'E4099', 'E4103',
+    'E4105', 'E4106', 'E4114', 'E4115', 'E4118',
+    'E4120', 'E4124', 'E4125', 'E4128', 'E4129',
+    'E4130', 'E4131', 'E4134', 'E4137', 'E4138',
+    'E4139', 
+]
+
+# Template paths - will be formatted with case_name
+NAC_TS_label_template = "combined_predictions/{}_combined.nii.gz"
+NAC_TS_body_contour_CT_template = "James_36/CT_mask/mask_body_contour_{}.nii.gz"
+CT_TS_label_template = "NAC_CTAC_Spacing15/CTAC_{}_TS.nii.gz"
 
 # Default output directory
 DEFAULT_OUTPUT_DIR = "ErasmusMC"
@@ -134,24 +146,21 @@ T2M_mapping = {
     117: 114
 }
 
-def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, output_dir=DEFAULT_OUTPUT_DIR):
+def convert_ts_to_maisi(ts_path, body_contour_ct_path, output_dir=DEFAULT_OUTPUT_DIR):
     """
     Convert tissue segmentation (TS) labels to MAISI labels and add body contour
     
     Args:
         ts_path: Path to the TS segmentation file
-        body_contour_pet_path: Path to the PET body contour file
         body_contour_ct_path: Path to the CT body contour file
         output_dir: Directory to save output files
         
     Returns:
-        tuple: Paths to the saved MAISI segmentation files with PET and CT body contours
+        str: Path to the saved MAISI segmentation file with CT body contour
     """
     # Check if files exist
     if not os.path.exists(ts_path):
         raise FileNotFoundError(f"TS segmentation file not found: {ts_path}")
-    if not os.path.exists(body_contour_pet_path):
-        raise FileNotFoundError(f"PET body contour file not found: {body_contour_pet_path}")
     if not os.path.exists(body_contour_ct_path):
         raise FileNotFoundError(f"CT body contour file not found: {body_contour_ct_path}")
     
@@ -161,15 +170,12 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
     # Load the segmentation files
     print("Loading files for TS to MAISI conversion...")
     ts_img = nib.load(ts_path)
-    body_contour_pet_img = nib.load(body_contour_pet_path)
     body_contour_ct_img = nib.load(body_contour_ct_path)
     
     ts_data = ts_img.get_fdata()
-    body_contour_pet_data = body_contour_pet_img.get_fdata()
     body_contour_ct_data = body_contour_ct_img.get_fdata()
     
-    # Create MAISI label maps (initialize with zeros)
-    maisi_pet_data = np.zeros_like(ts_data, dtype=np.int32)
+    # Create MAISI label map (initialize with zeros)
     maisi_ct_data = np.zeros_like(ts_data, dtype=np.int32)
     
     # Map TS labels to MAISI labels
@@ -179,11 +185,9 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
     
     # First, filter all labels outside the body contour
     print("Filtering labels outside body contour...")
-    filtered_ts_pet_data = np.zeros_like(ts_data, dtype=np.int32)
     filtered_ts_ct_data = np.zeros_like(ts_data, dtype=np.int32)
     
     # Only keep labels inside the body contour - ensure integer type
-    filtered_ts_pet_data = np.where(body_contour_pet_data > 0, ts_data, 0).astype(np.int32)
     filtered_ts_ct_data = np.where(body_contour_ct_data > 0, ts_data, 0).astype(np.int32)
     
     # Map TS labels to MAISI labels for the filtered data
@@ -194,10 +198,6 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
         if ts_label in T2M_mapping:
             maisi_label = T2M_mapping[ts_label]
             
-            # Apply mapping for PET body contour version
-            mask_pet = (filtered_ts_pet_data == ts_label)
-            maisi_pet_data[mask_pet] = maisi_label
-            
             # Apply mapping for CT body contour version
             mask_ct = (filtered_ts_ct_data == ts_label)
             maisi_ct_data[mask_ct] = maisi_label
@@ -206,9 +206,6 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
     
     # Add body contour (class 200) to areas that are in the body contour but don't have a tissue label
     print("Adding body contour (class 200)...")
-    # For PET: where body contour exists but no label has been assigned
-    maisi_pet_data = np.where((body_contour_pet_data > 0) & (maisi_pet_data == 0), 200, maisi_pet_data).astype(np.int32)
-    
     # For CT: where body contour exists but no label has been assigned
     maisi_ct_data = np.where((body_contour_ct_data > 0) & (maisi_ct_data == 0), 200, maisi_ct_data).astype(np.int32)
     
@@ -217,49 +214,92 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
     if base_filename.endswith('.nii'):  # Handle .nii.gz case
         base_filename = os.path.splitext(base_filename)[0]
     
-    # Save MAISI segmentation files
-    maisi_pet_path = os.path.join(output_dir, f"{base_filename}_MAISI_bcP.nii.gz")
+    # Save MAISI segmentation file
     maisi_ct_path = os.path.join(output_dir, f"{base_filename}_MAISI_bcC.nii.gz")
-    
-    print(f"Saving MAISI segmentation with PET body contour to: {maisi_pet_path}")
-    maisi_pet_img = nib.Nifti1Image(maisi_pet_data.astype(np.int32), ts_img.affine, ts_img.header)
-    nib.save(maisi_pet_img, maisi_pet_path)
     
     print(f"Saving MAISI segmentation with CT body contour to: {maisi_ct_path}")
     maisi_ct_img = nib.Nifti1Image(maisi_ct_data.astype(np.int32), ts_img.affine, ts_img.header)
     nib.save(maisi_ct_img, maisi_ct_path)
     
     # Count and report unique MAISI labels
-    maisi_pet_unique = np.unique(maisi_pet_data).astype(int)
     maisi_ct_unique = np.unique(maisi_ct_data).astype(int)
-    print(f"Unique MAISI labels in PET body contour version: {maisi_pet_unique}")
     print(f"Unique MAISI labels in CT body contour version: {maisi_ct_unique}")
     
     # Save mapping information to a text file
-    mapping_path = os.path.join(output_dir, "ts_to_maisi_mapping.txt")
+    mapping_path = os.path.join(output_dir, f"{base_filename}_mapping.txt")
     with open(mapping_path, 'w') as f:
         f.write("TS to MAISI Label Mapping\n")
         f.write("========================\n\n")
         f.write(f"TS file: {ts_path}\n")
-        f.write(f"PET body contour: {body_contour_pet_path}\n")
         f.write(f"CT body contour: {body_contour_ct_path}\n\n")
         f.write("Mapping used:\n")
         f.write("TS Label -> MAISI Label\n")
         for ts_label in sorted(T2M_mapping.keys()):
             f.write(f"{ts_label} -> {T2M_mapping[ts_label]}\n")
         f.write("\nBody contour (where no other label exists) -> 200\n")
-        f.write(f"\nOutput files:\n{maisi_pet_path}\n{maisi_ct_path}\n")
+        f.write(f"\nOutput file:\n{maisi_ct_path}\n")
     
     print(f"Mapping information saved to {mapping_path}")
-    return maisi_pet_path, maisi_ct_path
+    return maisi_ct_path
+
+def process_all_cases(output_dir=DEFAULT_OUTPUT_DIR):
+    """Process all cases in the case_name_list"""
+    print(f"Processing {len(case_name_list)} cases...")
+    
+    results = []
+    for case_name in case_name_list:
+        print(f"\n{'='*50}")
+        print(f"Processing case: {case_name}")
+        print(f"{'='*50}")
+        
+        # Format the file paths with the current case name
+        nac_ts_path = NAC_TS_label_template.format(case_name)
+        ct_body_contour_path = NAC_TS_body_contour_CT_template.format(case_name)
+        
+        try:
+            # Convert TS to MAISI for this case
+            maisi_ct_path = convert_ts_to_maisi(
+                nac_ts_path,
+                ct_body_contour_path,
+                output_dir
+            )
+            results.append((case_name, "Success", maisi_ct_path))
+        except Exception as e:
+            print(f"Error processing case {case_name}: {str(e)}")
+            results.append((case_name, "Failed", str(e)))
+    
+    # Print summary
+    print("\n\nProcessing Summary:")
+    print("="*50)
+    success_count = sum(1 for r in results if r[1] == "Success")
+    print(f"Successfully processed {success_count} out of {len(case_name_list)} cases")
+    
+    for case_name, status, message in results:
+        print(f"{case_name}: {status}")
+        if status == "Failed":
+            print(f"  - Error: {message}")
+    
+    # Save summary to file
+    summary_path = os.path.join(output_dir, "processing_summary.txt")
+    with open(summary_path, 'w') as f:
+        f.write("TS to MAISI Processing Summary\n")
+        f.write("=============================\n\n")
+        f.write(f"Successfully processed {success_count} out of {len(case_name_list)} cases\n\n")
+        
+        for case_name, status, message in results:
+            f.write(f"{case_name}: {status}\n")
+            if status == "Failed":
+                f.write(f"  - Error: {message}\n")
+    
+    print(f"Summary saved to {summary_path}")
 
 def main():
     parser = argparse.ArgumentParser(description='Process NAC and CT tissue segmentations')
     parser.add_argument('--convert_ts_to_maisi', action='store_true', help='Convert TS labels to MAISI labels')
-    parser.add_argument('--nac_path', type=str, default=NAC_TS_label_path, help='Path to NAC tissue segmentation file')
-    parser.add_argument('--ct_path', type=str, default=CT_TS_label_path, help='Path to CT tissue segmentation file')
-    parser.add_argument('--pet_contour_path', type=str, default=NAC_TS_body_contour_PET_path, help='Path to PET body contour file')
-    parser.add_argument('--ct_contour_path', type=str, default=NAC_TS_body_contour_CT_path, help='Path to CT body contour file')
+    parser.add_argument('--process_all', action='store_true', help='Process all cases in the case_name_list')
+    parser.add_argument('--case_name', type=str, help='Process a specific case by name')
+    parser.add_argument('--nac_path', type=str, help='Path to NAC tissue segmentation file')
+    parser.add_argument('--ct_contour_path', type=str, help='Path to CT body contour file')
     parser.add_argument('--output_dir', type=str, default=DEFAULT_OUTPUT_DIR, help='Directory to save output files')
     
     args = parser.parse_args()
@@ -268,19 +308,35 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
     print(f"Output directory set to: {args.output_dir}")
     
-    if args.convert_ts_to_maisi:
-        maisi_pet_path, maisi_ct_path = convert_ts_to_maisi(
+    if args.process_all:
+        process_all_cases(args.output_dir)
+    elif args.case_name:
+        # Format the file paths with the specified case name
+        nac_ts_path = NAC_TS_label_template.format(args.case_name)
+        ct_body_contour_path = NAC_TS_body_contour_CT_template.format(args.case_name)
+        
+        maisi_ct_path = convert_ts_to_maisi(
+            nac_ts_path,
+            ct_body_contour_path,
+            args.output_dir
+        )
+        print(f"TS to MAISI conversion completed for case {args.case_name}. File saved to {maisi_ct_path}")
+    elif args.convert_ts_to_maisi and args.nac_path and args.ct_contour_path:
+        maisi_ct_path = convert_ts_to_maisi(
             args.nac_path, 
-            args.pet_contour_path, 
             args.ct_contour_path,
             args.output_dir
         )
-        print(f"TS to MAISI conversion completed. Files saved to {args.output_dir}")
-    
-    if not args.convert_ts_to_maisi:
-        print("No action specified. Use --convert_ts_to_maisi to activate function.")
-        print("Example usage:")
-        print(f"  python {os.path.basename(__file__)} --convert_ts_to_maisi")
+        print(f"TS to MAISI conversion completed. File saved to {maisi_ct_path}")
+    else:
+        print("No action specified. Use one of the following options:")
+        print("  --process_all to process all cases in the case_name_list")
+        print("  --case_name to process a specific case")
+        print("  --convert_ts_to_maisi with --nac_path and --ct_contour_path to process a custom file")
+        print("\nExample usage:")
+        print(f"  python {os.path.basename(__file__)} --process_all")
+        print(f"  python {os.path.basename(__file__)} --case_name E4055")
+        print(f"  python {os.path.basename(__file__)} --convert_ts_to_maisi --nac_path path/to/nac.nii.gz --ct_contour_path path/to/contour.nii.gz")
 
 if __name__ == "__main__":
     main()
