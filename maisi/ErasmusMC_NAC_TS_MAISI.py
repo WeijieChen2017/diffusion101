@@ -270,8 +270,8 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
     body_contour_ct_data = body_contour_ct_img.get_fdata()
     
     # Create MAISI label maps (initialize with zeros)
-    maisi_pet_data = np.zeros_like(ts_data)
-    maisi_ct_data = np.zeros_like(ts_data)
+    maisi_pet_data = np.zeros_like(ts_data, dtype=np.int32)
+    maisi_ct_data = np.zeros_like(ts_data, dtype=np.int32)
     
     # Map TS labels to MAISI labels
     print("Converting TS labels to MAISI labels...")
@@ -280,12 +280,12 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
     
     # First, filter all labels outside the body contour
     print("Filtering labels outside body contour...")
-    filtered_ts_pet_data = np.zeros_like(ts_data)
-    filtered_ts_ct_data = np.zeros_like(ts_data)
+    filtered_ts_pet_data = np.zeros_like(ts_data, dtype=np.int32)
+    filtered_ts_ct_data = np.zeros_like(ts_data, dtype=np.int32)
     
-    # Only keep labels inside the body contour
-    filtered_ts_pet_data = np.where(body_contour_pet_data > 0, ts_data, 0)
-    filtered_ts_ct_data = np.where(body_contour_ct_data > 0, ts_data, 0)
+    # Only keep labels inside the body contour - ensure integer type
+    filtered_ts_pet_data = np.where(body_contour_pet_data > 0, ts_data, 0).astype(np.int32)
+    filtered_ts_ct_data = np.where(body_contour_ct_data > 0, ts_data, 0).astype(np.int32)
     
     # Map TS labels to MAISI labels for the filtered data
     for ts_label in unique_labels:
@@ -308,10 +308,10 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
     # Add body contour (class 200) to areas that are in the body contour but don't have a tissue label
     print("Adding body contour (class 200)...")
     # For PET: where body contour exists but no label has been assigned
-    maisi_pet_data = np.where((body_contour_pet_data > 0) & (maisi_pet_data == 0), 200, maisi_pet_data)
+    maisi_pet_data = np.where((body_contour_pet_data > 0) & (maisi_pet_data == 0), 200, maisi_pet_data).astype(np.int32)
     
     # For CT: where body contour exists but no label has been assigned
-    maisi_ct_data = np.where((body_contour_ct_data > 0) & (maisi_ct_data == 0), 200, maisi_ct_data)
+    maisi_ct_data = np.where((body_contour_ct_data > 0) & (maisi_ct_data == 0), 200, maisi_ct_data).astype(np.int32)
     
     # Get base filename without extension
     base_filename = os.path.splitext(os.path.basename(ts_path))[0]
@@ -323,11 +323,11 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
     maisi_ct_path = os.path.join(output_dir, f"{base_filename}_MAISI_bcC.nii.gz")
     
     print(f"Saving MAISI segmentation with PET body contour to: {maisi_pet_path}")
-    maisi_pet_img = nib.Nifti1Image(maisi_pet_data, ts_img.affine, ts_img.header)
+    maisi_pet_img = nib.Nifti1Image(maisi_pet_data.astype(np.int32), ts_img.affine, ts_img.header)
     nib.save(maisi_pet_img, maisi_pet_path)
     
     print(f"Saving MAISI segmentation with CT body contour to: {maisi_ct_path}")
-    maisi_ct_img = nib.Nifti1Image(maisi_ct_data, ts_img.affine, ts_img.header)
+    maisi_ct_img = nib.Nifti1Image(maisi_ct_data.astype(np.int32), ts_img.affine, ts_img.header)
     nib.save(maisi_ct_img, maisi_ct_path)
     
     # Count and report unique MAISI labels
