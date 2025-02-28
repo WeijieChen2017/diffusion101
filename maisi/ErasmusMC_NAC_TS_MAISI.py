@@ -278,22 +278,40 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
     unique_labels = np.unique(ts_data).astype(int)
     print(f"Unique TS labels found: {unique_labels}")
     
+    # First, filter all labels outside the body contour
+    print("Filtering labels outside body contour...")
+    filtered_ts_pet_data = np.zeros_like(ts_data)
+    filtered_ts_ct_data = np.zeros_like(ts_data)
+    
+    # Only keep labels inside the body contour
+    filtered_ts_pet_data = np.where(body_contour_pet_data > 0, ts_data, 0)
+    filtered_ts_ct_data = np.where(body_contour_ct_data > 0, ts_data, 0)
+    
+    # Map TS labels to MAISI labels for the filtered data
     for ts_label in unique_labels:
         if ts_label == 0:  # Skip background
             continue
             
         if ts_label in T2M_mapping:
             maisi_label = T2M_mapping[ts_label]
-            mask = (ts_data == ts_label)
-            maisi_pet_data[mask] = maisi_label
-            maisi_ct_data[mask] = maisi_label
+            
+            # Apply mapping for PET body contour version
+            mask_pet = (filtered_ts_pet_data == ts_label)
+            maisi_pet_data[mask_pet] = maisi_label
+            
+            # Apply mapping for CT body contour version
+            mask_ct = (filtered_ts_ct_data == ts_label)
+            maisi_ct_data[mask_ct] = maisi_label
         else:
             print(f"Warning: TS label {ts_label} not found in mapping dictionary")
     
-    # Add body contour (class 200)
+    # Add body contour (class 200) to areas that are in the body contour but don't have a tissue label
     print("Adding body contour (class 200)...")
-    maisi_pet_data[body_contour_pet_data > 0] = 200
-    maisi_ct_data[body_contour_ct_data > 0] = 200
+    # For PET: where body contour exists but no label has been assigned
+    maisi_pet_data = np.where((body_contour_pet_data > 0) & (maisi_pet_data == 0), 200, maisi_pet_data)
+    
+    # For CT: where body contour exists but no label has been assigned
+    maisi_ct_data = np.where((body_contour_ct_data > 0) & (maisi_ct_data == 0), 200, maisi_ct_data)
     
     # Get base filename without extension
     base_filename = os.path.splitext(os.path.basename(ts_path))[0]
@@ -330,7 +348,7 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
         f.write("TS Label -> MAISI Label\n")
         for ts_label in sorted(T2M_mapping.keys()):
             f.write(f"{ts_label} -> {T2M_mapping[ts_label]}\n")
-        f.write("\nBody contour -> 200\n")
+        f.write("\nBody contour (where no other label exists) -> 200\n")
         f.write(f"\nOutput files:\n{maisi_pet_path}\n{maisi_ct_path}\n")
     
     print(f"Mapping information saved to {mapping_path}")
