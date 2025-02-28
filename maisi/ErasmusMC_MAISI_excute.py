@@ -34,8 +34,8 @@ def main():
     parser.add_argument('--output_dir', type=str, default='ErasmusMC', help='Directory to save synthetic CT images')
     parser.add_argument('--device', type=str, default='cuda:0', help='Device to use for inference')
     parser.add_argument('--case_id', type=str, default=None, help='Specific case ID to process (optional)')
-    parser.add_argument('--contour_type', type=str, default='both', choices=['pet', 'ct', 'both'], 
-                        help='Body contour type to use: pet (bcP), ct (bcC), or both')
+    parser.add_argument('--contour_type', type=str, default='ct', choices=['ct'], 
+                        help='Body contour type to use: ct (bcC)')
     parser.add_argument('--process_all_cases', action='store_true', help='Process all cases in the case_name_list')
     args = parser.parse_args()
     
@@ -161,16 +161,9 @@ def main():
     # Create log file
     log_file = open(os.path.join(args.output_dir, "inference_log.txt"), "w")
     
-    # Determine which body contour versions to use
-    contour_suffixes = []
-    if args.contour_type.lower() == 'pet':
-        contour_suffixes = ['bcP']
-    elif args.contour_type.lower() == 'ct':
-        contour_suffixes = ['bcC']
-    else:  # 'both'
-        contour_suffixes = ['bcP', 'bcC']
-    
-    print(f"Processing body contour types: {contour_suffixes}")
+    # Determine which body contour versions to use - now only bcC is supported
+    contour_suffixes = ['bcC']
+    print(f"Processing body contour type: {contour_suffixes[0]}")
     
     # Determine which cases to process
     cases_to_process = []
@@ -187,8 +180,8 @@ def main():
     
     # Process each contour type
     for contour_suffix in contour_suffixes:
-        print(f"\nProcessing {contour_suffix} ({'PET' if contour_suffix == 'bcP' else 'CT'} body contour) files")
-        log_file.write(f"\nProcessing {contour_suffix} ({'PET' if contour_suffix == 'bcP' else 'CT'} body contour) files\n")
+        print(f"\nProcessing {contour_suffix} (CT body contour) files")
+        log_file.write(f"\nProcessing {contour_suffix} (CT body contour) files\n")
         
         # Process MAISI label files
         if cases_to_process:
