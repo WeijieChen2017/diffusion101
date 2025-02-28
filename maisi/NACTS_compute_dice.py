@@ -6,9 +6,21 @@ import pandas as pd
 from scipy.ndimage import distance_transform_edt
 from ErasmusMC_NAC_TS_MAISI import T2M_mapping
 
-# Default paths from ErasmusMC_NAC_TS_MAISI.py
-NAC_TS_label_path = "combined_predictions/E4058_combined.nii.gz"
-CT_TS_label_path = "NAC_CTAC_Spacing15/CTAC_E4058_TS.nii.gz"
+case_name_list = [
+    # 'E4058',
+    'E4055',          'E4061', 'E4066', 'E4068',
+    'E4069', 'E4073', 'E4074', 'E4077', 'E4078',
+    'E4079', 'E4081', 'E4084', 'E4091', 'E4092',
+    'E4094', 'E4096', 'E4098', 'E4099', 'E4103',
+    'E4105', 'E4106', 'E4114', 'E4115', 'E4118',
+    'E4120', 'E4124', 'E4125', 'E4128', 'E4129',
+    'E4130', 'E4131', 'E4134', 'E4137', 'E4138',
+    'E4139', 
+]
+
+# Default paths and directories
+DEFAULT_NAC_TS_DIR = "combined_predictions"
+DEFAULT_CT_TS_DIR = "NAC_CTAC_Spacing15"
 DEFAULT_OUTPUT_DIR = "ErasmusMC"
 
 def compute_dice_coefficient(y_true, y_pred):
@@ -327,18 +339,172 @@ def compute_segmentation_metrics(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DI
     print(f"Summary saved to {summary_path}")
     return excel_path
 
+def process_all_cases(case_list, nac_ts_dir=DEFAULT_NAC_TS_DIR, ct_ts_dir=DEFAULT_CT_TS_DIR, 
+                      output_dir=DEFAULT_OUTPUT_DIR, ts_label_path="TS_label.xlsx"):
+    """
+    Process all cases in the given list, computing segmentation metrics for each
+    
+    Args:
+        case_list: List of case names to process
+        nac_ts_dir: Directory containing NAC tissue segmentation files
+        ct_ts_dir: Directory containing CT tissue segmentation files
+        output_dir: Directory to save results
+        ts_label_path: Path to Excel file containing TS label names
+        
+    Returns:
+        list: Paths to all saved Excel files
+    """
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # List to store paths to all saved Excel files
+    excel_paths = []
+    
+    # Process each case
+    for case_name in case_list:
+        print(f"\n{'='*80}")
+        print(f"Processing case: {case_name}")
+        print(f"{'='*80}")
+        
+        # Construct paths for this case
+        nac_path = os.path.join(nac_ts_dir, f"{case_name}_combined.nii.gz")
+        ct_path = os.path.join(ct_ts_dir, f"CTAC_{case_name}_TS.nii.gz")
+        
+        # Check if files exist
+        if not os.path.exists(nac_path):
+            print(f"Warning: NAC segmentation file not found: {nac_path}")
+            print(f"Skipping case {case_name}")
+            continue
+            
+        if not os.path.exists(ct_path):
+            print(f"Warning: CT segmentation file not found: {ct_path}")
+            print(f"Skipping case {case_name}")
+            continue
+        
+        # Create case-specific output directory
+        case_output_dir = os.path.join(output_dir, case_name)
+        os.makedirs(case_output_dir, exist_ok=True)
+        
+        try:
+            # Compute segmentation metrics for this case
+            excel_path = compute_segmentation_metrics(nac_path, ct_path, case_output_dir, ts_label_path)
+            excel_paths.append(excel_path)
+            print(f"Successfully processed case {case_name}")
+        except Exception as e:
+            print(f"Error processing case {case_name}: {e}")
+    
+    # Create a summary Excel file with results from all cases
+    if excel_paths:
+        try:
+            create_summary_report(excel_paths, output_dir)
+        except Exception as e:
+            print(f"Error creating summary report: {e}")
+    
+    return excel_paths
+
+def create_summary_report(excel_paths, output_dir):
+    """
+    Create a summary report combining results from all cases
+    
+    Args:
+        excel_paths: List of paths to individual Excel files
+        output_dir: Directory to save the summary report
+    """
+    print("\nCreating summary report...")
+    
+    # List to store DataFrames from all Excel files
+    all_dfs = []
+    
+    # Process each Excel file
+    for excel_path in excel_paths:
+        try:
+            # Extract case name from the path
+            path_parts = excel_path.split(os.sep)
+            case_name = path_parts[-2] if len(path_parts) >= 2 else "Unknown"
+            
+            # Read the Excel file
+            df = pd.read_excel(excel_path)
+            
+            # Add case name column
+            df['Case'] = case_name
+            
+            # Add to list
+            all_dfs.append(df)
+        except Exception as e:
+            print(f"Error processing {excel_path}: {e}")
+    
+    if not all_dfs:
+        print("No data to create summary report")
+        return
+    
+    # Combine all DataFrames
+    combined_df = pd.concat(all_dfs, ignore_index=True)
+    
+    # Save combined DataFrame to Excel
+    summary_path = os.path.join(output_dir, "all_cases_segmentation_metrics.xlsx")
+    combined_df.to_excel(summary_path, index=False)
+    print(f"Summary report saved to {summary_path}")
+    
+    # Create pivot tables for key metrics
+    try:
+        # Filter for overall metrics
+        overall_df = combined_df[combined_df['TS_Label'] == 'Overall']
+        
+        # Create pivot table with cases as rows and metrics as columns
+        pivot_df = pd.pivot_table(
+            overall_df, 
+            values=['Dice', 'Jaccard', 'Precision', 'Recall', 'F1_Score'],
+            index=['Case'],
+            aggfunc='mean'
+        )
+        
+        # Add summary statistics
+        pivot_df.loc['Mean'] = pivot_df.mean()
+        pivot_df.loc['Median'] = pivot_df.median()
+        pivot_df.loc['Std Dev'] = pivot_df.std()
+        
+        # Save pivot table to Excel
+        pivot_path = os.path.join(output_dir, "overall_metrics_summary.xlsx")
+        pivot_df.to_excel(pivot_path)
+        print(f"Overall metrics summary saved to {pivot_path}")
+        
+    except Exception as e:
+        print(f"Error creating pivot tables: {e}")
+
 def main():
     parser = argparse.ArgumentParser(description='Compute segmentation metrics between NAC and CT tissue segmentations')
-    parser.add_argument('--nac_path', type=str, default=NAC_TS_label_path, help='Path to NAC tissue segmentation file')
-    parser.add_argument('--ct_path', type=str, default=CT_TS_label_path, help='Path to CT tissue segmentation file')
+    parser.add_argument('--nac_path', type=str, help='Path to NAC tissue segmentation file (for single case)')
+    parser.add_argument('--ct_path', type=str, help='Path to CT tissue segmentation file (for single case)')
+    parser.add_argument('--nac_dir', type=str, default=DEFAULT_NAC_TS_DIR, help='Directory containing NAC tissue segmentation files')
+    parser.add_argument('--ct_dir', type=str, default=DEFAULT_CT_TS_DIR, help='Directory containing CT tissue segmentation files')
     parser.add_argument('--output_dir', type=str, default=DEFAULT_OUTPUT_DIR, help='Directory to save output files')
     parser.add_argument('--ts_label_path', type=str, default="TS_label.xlsx", help='Path to Excel file with TS label names')
+    parser.add_argument('--case', type=str, help='Process a specific case name')
+    parser.add_argument('--all_cases', action='store_true', help='Process all cases in the case_name_list')
     
     args = parser.parse_args()
     
-    # Compute segmentation metrics and save to Excel
-    excel_path = compute_segmentation_metrics(args.nac_path, args.ct_path, args.output_dir, args.ts_label_path)
-    print(f"Segmentation metrics computation completed. Results saved to {excel_path}")
+    # Check if processing a single case with explicit paths
+    if args.nac_path and args.ct_path:
+        print("Processing single case with provided paths...")
+        excel_path = compute_segmentation_metrics(args.nac_path, args.ct_path, args.output_dir, args.ts_label_path)
+        print(f"Segmentation metrics computation completed. Results saved to {excel_path}")
+    
+    # Check if processing a specific case from the list
+    elif args.case:
+        print(f"Processing case: {args.case}")
+        case_list = [args.case]
+        process_all_cases(case_list, args.nac_dir, args.ct_dir, args.output_dir, args.ts_label_path)
+    
+    # Check if processing all cases
+    elif args.all_cases:
+        print(f"Processing all {len(case_name_list)} cases...")
+        process_all_cases(case_name_list, args.nac_dir, args.ct_dir, args.output_dir, args.ts_label_path)
+    
+    # Default behavior: process all cases
+    else:
+        print(f"No specific options provided. Processing all {len(case_name_list)} cases...")
+        process_all_cases(case_name_list, args.nac_dir, args.ct_dir, args.output_dir, args.ts_label_path)
 
 if __name__ == "__main__":
     main()

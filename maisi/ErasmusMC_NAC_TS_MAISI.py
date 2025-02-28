@@ -134,107 +134,6 @@ T2M_mapping = {
     117: 114
 }
 
-def compute_dice_coefficient(y_true, y_pred):
-    """
-    Compute Dice coefficient: 2*|X∩Y|/(|X|+|Y|)
-    """
-    intersection = np.sum(y_true * y_pred)
-    return (2. * intersection) / (np.sum(y_true) + np.sum(y_pred))
-
-def compute_class_dice(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DIR):
-    """
-    Compute Dice coefficients for each class between NAC and CT tissue segmentations
-    
-    Args:
-        nac_path: Path to the NAC tissue segmentation file
-        ct_path: Path to the CT tissue segmentation file
-        output_dir: Directory to save results
-        
-    Returns:
-        dict: Dictionary containing Dice scores for each class and overall
-    """
-    # Check if files exist
-    if not os.path.exists(nac_path):
-        raise FileNotFoundError(f"NAC segmentation file not found: {nac_path}")
-    if not os.path.exists(ct_path):
-        raise FileNotFoundError(f"CT segmentation file not found: {ct_path}")
-    
-    # Create output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Load the segmentation files
-    print("Loading segmentation files...")
-    nac_ts_img = nib.load(nac_path)
-    ct_ts_img = nib.load(ct_path)
-
-    nac_ts_data = nac_ts_img.get_fdata()
-    ct_ts_data = ct_ts_img.get_fdata()
-
-    # Find unique class labels in both segmentations
-    nac_unique_labels = np.unique(nac_ts_data).astype(int)
-    ct_unique_labels = np.unique(ct_ts_data).astype(int)
-
-    print(f"Unique labels in NAC TS: {nac_unique_labels}")
-    print(f"Unique labels in CT TS: {ct_unique_labels}")
-
-    # Find common labels to compute Dice for
-    common_labels = np.intersect1d(nac_unique_labels, ct_unique_labels)
-    all_labels = np.union1d(nac_unique_labels, ct_unique_labels)
-
-    print(f"Common labels: {common_labels}")
-    print(f"All labels: {all_labels}")
-
-    # Store results
-    results = {}
-    
-    # Compute Dice coefficient for each class
-    print("\nDice coefficients for each class:")
-    for label in all_labels:
-        if label == 0:  # Skip background
-            continue
-            
-        # Create binary masks for this class
-        nac_mask = (nac_ts_data == label).astype(int)
-        ct_mask = (ct_ts_data == label).astype(int)
-        
-        # Compute Dice
-        if label in common_labels:
-            dice_score = compute_dice_coefficient(nac_mask, ct_mask)
-            print(f"Class {label}: {dice_score:.4f}")
-            results[f"class_{label}"] = dice_score
-        else:
-            if label in nac_unique_labels:
-                print(f"Class {label}: Only in NAC segmentation")
-                results[f"class_{label}"] = "NAC only"
-            else:
-                print(f"Class {label}: Only in CT segmentation")
-                results[f"class_{label}"] = "CT only"
-
-    # Compute overall Dice (considering all non-zero labels as foreground)
-    nac_foreground = (nac_ts_data > 0).astype(int)
-    ct_foreground = (ct_ts_data > 0).astype(int)
-    overall_dice = compute_dice_coefficient(nac_foreground, ct_foreground)
-    print(f"\nOverall Dice (all foreground vs background): {overall_dice:.4f}")
-    results["overall"] = overall_dice
-    
-    # Save results to a text file
-    results_path = os.path.join(output_dir, "dice_results.txt")
-    with open(results_path, 'w') as f:
-        f.write("Dice Coefficient Results\n")
-        f.write("=======================\n\n")
-        f.write(f"NAC file: {nac_path}\n")
-        f.write(f"CT file: {ct_path}\n\n")
-        f.write("Class-wise Dice coefficients:\n")
-        for label in all_labels:
-            if label == 0:
-                continue
-            if f"class_{label}" in results:
-                f.write(f"Class {label}: {results[f'class_{label}']}\n")
-        f.write(f"\nOverall Dice: {overall_dice:.4f}\n")
-    
-    print(f"Dice results saved to {results_path}")
-    return results
-
 def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, output_dir=DEFAULT_OUTPUT_DIR):
     """
     Convert tissue segmentation (TS) labels to MAISI labels and add body contour
@@ -356,7 +255,6 @@ def convert_ts_to_maisi(ts_path, body_contour_pet_path, body_contour_ct_path, ou
 
 def main():
     parser = argparse.ArgumentParser(description='Process NAC and CT tissue segmentations')
-    parser.add_argument('--compute_dice', action='store_true', help='Compute Dice coefficients')
     parser.add_argument('--convert_ts_to_maisi', action='store_true', help='Convert TS labels to MAISI labels')
     parser.add_argument('--nac_path', type=str, default=NAC_TS_label_path, help='Path to NAC tissue segmentation file')
     parser.add_argument('--ct_path', type=str, default=CT_TS_label_path, help='Path to CT tissue segmentation file')
@@ -370,10 +268,6 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
     print(f"Output directory set to: {args.output_dir}")
     
-    if args.compute_dice:
-        dice_results = compute_class_dice(args.nac_path, args.ct_path, args.output_dir)
-        print("Dice computation completed.")
-    
     if args.convert_ts_to_maisi:
         maisi_pet_path, maisi_ct_path = convert_ts_to_maisi(
             args.nac_path, 
@@ -383,10 +277,10 @@ def main():
         )
         print(f"TS to MAISI conversion completed. Files saved to {args.output_dir}")
     
-    if not (args.compute_dice or args.convert_ts_to_maisi):
-        print("No action specified. Use --compute_dice or --convert_ts_to_maisi to activate functions.")
+    if not args.convert_ts_to_maisi:
+        print("No action specified. Use --convert_ts_to_maisi to activate function.")
         print("Example usage:")
-        print(f"  python {os.path.basename(__file__)} --compute_dice --convert_ts_to_maisi")
+        print(f"  python {os.path.basename(__file__)} --convert_ts_to_maisi")
 
 if __name__ == "__main__":
     main()
