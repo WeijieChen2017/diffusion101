@@ -114,7 +114,7 @@ def get_boundary(binary_mask):
     
     return boundary
 
-def compute_segmentation_metrics(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DIR):
+def compute_segmentation_metrics(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DIR, ts_label_path="TS_label.xlsx"):
     """
     Compute various segmentation metrics between NAC and CT tissue segmentations
     and save results to an Excel file
@@ -123,6 +123,7 @@ def compute_segmentation_metrics(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DI
         nac_path: Path to the NAC tissue segmentation file
         ct_path: Path to the CT tissue segmentation file
         output_dir: Directory to save results
+        ts_label_path: Path to Excel file containing TS label names
         
     Returns:
         str: Path to the saved Excel file
@@ -135,6 +136,33 @@ def compute_segmentation_metrics(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DI
     
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
+    
+    # Load TS label names if available
+    ts_label_names = {}
+    try:
+        if os.path.exists(ts_label_path):
+            print(f"Loading TS label names from {ts_label_path}...")
+            label_df = pd.read_excel(ts_label_path)
+            
+            # Check for the expected columns - support both formats
+            if 'TS_Index' in label_df.columns and 'TS_label' in label_df.columns:
+                # Format: TS_Index, TS_label
+                for _, row in label_df.iterrows():
+                    ts_label_names[int(row['TS_Index'])] = row['TS_label']
+                print(f"Loaded {len(ts_label_names)} label names from TS_Index/TS_label columns")
+            elif 'Label' in label_df.columns and 'Name' in label_df.columns:
+                # Alternative format: Label, Name
+                for _, row in label_df.iterrows():
+                    ts_label_names[int(row['Label'])] = row['Name']
+                print(f"Loaded {len(ts_label_names)} label names from Label/Name columns")
+            else:
+                print(f"Warning: Expected columns not found in {ts_label_path}")
+                print(f"Available columns: {label_df.columns.tolist()}")
+        else:
+            print(f"Warning: TS label file {ts_label_path} not found. Will use numeric labels only.")
+    except Exception as e:
+        print(f"Error loading TS label names: {e}")
+        print("Will use numeric labels only.")
     
     # Load the segmentation files
     print("Loading segmentation files...")
@@ -180,6 +208,9 @@ def compute_segmentation_metrics(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DI
         # Get MAISI label if available
         maisi_label = T2M_mapping.get(label, "N/A") if label in T2M_mapping else "N/A"
         
+        # Get class name if available
+        class_name = ts_label_names.get(label, "Unknown")
+        
         # Compute metrics if label exists in both segmentations
         if label in common_labels:
             dice = compute_dice_coefficient(nac_mask, ct_mask)
@@ -205,6 +236,7 @@ def compute_segmentation_metrics(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DI
         # Add results to data list
         results_data.append({
             'TS_Label': int(label),
+            'Class_Name': class_name,
             'MAISI_Label': maisi_label,
             'Status': status,
             'Dice': dice,
@@ -235,6 +267,7 @@ def compute_segmentation_metrics(nac_path, ct_path, output_dir=DEFAULT_OUTPUT_DI
     # Add overall results to data list
     results_data.append({
         'TS_Label': 'Overall',
+        'Class_Name': 'All Tissues',
         'MAISI_Label': 'N/A',
         'Status': 'Foreground',
         'Dice': overall_dice,
@@ -284,11 +317,12 @@ def main():
     parser.add_argument('--nac_path', type=str, default=NAC_TS_label_path, help='Path to NAC tissue segmentation file')
     parser.add_argument('--ct_path', type=str, default=CT_TS_label_path, help='Path to CT tissue segmentation file')
     parser.add_argument('--output_dir', type=str, default=DEFAULT_OUTPUT_DIR, help='Directory to save output files')
+    parser.add_argument('--ts_label_path', type=str, default="TS_label.xlsx", help='Path to Excel file with TS label names')
     
     args = parser.parse_args()
     
     # Compute segmentation metrics and save to Excel
-    excel_path = compute_segmentation_metrics(args.nac_path, args.ct_path, args.output_dir)
+    excel_path = compute_segmentation_metrics(args.nac_path, args.ct_path, args.output_dir, args.ts_label_path)
     print(f"Segmentation metrics computation completed. Results saved to {excel_path}")
 
 if __name__ == "__main__":
