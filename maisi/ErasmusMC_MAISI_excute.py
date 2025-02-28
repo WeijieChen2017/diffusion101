@@ -16,14 +16,27 @@ from monai.transforms import SaveImage
 
 from monai.inferers import sliding_window_inference
 
+case_name_list = [
+    # 'E4058',
+    'E4055',          'E4061', 'E4066', 'E4068',
+    'E4069', 'E4073', 'E4074', 'E4077', 'E4078',
+    'E4079', 'E4081', 'E4084', 'E4091', 'E4092',
+    'E4094', 'E4096', 'E4098', 'E4099', 'E4103',
+    'E4105', 'E4106', 'E4114', 'E4115', 'E4118',
+    'E4120', 'E4124', 'E4125', 'E4128', 'E4129',
+    'E4130', 'E4131', 'E4134', 'E4137', 'E4138',
+    'E4139', 
+]
+
 def main():
     parser = argparse.ArgumentParser(description='Generate synthetic CT from MAISI labels')
     parser.add_argument('--maisi_dir', type=str, default='ErasmusMC', help='Directory containing MAISI label files')
     parser.add_argument('--output_dir', type=str, default='ErasmusMC', help='Directory to save synthetic CT images')
     parser.add_argument('--device', type=str, default='cuda:0', help='Device to use for inference')
-    parser.add_argument('--case_id', type=str, help='Specific case ID to process (optional)')
+    parser.add_argument('--case_id', type=str, default=None, help='Specific case ID to process (optional)')
     parser.add_argument('--contour_type', type=str, default='both', choices=['pet', 'ct', 'both'], 
                         help='Body contour type to use: pet (bcP), ct (bcC), or both')
+    parser.add_argument('--process_all_cases', action='store_true', help='Process all cases in the case_name_list')
     args = parser.parse_args()
     
     # Create output directory if it doesn't exist
@@ -159,72 +172,143 @@ def main():
     
     print(f"Processing body contour types: {contour_suffixes}")
     
+    # Determine which cases to process
+    cases_to_process = []
+    if args.process_all_cases:
+        cases_to_process = case_name_list
+        print(f"Processing all {len(cases_to_process)} cases from the predefined list")
+    elif args.case_id:
+        cases_to_process = [args.case_id]
+        print(f"Processing single case: {args.case_id}")
+    else:
+        # Default behavior - process all files in the directory
+        cases_to_process = None
+        print("Processing all files in the directory")
+    
     # Process each contour type
     for contour_suffix in contour_suffixes:
         print(f"\nProcessing {contour_suffix} ({'PET' if contour_suffix == 'bcP' else 'CT'} body contour) files")
         log_file.write(f"\nProcessing {contour_suffix} ({'PET' if contour_suffix == 'bcP' else 'CT'} body contour) files\n")
         
         # Process MAISI label files
-        maisi_files = []
-        if args.case_id:
-            # Process only the specified case
-            for filename in os.listdir(args.maisi_dir):
-                if args.case_id in filename and f"_MAISI_{contour_suffix}.nii.gz" in filename:
-                    maisi_files.append(filename)
+        if cases_to_process:
+            # Process specific cases
+            for case_id in cases_to_process:
+                maisi_file = f"{case_id}_MAISI_{contour_suffix}.nii.gz"
+                maisi_path = os.path.join(args.maisi_dir, maisi_file)
+                
+                if not os.path.exists(maisi_path):
+                    print(f"Warning: File not found for case {case_id}: {maisi_path}")
+                    log_file.write(f"Warning: File not found for case {case_id}: {maisi_path}\n")
+                    continue
+                
+                print(f"Processing case: {case_id}")
+                log_file.write(f"Processing case: {case_id}\n")
+                
+                # Load MAISI segmentation
+                try:
+                    segmentation_map = monai.transforms.LoadImage(image_only=True, ensure_channel_first=True)(maisi_path)
+                except Exception as e:
+                    print(f"Error loading file {maisi_path}: {e}")
+                    log_file.write(f"Error loading file {maisi_path}: {e}\n")
+                    continue
+                
+                # Generate synthetic CT using sliding window inference
+                print(f"Running inference for {case_id}...")
+                try:
+                    synthetic_image = sliding_window_inference(
+                        inputs=segmentation_map.unsqueeze(0).to(device),
+                        roi_size=(256, 256, 256),
+                        sw_batch_size=1,
+                        predictor=inference_function,
+                        overlap=1/4,
+                        mode="gaussian",
+                        sigma_scale=0.125,
+                        device=device,
+                        sw_device=device
+                    )
+                except RuntimeError as e:
+                    print(f"Error during inference: {e}")
+                    log_file.write(f"Error during inference for {case_id}: {e}\n")
+                    continue  # Continue with next file instead of raising
+                
+                # Save synthetic CT
+                synCT_path = os.path.join(args.output_dir, f"SynCT_{case_id}_{contour_suffix}.nii.gz")
+                
+                # Get original image metadata
+                maisi_img = nib.load(maisi_path)
+                
+                # Apply body contour mask (class 200) to set background to -1024 HU
+                synthetic_image = synthetic_image.squeeze().detach().cpu().numpy()
+                maisi_data = maisi_img.get_fdata()
+                background = (maisi_data != 200) & (maisi_data == 0)  # Background is where there's no body contour and no tissue
+                synthetic_image[background] = -1024
+                
+                # Save as NIfTI
+                synthetic_image = nib.Nifti1Image(synthetic_image, maisi_img.affine, maisi_img.header)
+                nib.save(synthetic_image, synCT_path)
+                print(f"Synthetic CT image saved to {synCT_path}")
+                log_file.write(f"Synthetic CT image saved to {synCT_path}\n")
         else:
             # Process all MAISI files with the specified contour type
+            maisi_files = []
             for filename in os.listdir(args.maisi_dir):
                 if f"_MAISI_{contour_suffix}.nii.gz" in filename:
                     maisi_files.append(filename)
-        
-        print(f"Found {len(maisi_files)} MAISI files to process")
-        
-        for maisi_file in maisi_files:
-            # Extract case ID from filename (remove _MAISI_bcX.nii.gz)
-            case_id = maisi_file.replace(f"_MAISI_{contour_suffix}.nii.gz", "")
-            print(f"Processing case: {case_id}")
-            log_file.write(f"Processing case: {case_id}\n")
             
-            # Load MAISI segmentation
-            maisi_path = os.path.join(args.maisi_dir, maisi_file)
-            segmentation_map = monai.transforms.LoadImage(image_only=True, ensure_channel_first=True)(maisi_path)
+            print(f"Found {len(maisi_files)} MAISI files to process")
             
-            # Generate synthetic CT using sliding window inference
-            print(f"Running inference for {case_id}...")
-            try:
-                synthetic_image = sliding_window_inference(
-                    inputs=segmentation_map.unsqueeze(0).to(device),
-                    roi_size=(256, 256, 256),
-                    sw_batch_size=1,
-                    predictor=inference_function,
-                    overlap=1/4,
-                    mode="gaussian",
-                    sigma_scale=0.125,
-                    device=device,
-                    sw_device=device
-                )
-            except RuntimeError as e:
-                print(f"Error during inference: {e}")
-                log_file.write(f"Error during inference for {case_id}: {e}\n")
-                continue  # Continue with next file instead of raising
-            
-            # Save synthetic CT
-            synCT_path = os.path.join(args.output_dir, f"SynCT_{case_id}_{contour_suffix}.nii.gz")
-            
-            # Get original image metadata
-            maisi_img = nib.load(maisi_path)
-            
-            # Apply body contour mask (class 200) to set background to -1024 HU
-            synthetic_image = synthetic_image.squeeze().detach().cpu().numpy()
-            maisi_data = maisi_img.get_fdata()
-            background = (maisi_data != 200) & (maisi_data == 0)  # Background is where there's no body contour and no tissue
-            synthetic_image[background] = -1024
-            
-            # Save as NIfTI
-            synthetic_image = nib.Nifti1Image(synthetic_image, maisi_img.affine, maisi_img.header)
-            nib.save(synthetic_image, synCT_path)
-            print(f"Synthetic CT image saved to {synCT_path}")
-            log_file.write(f"Synthetic CT image saved to {synCT_path}\n")
+            for maisi_file in maisi_files:
+                # Extract case ID from filename (remove _MAISI_bcX.nii.gz)
+                case_id = maisi_file.replace(f"_MAISI_{contour_suffix}.nii.gz", "")
+                print(f"Processing case: {case_id}")
+                log_file.write(f"Processing case: {case_id}\n")
+                
+                # Load MAISI segmentation
+                maisi_path = os.path.join(args.maisi_dir, maisi_file)
+                try:
+                    segmentation_map = monai.transforms.LoadImage(image_only=True, ensure_channel_first=True)(maisi_path)
+                except Exception as e:
+                    print(f"Error loading file {maisi_path}: {e}")
+                    log_file.write(f"Error loading file {maisi_path}: {e}\n")
+                    continue
+                
+                # Generate synthetic CT using sliding window inference
+                print(f"Running inference for {case_id}...")
+                try:
+                    synthetic_image = sliding_window_inference(
+                        inputs=segmentation_map.unsqueeze(0).to(device),
+                        roi_size=(256, 256, 256),
+                        sw_batch_size=1,
+                        predictor=inference_function,
+                        overlap=1/4,
+                        mode="gaussian",
+                        sigma_scale=0.125,
+                        device=device,
+                        sw_device=device
+                    )
+                except RuntimeError as e:
+                    print(f"Error during inference: {e}")
+                    log_file.write(f"Error during inference for {case_id}: {e}\n")
+                    continue  # Continue with next file instead of raising
+                
+                # Save synthetic CT
+                synCT_path = os.path.join(args.output_dir, f"SynCT_{case_id}_{contour_suffix}.nii.gz")
+                
+                # Get original image metadata
+                maisi_img = nib.load(maisi_path)
+                
+                # Apply body contour mask (class 200) to set background to -1024 HU
+                synthetic_image = synthetic_image.squeeze().detach().cpu().numpy()
+                maisi_data = maisi_img.get_fdata()
+                background = (maisi_data != 200) & (maisi_data == 0)  # Background is where there's no body contour and no tissue
+                synthetic_image[background] = -1024
+                
+                # Save as NIfTI
+                synthetic_image = nib.Nifti1Image(synthetic_image, maisi_img.affine, maisi_img.header)
+                nib.save(synthetic_image, synCT_path)
+                print(f"Synthetic CT image saved to {synCT_path}")
+                log_file.write(f"Synthetic CT image saved to {synCT_path}\n")
     
     log_file.close()
     print("All processing completed.")
