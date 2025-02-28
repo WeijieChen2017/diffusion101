@@ -187,7 +187,8 @@ def main():
         if cases_to_process:
             # Process specific cases
             for case_id in cases_to_process:
-                maisi_file = f"{case_id}_MAISI_{contour_suffix}.nii.gz"
+                # E4055_combined_MAISI_bcC.nii.gz
+                maisi_file = f"{case_id}_combined_MAISI_{contour_suffix}.nii.gz"
                 maisi_path = os.path.join(args.maisi_dir, maisi_file)
                 
                 if not os.path.exists(maisi_path):
