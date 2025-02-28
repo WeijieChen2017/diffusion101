@@ -97,6 +97,34 @@ def process_case(case_name, args):
     CT_bed_nifti = nib.load(CT_bed_path)
     CT_bed_data = CT_bed_nifti.get_fdata()
     
+    print(f"  SynCT shape: {synct_data.shape}, CT_bed shape: {CT_bed_data.shape}")
+    
+    # Check if dimensions match and pad if necessary
+    if synct_data.shape != CT_bed_data.shape:
+        print(f"  Dimensions don't match. Padding synthetic CT to match CT bed dimensions.")
+        
+        # Calculate padding for each dimension
+        pad_width = [
+            ((CT_bed_data.shape[0] - synct_data.shape[0]) // 2, 
+             CT_bed_data.shape[0] - synct_data.shape[0] - (CT_bed_data.shape[0] - synct_data.shape[0]) // 2),
+            ((CT_bed_data.shape[1] - synct_data.shape[1]) // 2,
+             CT_bed_data.shape[1] - synct_data.shape[1] - (CT_bed_data.shape[1] - synct_data.shape[1]) // 2),
+            (0, 0)  # Assuming z-dimension is the same
+        ]
+        
+        # Pad the synthetic CT data
+        padded_synct_data = np.pad(
+            synct_data,
+            pad_width,
+            mode='constant',
+            constant_values=-1024
+        )
+        
+        print(f"  After padding - SynCT: {padded_synct_data.shape}")
+        
+        # Use the padded data for further processing
+        synct_data = padded_synct_data
+    
     # Create body contour arrays
     synct_contour = np.zeros_like(synct_data, dtype=bool)
     CT_bed_contour = np.zeros_like(CT_bed_data, dtype=bool)
@@ -128,13 +156,13 @@ def process_case(case_name, args):
     
     # Save intersection body contour mask (for debugging/visualization)
     intersection_nifti = nib.Nifti1Image(intersection_contour.astype(np.int16), 
-                                        synct_nifti.affine, synct_nifti.header)
+                                        CT_bed_nifti.affine, CT_bed_nifti.header)
     
     intersection_path = f"{output_base}_intersection_contour.nii.gz"
     nib.save(intersection_nifti, intersection_path)
     
     # Save blurred contour for visualization/debugging
-    blurred_nifti = nib.Nifti1Image(blurred_contour, synct_nifti.affine, synct_nifti.header)
+    blurred_nifti = nib.Nifti1Image(blurred_contour, CT_bed_nifti.affine, CT_bed_nifti.header)
     blurred_path = f"{output_base}_blurred_contour.nii.gz"
     nib.save(blurred_nifti, blurred_path)
     
