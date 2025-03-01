@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 CASE_NAMES = [
     # 'E4058',
-    'E4055', 'E4058', 'E4061', 'E4066', 'E4068',
+    'E4055',          'E4061', 'E4066', 'E4068',
     'E4069', 'E4073', 'E4074', 'E4077', 'E4078',
     'E4079', 'E4081', 'E4084', 'E4091', 'E4092',
     'E4094', 'E4096', 'E4098', 'E4099', 'E4103',
@@ -34,15 +34,12 @@ def process_case(case_name, args):
         case_name: Name of the case to process
         args: Command-line arguments
     """
-    print(f"Processing case {case_name}...")
-    
     # Define file paths
     input_path = os.path.join(args.input_dir, f"SynCT_{case_name}_{args.contour_type}_HUadj.nii.gz")
     output_path = os.path.join(args.output_dir, f"SynCT_{case_name}_{args.contour_type}_HUadj_resampled.nii.gz")
     
     # Check if input file exists
     if not os.path.exists(input_path):
-        print(f"  Warning: Input file not found: {input_path}")
         return
     
     # Find reference CT file for this case
@@ -51,11 +48,9 @@ def process_case(case_name, args):
     reference_files = glob.glob(f"{args.reference_dir}/*_{case_id}_*.nii*")
     
     if not reference_files:
-        print(f"  Warning: No reference file found for case {case_name}")
         return
     
     reference_path = sorted(reference_files)[0]
-    print(f"  Using reference file: {reference_path}")
     
     # Load reference file to get pixel dimensions
     reference_nifti = nib.load(reference_path)
@@ -71,14 +66,12 @@ def process_case(case_name, args):
     # Create 3dresample command
     command = f"3dresample -dxyz {dx} {dy} {dz} -prefix {output_path} -input {input_path}"
     
-    # Output command
-    print(f"  {command}")
+    # Output only the command
+    print(command)
     
     # If execute flag is set, run the command
     if args.execute:
-        print(f"  Executing command...")
         os.system(command)
-        print(f"  Command executed.")
 
 def main():
     parser = argparse.ArgumentParser(description='Generate 3dresample commands for HU-adjusted synthetic CT images')
@@ -99,28 +92,16 @@ def main():
     # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
     
-    # Print configuration
-    print("Running with the following configuration:")
-    print(f"  Input directory: {args.input_dir}")
-    print(f"  Output directory: {args.output_dir}")
-    print(f"  Reference directory: {args.reference_dir}")
-    print(f"  Contour type: {args.contour_type}")
-    print(f"  Execute commands: {args.execute}")
-    
     # Determine which cases to process
     if args.case_id:
         cases_to_process = [args.case_id]
-        print(f"Processing single case: {args.case_id}")
     else:
         # Process all cases in the predefined list
         cases_to_process = CASE_NAMES
-        print(f"Processing all {len(cases_to_process)} cases from the predefined list")
     
-    # Process each case
-    for case_name in tqdm(cases_to_process):
+    # Process each case - removed tqdm to avoid extra output
+    for case_name in cases_to_process:
         process_case(case_name, args)
-    
-    print("All processing completed.")
 
 if __name__ == "__main__":
     main()
