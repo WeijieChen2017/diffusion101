@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 # Fixed paths
 INPUT_DIR = "/local/diffusion101/maisi/TS_NAC"
-MASK_DIR = "/local/diffusion101/maisi/TS_NAC/NAC_CTAC_Spacing15"
+MASK_DIR = "/local/diffusion101/maisi/NAC_CTAC_Spacing15"
 DEFAULT_OUTPUT_DIR = "/local/diffusion101/maisi/BodyContour_Dataset"
 
 # Predefined dataset split
