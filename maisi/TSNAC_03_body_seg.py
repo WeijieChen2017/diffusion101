@@ -8,10 +8,10 @@ import numpy as np
 import nibabel as nib
 from tqdm import tqdm
 
-# Default paths
-DEFAULT_INPUT_DIR = "/local/diffusion101/maisi/TS_NAC"
+# Fixed paths
+INPUT_DIR = "/local/diffusion101/maisi/TS_NAC"
+MASK_DIR = "/local/diffusion101/maisi/James_36/CT_mask"
 DEFAULT_OUTPUT_DIR = "/local/diffusion101/maisi/BodyContour_Dataset"
-DEFAULT_MASK_DIR = "/local/diffusion101/maisi/James_36/CT_mask"
 
 # Predefined dataset split
 dataset_split = {
@@ -33,25 +33,21 @@ dataset_split = {
     ]
 }
 
-def prepare_dataset_for_nnunet(input_dir=DEFAULT_INPUT_DIR, output_dir=DEFAULT_OUTPUT_DIR, mask_dir=DEFAULT_MASK_DIR):
+def prepare_dataset_for_nnunet(output_dir=DEFAULT_OUTPUT_DIR):
     """
     Prepare dataset for nnUNet training using CT images from subject folders and body contour masks from mask directory
     
     Args:
-        input_dir: Base directory containing subject folders with CT images
-                  (default: /local/diffusion101/maisi/TS_NAC)
         output_dir: Directory to save nnUNet dataset
                    (default: /local/diffusion101/maisi/BodyContour_Dataset)
-        mask_dir: Directory containing body contour mask files
-                 (default: /local/diffusion101/maisi/James_36/CT_mask)
     """
-    input_dir = Path(input_dir)
+    input_dir = Path(INPUT_DIR)
     output_dir = Path(output_dir)
-    mask_dir = Path(mask_dir)
+    mask_dir = Path(MASK_DIR)
     
-    print(f"Input directory: {input_dir}")
+    print(f"Input directory (fixed): {input_dir}")
+    print(f"Mask directory (fixed): {mask_dir}")
     print(f"Output directory: {output_dir}")
-    print(f"Mask directory: {mask_dir}")
     
     # Create nnUNet directory structure
     (output_dir / "imagesTr").mkdir(parents=True, exist_ok=True)
@@ -200,31 +196,21 @@ if __name__ == "__main__":
     Prepare dataset for nnUNet training using CT images from subject folders and body contour masks from mask directory
     
     Usage:
-    python TSNAC_03_body_seg.py [<input_dir> [<output_dir> [<mask_dir>]]]
+    python TSNAC_03_body_seg.py [<output_dir>]
     
     Args:
-        input_dir: Base directory containing subject folders with CT images
-                  (default: /local/diffusion101/maisi/TS_NAC)
         output_dir: Directory to save nnUNet dataset
                    (default: /local/diffusion101/maisi/BodyContour_Dataset)
-        mask_dir: Directory containing body contour mask files
-                 (default: /local/diffusion101/maisi/James_36/CT_mask)
     """
     if len(sys.argv) == 1:
-        # Use default paths
+        # Use default output path
         prepare_dataset_for_nnunet()
     elif len(sys.argv) == 2:
-        # Use provided input path and default output and mask paths
+        # Use provided output path
         prepare_dataset_for_nnunet(sys.argv[1])
-    elif len(sys.argv) == 3:
-        # Use provided input and output paths, default mask path
-        prepare_dataset_for_nnunet(sys.argv[1], sys.argv[2])
-    elif len(sys.argv) >= 4:
-        # Use provided input, output, and mask paths
-        prepare_dataset_for_nnunet(sys.argv[1], sys.argv[2], sys.argv[3])
     else:
-        print("Usage: python TSNAC_03_body_seg.py [<input_dir> [<output_dir> [<mask_dir>]]]")
-        print(f"Default input directory: {DEFAULT_INPUT_DIR}")
+        print("Usage: python TSNAC_03_body_seg.py [<output_dir>]")
+        print(f"Input directory (fixed): {INPUT_DIR}")
+        print(f"Mask directory (fixed): {MASK_DIR}")
         print(f"Default output directory: {DEFAULT_OUTPUT_DIR}")
-        print(f"Default mask directory: {DEFAULT_MASK_DIR}")
         sys.exit(1)
