@@ -154,7 +154,7 @@ def create_dataset_json(output_dir, subjects_train, subjects_val):
     json_dict['licence'] = "Apache 2.0"
     json_dict['release'] = "1.0"
     json_dict['channel_names'] = {"0": "CT"}
-    json_dict['labels'] = {"0": "background", "1": "body"}
+    json_dict['labels'] = {"background" : "0", "body": "1"}
     json_dict['numTraining'] = len(subjects_train + subjects_val)
     json_dict['file_ending'] = '.nii.gz'
     json_dict['overwrite_image_reader_writer'] = 'NibabelIOWithReorient'
