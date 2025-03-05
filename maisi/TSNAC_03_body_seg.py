@@ -8,6 +8,11 @@ import numpy as np
 import nibabel as nib
 from tqdm import tqdm
 
+# Default paths
+DEFAULT_INPUT_DIR = "/local/diffusion101/maisi/TS_NAC"
+DEFAULT_OUTPUT_DIR = "/local/diffusion101/maisi/BodyContour_Dataset"
+DEFAULT_MASK_DIR = "/local/diffusion101/maisi/James_36/CT_mask"
+
 # Predefined dataset split
 dataset_split = {
     "train": [
@@ -28,20 +33,25 @@ dataset_split = {
     ]
 }
 
-# Template paths for input files
-CT_PATH_TEMPLATE = "NAC_CTAC_Spacing15/CTAC_{}_256.nii.gz"
-BODY_CONTOUR_PATH_TEMPLATE = "James_36/CT_mask/mask_body_contour_{}.nii.gz"
-
-def prepare_dataset_for_nnunet(input_dir, output_dir):
+def prepare_dataset_for_nnunet(input_dir=DEFAULT_INPUT_DIR, output_dir=DEFAULT_OUTPUT_DIR, mask_dir=DEFAULT_MASK_DIR):
     """
-    Prepare dataset for nnUNet training using existing body contour files
+    Prepare dataset for nnUNet training using CT images from subject folders and body contour masks from mask directory
     
     Args:
-        input_dir: Base directory containing CT images and body contour masks
+        input_dir: Base directory containing subject folders with CT images
+                  (default: /local/diffusion101/maisi/TS_NAC)
         output_dir: Directory to save nnUNet dataset
+                   (default: /local/diffusion101/maisi/BodyContour_Dataset)
+        mask_dir: Directory containing body contour mask files
+                 (default: /local/diffusion101/maisi/James_36/CT_mask)
     """
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
+    mask_dir = Path(mask_dir)
+    
+    print(f"Input directory: {input_dir}")
+    print(f"Output directory: {output_dir}")
+    print(f"Mask directory: {mask_dir}")
     
     # Create nnUNet directory structure
     (output_dir / "imagesTr").mkdir(parents=True, exist_ok=True)
@@ -60,52 +70,66 @@ def prepare_dataset_for_nnunet(input_dir, output_dir):
     
     # Process training and validation data
     for subject in tqdm(subjects_train + subjects_val, desc="Processing training and validation data"):
-        ct_path = input_dir / CT_PATH_TEMPLATE.format(subject)
-        body_contour_path = input_dir / BODY_CONTOUR_PATH_TEMPLATE.format(subject)
+        # CT image path from subject folder
+        subject_dir = input_dir / subject
+        ct_path = subject_dir / "ct.nii.gz"
+        
+        # Body contour mask path from mask directory
+        mask_path = mask_dir / f"mask_body_contour_{subject}.nii.gz"
         
         # Check if files exist
+        if not subject_dir.exists():
+            print(f"Warning: Subject directory not found: {subject_dir}")
+            continue
         if not ct_path.exists():
             print(f"Warning: CT file not found: {ct_path}")
             continue
-        if not body_contour_path.exists():
-            print(f"Warning: Body contour file not found: {body_contour_path}")
+        if not mask_path.exists():
+            print(f"Warning: Body contour mask file not found: {mask_path}")
             continue
         
         # Copy CT image to nnUNet imagesTr directory
         shutil.copy(ct_path, output_dir / "imagesTr" / f"{subject}_0000.nii.gz")
         
         # Load body contour mask and ensure it's binary (0 and 1)
-        body_contour_img = nib.load(body_contour_path)
-        body_contour_data = body_contour_img.get_fdata()
-        binary_mask = (body_contour_data > 0).astype(np.uint8)
+        mask_img = nib.load(mask_path)
+        mask_data = mask_img.get_fdata()
+        binary_mask = (mask_data > 0).astype(np.uint8)
         
         # Save binary mask to nnUNet labelsTr directory
-        binary_mask_img = nib.Nifti1Image(binary_mask, body_contour_img.affine, body_contour_img.header)
+        binary_mask_img = nib.Nifti1Image(binary_mask, mask_img.affine, mask_img.header)
         nib.save(binary_mask_img, output_dir / "labelsTr" / f"{subject}.nii.gz")
     
     # Process test data
     for subject in tqdm(subjects_test, desc="Processing test data"):
-        ct_path = input_dir / CT_PATH_TEMPLATE.format(subject)
-        body_contour_path = input_dir / BODY_CONTOUR_PATH_TEMPLATE.format(subject)
+        # CT image path from subject folder
+        subject_dir = input_dir / subject
+        ct_path = subject_dir / "ct.nii.gz"
+        
+        # Body contour mask path from mask directory
+        mask_path = mask_dir / f"mask_body_contour_{subject}.nii.gz"
         
         # Check if files exist
+        if not subject_dir.exists():
+            print(f"Warning: Subject directory not found: {subject_dir}")
+            continue
         if not ct_path.exists():
             print(f"Warning: CT file not found: {ct_path}")
             continue
-        if not body_contour_path.exists():
-            print(f"Warning: Body contour file not found: {body_contour_path}")
+        if not mask_path.exists():
+            print(f"Warning: Body contour mask file not found: {mask_path}")
             continue
         
         # Copy CT image to nnUNet imagesTs directory
         shutil.copy(ct_path, output_dir / "imagesTs" / f"{subject}_0000.nii.gz")
         
         # Load body contour mask and ensure it's binary (0 and 1)
-        body_contour_img = nib.load(body_contour_path)
-        body_contour_data = body_contour_img.get_fdata()
-        binary_mask = (body_contour_data > 0).astype(np.uint8)
+        mask_img = nib.load(mask_path)
+        mask_data = mask_img.get_fdata()
+        binary_mask = (mask_data > 0).astype(np.uint8)
         
         # Save binary mask to nnUNet labelsTs directory
-        binary_mask_img = nib.Nifti1Image(binary_mask, body_contour_img.affine, body_contour_img.header)
+        binary_mask_img = nib.Nifti1Image(binary_mask, mask_img.affine, mask_img.header)
         nib.save(binary_mask_img, output_dir / "labelsTs" / f"{subject}.nii.gz")
     
     # Create dataset.json
@@ -173,20 +197,34 @@ def create_splits_json(output_dir, subjects_train, subjects_val):
 
 if __name__ == "__main__":
     """
-    Prepare dataset for nnUNet training using existing body contour files
+    Prepare dataset for nnUNet training using CT images from subject folders and body contour masks from mask directory
     
     Usage:
-    python TSNAC_03_body_seg.py <input_dir> <output_dir>
+    python TSNAC_03_body_seg.py [<input_dir> [<output_dir> [<mask_dir>]]]
     
     Args:
-        input_dir: Base directory containing CT images and body contour masks
+        input_dir: Base directory containing subject folders with CT images
+                  (default: /local/diffusion101/maisi/TS_NAC)
         output_dir: Directory to save nnUNet dataset
+                   (default: /local/diffusion101/maisi/BodyContour_Dataset)
+        mask_dir: Directory containing body contour mask files
+                 (default: /local/diffusion101/maisi/James_36/CT_mask)
     """
-    if len(sys.argv) < 3:
-        print("Usage: python TSNAC_03_body_seg.py <input_dir> <output_dir>")
+    if len(sys.argv) == 1:
+        # Use default paths
+        prepare_dataset_for_nnunet()
+    elif len(sys.argv) == 2:
+        # Use provided input path and default output and mask paths
+        prepare_dataset_for_nnunet(sys.argv[1])
+    elif len(sys.argv) == 3:
+        # Use provided input and output paths, default mask path
+        prepare_dataset_for_nnunet(sys.argv[1], sys.argv[2])
+    elif len(sys.argv) >= 4:
+        # Use provided input, output, and mask paths
+        prepare_dataset_for_nnunet(sys.argv[1], sys.argv[2], sys.argv[3])
+    else:
+        print("Usage: python TSNAC_03_body_seg.py [<input_dir> [<output_dir> [<mask_dir>]]]")
+        print(f"Default input directory: {DEFAULT_INPUT_DIR}")
+        print(f"Default output directory: {DEFAULT_OUTPUT_DIR}")
+        print(f"Default mask directory: {DEFAULT_MASK_DIR}")
         sys.exit(1)
-    
-    input_dir = sys.argv[1]
-    output_dir = sys.argv[2]
-    
-    prepare_dataset_for_nnunet(input_dir, output_dir)
