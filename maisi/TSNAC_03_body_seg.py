@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 # Fixed paths
 INPUT_DIR = "/local/diffusion101/maisi/TS_NAC"
-MASK_DIR = "/local/diffusion101/maisi/James_36/CT_mask"
+MASK_DIR = "/local/diffusion101/maisi/TS_NAC/NAC_CTAC_Spacing15"
 DEFAULT_OUTPUT_DIR = "/local/diffusion101/maisi/BodyContour_Dataset"
 
 # Predefined dataset split
@@ -35,7 +35,7 @@ dataset_split = {
 
 def prepare_dataset_for_nnunet(output_dir=DEFAULT_OUTPUT_DIR):
     """
-    Prepare dataset for nnUNet training using CT images from subject folders and body contour masks from mask directory
+    Prepare dataset for nnUNet training using CT images from subject folders and body contour masks
     
     Args:
         output_dir: Directory to save nnUNet dataset
@@ -71,7 +71,7 @@ def prepare_dataset_for_nnunet(output_dir=DEFAULT_OUTPUT_DIR):
         ct_path = subject_dir / "ct.nii.gz"
         
         # Body contour mask path from mask directory
-        mask_path = mask_dir / f"mask_body_contour_{subject}.nii.gz"
+        mask_path = mask_dir / f"CTAC_{subject}_TS_body.nii.gz"
         
         # Check if files exist
         if not subject_dir.exists():
@@ -103,7 +103,7 @@ def prepare_dataset_for_nnunet(output_dir=DEFAULT_OUTPUT_DIR):
         ct_path = subject_dir / "ct.nii.gz"
         
         # Body contour mask path from mask directory
-        mask_path = mask_dir / f"mask_body_contour_{subject}.nii.gz"
+        mask_path = mask_dir / f"CTAC_{subject}_TS_body.nii.gz"
         
         # Check if files exist
         if not subject_dir.exists():
@@ -193,7 +193,7 @@ def create_splits_json(output_dir, subjects_train, subjects_val):
 
 if __name__ == "__main__":
     """
-    Prepare dataset for nnUNet training using CT images from subject folders and body contour masks from mask directory
+    Prepare dataset for nnUNet training using CT images from subject folders and body contour masks
     
     Usage:
     python TSNAC_03_body_seg.py [<output_dir>]
