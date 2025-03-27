@@ -10,7 +10,7 @@ from monai.transforms import (
     Compose,
     LoadImaged,
     EnsureChannelFirstd,
-    ScaleIntensityd,
+    ScaleIntensityRanged,
     RandSpatialCropd,
     RandRotate90d,
     ToTensord,
@@ -147,12 +147,10 @@ train_transforms = Compose([
         mode=("bilinear", "bilinear"),
     ),
     # Handle the HU range properly for synthesis task
-    ScaleIntensityd(
+    ScaleIntensityRanged(
         keys=["ct", "sct"],
-        minv=HU_MIN,
-        maxv=HU_MAX,
-        a_min=0.0,
-        a_max=1.0,
+        a_min=HU_MIN,
+        a_max=HU_MAX,
         b_min=0.0,
         b_max=1.0,
     ),
@@ -175,12 +173,10 @@ val_transforms = Compose([
         mode=("bilinear", "bilinear"),
     ),
     # Handle the HU range properly for synthesis task
-    ScaleIntensityd(
+    ScaleIntensityRanged(
         keys=["ct", "sct"],
-        minv=HU_MIN,
-        maxv=HU_MAX,
-        a_min=0.0,
-        a_max=1.0,
+        a_min=HU_MIN,
+        a_max=HU_MAX,
         b_min=0.0,
         b_max=1.0,
     ),
