@@ -21,6 +21,15 @@ from torch import nn
 from monai.metrics import MAEMetric
 from monai.utils import set_determinism
 
+# Debug - Print current working directory
+print(f"Current working directory: {os.getcwd()}")
+
+# Import common utilities (will use the fixed paths)
+from maisi.HU_adapter_common import (
+    ROOT_DIR, TRAIN_CASES, TEST_CASES, HU_MIN, HU_MAX,
+    get_ct_path, get_sct_path, get_folds_path, get_fold_dir
+)
+
 # List of training and testing cases
 train_case_name_list = [
     'E4242', 'E4275', 'E4298', 'E4313',
@@ -45,19 +54,6 @@ test_case_name_list = [
     'E4139',
 ]
 
-# Path helper functions
-def get_ct_path(case_name):
-    """Get the path to a CT image."""
-    return f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
-
-def get_sct_path(case_name):
-    """Get the path to a synthetic CT image."""
-    return f"NAC_CTAC_Spacing15/CTAC_{case_name}_TS_MAISI.nii.gz"
-
-# Create output root directory
-root_dir = "HU_adapter_UNet"
-os.makedirs(root_dir, exist_ok=True)
-
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Train UNet for a specific fold and GPU')
 parser.add_argument('--fold', type=int, required=True, help='Fold number (1-4)')
@@ -65,7 +61,7 @@ parser.add_argument('--gpu', type=int, required=True, help='GPU ID (0-3)')
 args = parser.parse_args()
 
 # Set up logging
-log_dir = os.path.join(root_dir, "logs")
+log_dir = os.path.join(ROOT_DIR, "logs")
 os.makedirs(log_dir, exist_ok=True)
 log_file = os.path.join(log_dir, f"fold{args.fold}_gpu{args.gpu}_detailed.log")
 log_f = open(log_file, 'w')
@@ -93,7 +89,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device} (GPU {args.gpu})")
 
 # Load fold data
-folds_path = os.path.join(root_dir, "folds.json")
+folds_path = get_folds_path()
+print(f"Looking for folds data at: {folds_path}")
 if not os.path.exists(folds_path):
     raise FileNotFoundError(f"Folds file not found at {folds_path}. Run HU_adapter_create_folds.py first.")
 
@@ -116,6 +113,28 @@ train_files = []
 for case_name in train_cases:
     ct_path = get_ct_path(case_name)
     sct_path = get_sct_path(case_name)
+    
+    # Debug - Print absolute paths
+    abs_ct_path = os.path.abspath(ct_path)
+    abs_sct_path = os.path.abspath(sct_path)
+    print(f"Checking paths for case {case_name}:")
+    print(f"  CT path: {ct_path}")
+    print(f"  Absolute CT path: {abs_ct_path}")
+    print(f"  SCT path: {sct_path}")
+    print(f"  Absolute SCT path: {abs_sct_path}")
+    
+    # Attempting to list the directory containing these files
+    directory = os.path.dirname(ct_path)
+    if os.path.exists(directory):
+        print(f"Directory exists: {directory}")
+        try:
+            files = os.listdir(directory)
+            print(f"Files in directory: {files[:5]} (showing up to 5 files)")
+        except Exception as e:
+            print(f"Error listing directory: {str(e)}")
+    else:
+        print(f"Directory does not exist: {directory}")
+    
     if os.path.exists(ct_path) and os.path.exists(sct_path):
         train_files.append({
             "ct": ct_path,
@@ -154,8 +173,8 @@ train_transforms = Compose([
     # Handle the HU range properly for synthesis task
     ScaleIntensityd(
         keys=["ct", "sct"],
-        minv=-1024.0,
-        maxv=1976.0,
+        minv=HU_MIN,
+        maxv=HU_MAX,
         a_min=0.0,
         a_max=1.0,
         b_min=0.0,
@@ -182,8 +201,8 @@ val_transforms = Compose([
     # Handle the HU range properly for synthesis task
     ScaleIntensityd(
         keys=["ct", "sct"],
-        minv=-1024.0,
-        maxv=1976.0,
+        minv=HU_MIN,
+        maxv=HU_MAX,
         a_min=0.0,
         a_max=1.0,
         b_min=0.0,
@@ -241,12 +260,12 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
 mae_metric = MAEMetric()
 
 # Create output directory for this fold
-fold_dir = os.path.join(root_dir, f"fold_{args.fold}")
+fold_dir = get_fold_dir(args.fold)
 os.makedirs(fold_dir, exist_ok=True)
 
 # Define HU scaler - to convert normalized values back to HU for metric reporting
 def scale_to_hu(normalized_values):
-    return normalized_values * (1976.0 - (-1024.0)) + (-1024.0)
+    return normalized_values * (HU_MAX - HU_MIN) + HU_MIN
 
 # Training loop
 num_epochs = 300
@@ -298,7 +317,7 @@ for epoch in range(num_epochs):
                 
             # Aggregate MAE metric and convert to HU
             mean_mae = mae_metric.aggregate().item()
-            mean_mae_hu = mean_mae * (1976.0 - (-1024.0))  # Convert normalized MAE to HU scale
+            mean_mae_hu = mean_mae * (HU_MAX - HU_MIN)  # Convert normalized MAE to HU scale
             mae_metric.reset()
             
             val_metric_values.append(mean_mae_hu)

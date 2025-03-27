@@ -39,14 +39,10 @@ HU_MAX = 1976.0
 # Path helper functions
 def get_ct_path(case_name):
     """Get the path to a CT image."""
-    print(f"Getting CT path for {case_name}")
-    print(f"maisi/NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz")
     return f"maisi/NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
 
 def get_sct_path(case_name):
     """Get the path to a synthetic CT image."""
-    print(f"Getting SCT path for {case_name}")
-    print(f"maisi/NAC_CTAC_Spacing15/CTAC_{case_name}_TS_MAISI.nii.gz")
     return f"maisi/NAC_CTAC_Spacing15/CTAC_{case_name}_TS_MAISI.nii.gz"
 
 def get_prediction_path(case_name):
