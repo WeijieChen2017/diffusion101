@@ -43,7 +43,7 @@ def get_ct_path(case_name):
 
 def get_sct_path(case_name):
     """Get the path to a synthetic CT image."""
-    return f"maisi/NAC_CTAC_Spacing15/CTAC_{case_name}_TS_MAISI.nii.gz"
+    return f"maisi/NAC_CTAC_Spacing15/inference_20250128_noon/CTAC_{case_name}_TS_MAISI.nii.gz"
 
 def get_prediction_path(case_name):
     """Get the path to a predicted synthetic CT image."""

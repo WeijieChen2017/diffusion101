@@ -21,10 +21,7 @@ from torch import nn
 from monai.metrics import MAEMetric
 from monai.utils import set_determinism
 
-# Debug - Print current working directory
-print(f"Current working directory: {os.getcwd()}")
-
-# Import common utilities (will use the fixed paths)
+# Import common utilities
 from maisi.HU_adapter_common import (
     ROOT_DIR, TRAIN_CASES, TEST_CASES, HU_MIN, HU_MAX,
     get_ct_path, get_sct_path, get_folds_path, get_fold_dir
@@ -113,27 +110,6 @@ train_files = []
 for case_name in train_cases:
     ct_path = get_ct_path(case_name)
     sct_path = get_sct_path(case_name)
-    
-    # Debug - Print absolute paths
-    abs_ct_path = os.path.abspath(ct_path)
-    abs_sct_path = os.path.abspath(sct_path)
-    print(f"Checking paths for case {case_name}:")
-    print(f"  CT path: {ct_path}")
-    print(f"  Absolute CT path: {abs_ct_path}")
-    print(f"  SCT path: {sct_path}")
-    print(f"  Absolute SCT path: {abs_sct_path}")
-    
-    # Attempting to list the directory containing these files
-    directory = os.path.dirname(ct_path)
-    if os.path.exists(directory):
-        print(f"Directory exists: {directory}")
-        try:
-            files = os.listdir(directory)
-            print(f"Files in directory: {files[:5]} (showing up to 5 files)")
-        except Exception as e:
-            print(f"Error listing directory: {str(e)}")
-    else:
-        print(f"Directory does not exist: {directory}")
     
     if os.path.exists(ct_path) and os.path.exists(sct_path):
         train_files.append({
