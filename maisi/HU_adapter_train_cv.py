@@ -17,7 +17,7 @@ from monai.transforms import (
     Spacingd,
 )
 from monai.data import CacheDataset, DataLoader
-from monai.losses import L1Loss
+from torch import nn
 from monai.metrics import MAEMetric
 from monai.utils import set_determinism
 
@@ -200,7 +200,7 @@ model = UNet(
 model = model.to(device)
 
 # Loss function and optimizer for synthesis task
-loss_function = L1Loss()
+loss_function = nn.L1Loss()
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
 
 # Create evaluator metrics for synthesis
