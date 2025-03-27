@@ -21,6 +21,43 @@ from torch import nn
 from monai.metrics import MAEMetric
 from monai.utils import set_determinism
 
+# List of training and testing cases
+train_case_name_list = [
+    'E4242', 'E4275', 'E4298', 'E4313',
+    'E4245', 'E4276', 'E4299', 'E4317', 'E4246',
+    'E4280', 'E4300', 'E4318', 'E4247', 'E4282',
+    'E4301', 'E4324', 'E4248', 'E4283', 'E4302',
+    'E4325', 'E4250', 'E4284', 'E4306', 'E4328',
+    'E4252', 'E4288', 'E4307', 'E4332', 'E4259',
+    'E4308', 'E4335', 'E4260', 'E4290', 'E4309',
+    'E4336', 'E4261', 'E4292', 'E4310', 'E4337',
+    'E4273', 'E4297', 'E4312', 'E4338',
+]
+
+test_case_name_list = [
+    'E4055', 'E4058', 'E4061', 'E4066', 'E4068',
+    'E4069', 'E4073', 'E4074', 'E4077', 'E4078',
+    'E4079', 'E4081', 'E4084', 'E4091', 'E4092',
+    'E4094', 'E4096', 'E4098', 'E4099', 'E4103',
+    'E4105', 'E4106', 'E4114', 'E4115', 'E4118',
+    'E4120', 'E4124', 'E4125', 'E4128', 'E4129',
+    'E4130', 'E4131', 'E4134', 'E4137', 'E4138',
+    'E4139',
+]
+
+# Path helper functions
+def get_ct_path(case_name):
+    """Get the path to a CT image."""
+    return f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
+
+def get_sct_path(case_name):
+    """Get the path to a synthetic CT image."""
+    return f"NAC_CTAC_Spacing15/CTAC_{case_name}_TS_MAISI.nii.gz"
+
+# Create output root directory
+root_dir = "HU_adapter_UNet"
+os.makedirs(root_dir, exist_ok=True)
+
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Train UNet for a specific fold and GPU')
 parser.add_argument('--fold', type=int, required=True, help='Fold number (1-4)')
@@ -28,7 +65,7 @@ parser.add_argument('--gpu', type=int, required=True, help='GPU ID (0-3)')
 args = parser.parse_args()
 
 # Set up logging
-log_dir = os.path.join("HU_adapter_UNet", "logs")
+log_dir = os.path.join(root_dir, "logs")
 os.makedirs(log_dir, exist_ok=True)
 log_file = os.path.join(log_dir, f"fold{args.fold}_gpu{args.gpu}_detailed.log")
 log_f = open(log_file, 'w')
@@ -55,11 +92,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device} (GPU {args.gpu})")
 
-# Import path helper functions
-from maisi.HU_adapter_UNet import get_ct_path, get_sct_path
-
 # Load fold data
-folds_path = os.path.join("HU_adapter_UNet", "folds.json")
+folds_path = os.path.join(root_dir, "folds.json")
 if not os.path.exists(folds_path):
     raise FileNotFoundError(f"Folds file not found at {folds_path}. Run HU_adapter_create_folds.py first.")
 
@@ -207,7 +241,7 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
 mae_metric = MAEMetric()
 
 # Create output directory for this fold
-fold_dir = os.path.join("HU_adapter_UNet", f"fold_{args.fold}")
+fold_dir = os.path.join(root_dir, f"fold_{args.fold}")
 os.makedirs(fold_dir, exist_ok=True)
 
 # Define HU scaler - to convert normalized values back to HU for metric reporting

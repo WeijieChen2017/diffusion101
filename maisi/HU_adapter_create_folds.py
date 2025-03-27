@@ -2,7 +2,19 @@ import os
 import json
 import numpy as np
 from sklearn.model_selection import KFold
-from maisi.HU_adapter_UNet import train_case_name_list
+
+# List of training cases
+train_case_name_list = [
+    'E4242', 'E4275', 'E4298', 'E4313',
+    'E4245', 'E4276', 'E4299', 'E4317', 'E4246',
+    'E4280', 'E4300', 'E4318', 'E4247', 'E4282',
+    'E4301', 'E4324', 'E4248', 'E4283', 'E4302',
+    'E4325', 'E4250', 'E4284', 'E4306', 'E4328',
+    'E4252', 'E4288', 'E4307', 'E4332', 'E4259',
+    'E4308', 'E4335', 'E4260', 'E4290', 'E4309',
+    'E4336', 'E4261', 'E4292', 'E4310', 'E4337',
+    'E4273', 'E4297', 'E4312', 'E4338',
+]
 
 # Set random seed for reproducibility
 np.random.seed(42)
@@ -39,9 +51,12 @@ def main():
     # Create 4 folds
     folds = create_folds(train_case_name_list, n_folds=4)
 
+    # Create output directory
+    root_dir = "HU_adapter_UNet"
+    os.makedirs(root_dir, exist_ok=True)
+
     # Save to JSON file
-    os.makedirs("HU_adapter_UNet", exist_ok=True)
-    json_path = os.path.join("HU_adapter_UNet", "folds.json")
+    json_path = os.path.join(root_dir, "folds.json")
     with open(json_path, 'w') as f:
         json.dump(folds, f, indent=4)
 

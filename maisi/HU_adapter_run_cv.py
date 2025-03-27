@@ -3,9 +3,12 @@ import subprocess
 import time
 from datetime import datetime
 
+# Define root directory for consistency
+root_dir = "HU_adapter_UNet"
+
 def run_cv_fold(fold, gpu):
     """Run cross-validation training for a specific fold on a specific GPU."""
-    log_dir = os.path.join("HU_adapter_UNet", "logs")
+    log_dir = os.path.join(root_dir, "logs")
     os.makedirs(log_dir, exist_ok=True)
     
     # Two log files - one for the subprocess stdout/stderr and one for the detailed training logs
@@ -34,7 +37,7 @@ def run_cv_fold(fold, gpu):
 
 def main():
     # Create master log file
-    log_dir = os.path.join("HU_adapter_UNet", "logs")
+    log_dir = os.path.join(root_dir, "logs")
     os.makedirs(log_dir, exist_ok=True)
     master_log = os.path.join(log_dir, f"cross_validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
     
@@ -43,7 +46,7 @@ def main():
         f.write(f"Master log file: {master_log}\n\n")
         
         # First ensure we have the fold data
-        if not os.path.exists(os.path.join("HU_adapter_UNet", "folds.json")):
+        if not os.path.exists(os.path.join(root_dir, "folds.json")):
             print("Creating folds first...")
             f.write("Creating folds first...\n")
             f.flush()

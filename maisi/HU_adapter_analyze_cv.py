@@ -5,10 +5,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from glob import glob
 
+# Define root directory for consistency
+root_dir = "HU_adapter_UNet"
+
 def collect_results():
     """Collect results from all folds and create a summary."""
     # Path to fold results
-    base_dir = "HU_adapter_UNet"
+    base_dir = root_dir
     
     # Check if folds exist
     folds = [f"fold_{i}" for i in range(1, 5)]
