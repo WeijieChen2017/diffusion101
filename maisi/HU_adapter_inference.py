@@ -38,8 +38,8 @@ print(f"Log file: {log_file}")
 # Set deterministic inference for reproducibility
 set_determinism(seed=0)
 
-# Import case lists
-from maisi.HU_adapter_UNet import test_case_name_list
+# Import case lists and path helper functions
+from maisi.HU_adapter_UNet import test_case_name_list, get_ct_path, get_sct_path
 
 # Set device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -96,6 +96,8 @@ for fold in available_folds:
 
 if best_fold is None:
     print("No trained models found. Please run training first.")
+    log_f.close()
+    print = original_print
     exit(1)
 
 print(f"Loading best model from {best_fold} with MAE: {best_mae:.4f} HU")
@@ -110,42 +112,47 @@ output_dir = "HU_adapter_UNet/predictions"
 os.makedirs(output_dir, exist_ok=True)
 
 # Run inference on test cases
+valid_test_cases = 0
 with torch.no_grad():
     for case_name in test_case_name_list:
         print(f"Processing case: {case_name}")
         
         # Load the CT image
-        ct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
+        ct_path = get_ct_path(case_name)
         if not os.path.exists(ct_path):
-            print(f"  Skipping {case_name}: file not found")
+            print(f"  Skipping {case_name}: file not found at {ct_path}")
             continue
             
         # Get original CT image for reference (to preserve metadata)
         original_ct = nib.load(ct_path)
         
         # Transform the image
-        ct_img = inference_transforms(ct_path)
-        ct_img = ct_img.unsqueeze(0).to(device)  # Add batch dimension
-        
-        # Run inference with sliding window
-        roi_size = (96, 96, 96)
-        sw_batch_size = 4
-        predicted_output = sliding_window_inference(
-            ct_img, roi_size, sw_batch_size, model, overlap=0.5
-        )
-        
-        # Convert normalized output back to HU range
-        predicted_numpy = predicted_output[0, 0].cpu().numpy()
-        predicted_hu = normalize_to_hu(predicted_numpy)
-        
-        # Save the prediction using original affine matrix from CT
-        output_nifti = nib.Nifti1Image(predicted_hu, original_ct.affine, original_ct.header)
-        output_path = os.path.join(output_dir, f"CTAC_{case_name}_predicted.nii.gz")
-        nib.save(output_nifti, output_path)
-        
-        print(f"  Saved prediction to {output_path}")
+        try:
+            ct_img = inference_transforms(ct_path)
+            ct_img = ct_img.unsqueeze(0).to(device)  # Add batch dimension
+            
+            # Run inference with sliding window
+            roi_size = (96, 96, 96)
+            sw_batch_size = 4
+            predicted_output = sliding_window_inference(
+                ct_img, roi_size, sw_batch_size, model, overlap=0.5
+            )
+            
+            # Convert normalized output back to HU range
+            predicted_numpy = predicted_output[0, 0].cpu().numpy()
+            predicted_hu = normalize_to_hu(predicted_numpy)
+            
+            # Save the prediction using original affine matrix from CT
+            output_nifti = nib.Nifti1Image(predicted_hu, original_ct.affine, original_ct.header)
+            output_path = os.path.join(output_dir, f"CTAC_{case_name}_predicted.nii.gz")
+            nib.save(output_nifti, output_path)
+            
+            print(f"  Saved prediction to {output_path}")
+            valid_test_cases += 1
+        except Exception as e:
+            print(f"  Error processing case {case_name}: {str(e)}")
 
-print("Inference completed for all test cases")
+print(f"Inference completed for {valid_test_cases} test cases")
 
 # Calculate evaluation metrics if ground truth is available
 try:
@@ -158,42 +165,45 @@ try:
     for case_name in test_case_name_list:
         # Load prediction
         pred_path = os.path.join(output_dir, f"CTAC_{case_name}_predicted.nii.gz")
-        gt_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_TS_MAISI.nii.gz"
+        gt_path = get_sct_path(case_name)
         
         if os.path.exists(pred_path) and os.path.exists(gt_path):
             print(f"Evaluating case: {case_name}")
             
             # Load ground truth and prediction
-            pred_img = nib.load(pred_path).get_fdata()
-            gt_img = nib.load(gt_path).get_fdata()
-            
-            # Ensure same dimensions
-            if pred_img.shape != gt_img.shape:
-                print(f"  Shape mismatch: pred {pred_img.shape}, gt {gt_img.shape}")
-                continue
-            
-            # Convert to tensors and normalize for metric calculation 
-            # Note: Images are already in HU range, so we normalize to 0-1 for MAE calculation
-            pred_norm = (pred_img - (-1024.0)) / (1976.0 - (-1024.0))
-            gt_norm = (gt_img - (-1024.0)) / (1976.0 - (-1024.0))
-            
-            pred_tensor = torch.from_numpy(pred_norm).unsqueeze(0).unsqueeze(0).float()
-            gt_tensor = torch.from_numpy(gt_norm).unsqueeze(0).unsqueeze(0).float()
-            
-            # Calculate normalized MAE
-            mae_metric(y_pred=pred_tensor, y=gt_tensor)
-            mae_norm = mae_metric.aggregate().item()
-            
-            # Convert MAE back to HU units
-            mae_hu = mae_norm * (1976.0 - (-1024.0))
-            
-            results.append({
-                "case_name": case_name,
-                "mae_hu": mae_hu
-            })
-            
-            print(f"  Case {case_name}: MAE = {mae_hu:.4f} HU")
-            mae_metric.reset()
+            try:
+                pred_img = nib.load(pred_path).get_fdata()
+                gt_img = nib.load(gt_path).get_fdata()
+                
+                # Ensure same dimensions
+                if pred_img.shape != gt_img.shape:
+                    print(f"  Shape mismatch: pred {pred_img.shape}, gt {gt_img.shape}")
+                    continue
+                
+                # Convert to tensors and normalize for metric calculation 
+                # Note: Images are already in HU range, so we normalize to 0-1 for MAE calculation
+                pred_norm = (pred_img - (-1024.0)) / (1976.0 - (-1024.0))
+                gt_norm = (gt_img - (-1024.0)) / (1976.0 - (-1024.0))
+                
+                pred_tensor = torch.from_numpy(pred_norm).unsqueeze(0).unsqueeze(0).float()
+                gt_tensor = torch.from_numpy(gt_norm).unsqueeze(0).unsqueeze(0).float()
+                
+                # Calculate normalized MAE
+                mae_metric(y_pred=pred_tensor, y=gt_tensor)
+                mae_norm = mae_metric.aggregate().item()
+                
+                # Convert MAE back to HU units
+                mae_hu = mae_norm * (1976.0 - (-1024.0))
+                
+                results.append({
+                    "case_name": case_name,
+                    "mae_hu": mae_hu
+                })
+                
+                print(f"  Case {case_name}: MAE = {mae_hu:.4f} HU")
+                mae_metric.reset()
+            except Exception as e:
+                print(f"  Error evaluating case {case_name}: {str(e)}")
     
     # Create summary dataframe and save
     if results:

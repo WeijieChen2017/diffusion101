@@ -34,17 +34,24 @@ def create_folds(data_list, n_folds=4):
     
     return folds_dict
 
-# Create 4 folds
-folds = create_folds(train_case_name_list, n_folds=4)
+def main():
+    print("Creating 4 folds for cross-validation...")
+    # Create 4 folds
+    folds = create_folds(train_case_name_list, n_folds=4)
 
-# Save to JSON file
-os.makedirs("HU_adapter_UNet", exist_ok=True)
-json_path = os.path.join("HU_adapter_UNet", "folds.json")
-with open(json_path, 'w') as f:
-    json.dump(folds, f, indent=4)
+    # Save to JSON file
+    os.makedirs("HU_adapter_UNet", exist_ok=True)
+    json_path = os.path.join("HU_adapter_UNet", "folds.json")
+    with open(json_path, 'w') as f:
+        json.dump(folds, f, indent=4)
 
-print(f"Created 4 folds and saved to {json_path}")
+    print(f"Created 4 folds and saved to {json_path}")
 
-# Print fold statistics
-for fold_name, fold_data in folds.items():
-    print(f"{fold_name}: {len(fold_data['train'])} training cases, {len(fold_data['val'])} validation cases") 
+    # Print fold statistics
+    for fold_name, fold_data in folds.items():
+        print(f"{fold_name}: {len(fold_data['train'])} training cases, {len(fold_data['val'])} validation cases")
+    
+    return 0
+
+if __name__ == "__main__":
+    exit(main()) 

@@ -55,6 +55,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device} (GPU {args.gpu})")
 
+# Import path helper functions
+from maisi.HU_adapter_UNet import get_ct_path, get_sct_path
+
 # Load fold data
 folds_path = os.path.join("HU_adapter_UNet", "folds.json")
 if not os.path.exists(folds_path):
@@ -77,23 +80,33 @@ print(f"Validation cases: {len(val_cases)}")
 # Create data dictionaries for training and validation
 train_files = []
 for case_name in train_cases:
-    ct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
-    sct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_TS_MAISI.nii.gz"
+    ct_path = get_ct_path(case_name)
+    sct_path = get_sct_path(case_name)
     if os.path.exists(ct_path) and os.path.exists(sct_path):
         train_files.append({
             "ct": ct_path,
             "sct": sct_path
         })
+    else:
+        print(f"Warning: Files for case {case_name} not found. CT exists: {os.path.exists(ct_path)}, SCT exists: {os.path.exists(sct_path)}")
 
 val_files = []
 for case_name in val_cases:
-    ct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
-    sct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_TS_MAISI.nii.gz"
+    ct_path = get_ct_path(case_name)
+    sct_path = get_sct_path(case_name)
     if os.path.exists(ct_path) and os.path.exists(sct_path):
         val_files.append({
             "ct": ct_path,
             "sct": sct_path
         })
+    else:
+        print(f"Warning: Files for case {case_name} not found. CT exists: {os.path.exists(ct_path)}, SCT exists: {os.path.exists(sct_path)}")
+
+print(f"Found {len(train_files)} valid training files and {len(val_files)} valid validation files")
+
+if len(train_files) == 0 or len(val_files) == 0:
+    print("Error: No valid training or validation files found. Exiting.")
+    sys.exit(1)
 
 # Create transforms for training and validation
 train_transforms = Compose([

@@ -47,7 +47,12 @@ def main():
             print("Creating folds first...")
             f.write("Creating folds first...\n")
             f.flush()
-            os.system("python -m maisi.HU_adapter_create_folds")
+            result = os.system("python -m maisi.HU_adapter_create_folds")
+            if result != 0:
+                error_msg = f"Error creating folds. Exiting with code {result}"
+                print(error_msg)
+                f.write(error_msg + "\n")
+                return
         
         # Start each fold on its own GPU
         processes = []
@@ -69,7 +74,11 @@ def main():
         
         try:
             while processes:
-                for i, (fold, gpu, process) in enumerate(processes[:]):
+                # Create a list to store processes that have completed
+                completed = []
+                
+                # Check each process
+                for fold, gpu, process in processes:
                     if process.poll() is not None:  # Process completed
                         if process.returncode == 0:
                             status_msg = f"Fold {fold} on GPU {gpu} completed successfully at {datetime.now()}!"
@@ -79,7 +88,14 @@ def main():
                         print(status_msg)
                         f.write(status_msg + "\n")
                         f.flush()
-                        processes.pop(i)
+                        
+                        # Add to completed list instead of modifying the original list
+                        completed.append((fold, gpu, process))
+                
+                # Remove completed processes from the original list
+                for proc in completed:
+                    if proc in processes:
+                        processes.remove(proc)
                 
                 if processes:
                     time.sleep(10)  # Check every 10 seconds

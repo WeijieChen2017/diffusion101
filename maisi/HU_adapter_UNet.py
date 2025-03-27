@@ -21,6 +21,15 @@ test_case_name_list = [
     'E4139',
 ]
 
-ct_path = f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
-# synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS_MAISI.nii.gz"
-synCT_path = f"{synCT_dir}/CTAC_{case_name}_TS_MAISI.nii.gz"
+import os
+
+# Create output directory
+root_dir = "HU_adapter_UNet"
+os.makedirs(root_dir, exist_ok=True)
+
+# Path templates for data (to be used by other scripts)
+def get_ct_path(case_name):
+    return f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
+
+def get_sct_path(case_name):
+    return f"NAC_CTAC_Spacing15/CTAC_{case_name}_TS_MAISI.nii.gz"
