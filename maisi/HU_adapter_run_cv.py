@@ -25,12 +25,17 @@ def run_cv_fold(fold, gpu):
         f.write(f"Command: {command}\n\n")
         f.flush()
         
-        # Start the process and redirect output to log file
+        # Create a new environment with the specific GPU assigned
+        env = os.environ.copy()
+        env["CUDA_VISIBLE_DEVICES"] = str(gpu)
+        
+        # Start the process with the modified environment and redirect output to log file
         process = subprocess.Popen(
             command,
             shell=True,
             stdout=f,
             stderr=subprocess.STDOUT,
+            env=env
         )
         
         return process
