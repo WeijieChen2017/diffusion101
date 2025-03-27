@@ -29,7 +29,7 @@ os.makedirs(root_dir, exist_ok=True)
 
 # Path templates for data (to be used by other scripts)
 def get_ct_path(case_name):
-    return f"NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
+    return f"maisi/NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz"
 
 def get_sct_path(case_name):
-    return f"NAC_CTAC_Spacing15/CTAC_{case_name}_TS_MAISI.nii.gz"
+    return f"maisi/NAC_CTAC_Spacing15/CTAC_{case_name}_TS_MAISI.nii.gz"
