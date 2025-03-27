@@ -193,7 +193,7 @@ train_dataset = CacheDataset(
 )
 train_loader = DataLoader(
     train_dataset,
-    batch_size=2,
+    batch_size=16,
     shuffle=True,
     num_workers=4,
     pin_memory=torch.cuda.is_available(),
@@ -220,7 +220,7 @@ model = UNet(
     out_channels=1,
     channels=(16, 32, 64, 128, 256),
     strides=(2, 2, 2, 2),
-    num_res_units=2,
+    num_res_units=6,
 )
 model = model.to(device)
 
