@@ -109,7 +109,7 @@ model = UNet(
     out_channels=1,
     channels=(16, 32, 64, 128, 256),
     strides=(2, 2, 2, 2),
-    num_res_units=2,
+    num_res_units=6,
 )
 
 # Load the best model from cross-validation
@@ -166,8 +166,8 @@ with torch.no_grad():
             ct_img = ct_img.unsqueeze(0).to(device)  # Add batch dimension
             
             # Run inference with sliding window
-            roi_size = (96, 96, 96)
-            sw_batch_size = 4
+            roi_size = (128, 128, 128)
+            sw_batch_size = 16
             predicted_output = sliding_window_inference(
                 ct_img, roi_size, sw_batch_size, model, overlap=0.5
             )

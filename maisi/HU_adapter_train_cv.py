@@ -218,7 +218,7 @@ model = UNet(
     spatial_dims=3,
     in_channels=1,
     out_channels=1,
-    channels=(16, 32, 64, 128, 256),
+    channels=(32, 32, 64, 128, 256),
     strides=(2, 2, 2, 2),
     num_res_units=6,
 )
@@ -241,7 +241,7 @@ def scale_to_hu(normalized_values):
 
 # Training loop
 num_epochs = 300
-val_interval = 5
+val_interval = 10
 best_metric = float('inf')  # Lower is better for MAE
 best_metric_epoch = -1
 epoch_loss_values = []
@@ -255,7 +255,7 @@ for epoch in range(num_epochs):
     
     for batch_data in train_loader:
         step += 1
-        inputs, targets = batch_data["ct"].to(device), batch_data["sct"].to(device)
+        inputs, targets = batch_data["sct"].to(device), batch_data["ct"].to(device)
         
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -281,7 +281,7 @@ for epoch in range(num_epochs):
             val_step = 0
             for val_data in val_loader:
                 val_step += 1
-                val_inputs, val_targets = val_data["ct"].to(device), val_data["sct"].to(device)
+                val_inputs, val_targets = val_data["sct"].to(device), val_data["ct"].to(device)
                 val_outputs = model(val_inputs)
                 
                 # Calculate MAE
