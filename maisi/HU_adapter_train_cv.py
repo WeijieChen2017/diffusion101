@@ -180,6 +180,11 @@ val_transforms = Compose([
         b_min=0.0,
         b_max=1.0,
     ),
+    RandSpatialCropd(
+        keys=["ct", "sct"],
+        roi_size=(128, 128, 128),
+        random_size=False,
+    ),
     ToTensord(keys=["ct", "sct"]),
 ])
 
