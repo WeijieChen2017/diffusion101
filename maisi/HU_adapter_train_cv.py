@@ -157,7 +157,7 @@ train_transforms = Compose([
     # Use RandSpatialCropd for synthesis task
     RandSpatialCropd(
         keys=["ct", "sct"],
-        roi_size=(96, 96, 96),
+        roi_size=(128, 128, 128),
         random_size=False,
     ),
     RandRotate90d(keys=["ct", "sct"], prob=0.2, spatial_axes=(0, 1)),
@@ -193,7 +193,7 @@ train_dataset = CacheDataset(
 )
 train_loader = DataLoader(
     train_dataset,
-    batch_size=16,
+    batch_size=32,
     shuffle=True,
     num_workers=4,
     pin_memory=torch.cuda.is_available(),
