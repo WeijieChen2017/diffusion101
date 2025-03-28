@@ -65,7 +65,7 @@ def main():
         # Start each fold on its own GPU
         processes = []
         for fold in range(1, 5):  # Folds 1 to 4
-            gpu = fold  # Map fold to GPU 0-3
+            gpu = fold + 1  # Map fold to GPU 0-3
             process = run_cv_fold(fold, gpu)
             processes.append((fold, gpu, process))
             
