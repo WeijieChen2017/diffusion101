@@ -237,7 +237,7 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
 mae_metric = MAEMetric()
 
 # Create output directory for this fold
-fold_dir = get_fold_dir(args.fold)
+fold_dir = get_fold_dir(args.fold, tag="res")
 os.makedirs(fold_dir, exist_ok=True)
 
 # Define HU scaler - to convert normalized values back to HU for metric reporting
@@ -263,10 +263,13 @@ for epoch in range(num_epochs):
         inputs, targets = batch_data["sct"].to(device), batch_data["ct"].to(device)
         
         optimizer.zero_grad()
-        outputs = model(inputs)
+        # Network predicts the residual (targets - inputs) instead of targets directly
+        residual_outputs = model(inputs)
+        # Reconstruct full prediction by adding input and residual
+        outputs = inputs + residual_outputs
         
-        # Multiply loss by 3000 as requested
-        loss = loss_function(outputs, targets) * 3000.0
+        # Use the actual HU range instead of magic number 3000
+        loss = loss_function(outputs, targets) * (HU_MAX - HU_MIN)
         loss.backward()
         optimizer.step()
         
@@ -287,11 +290,14 @@ for epoch in range(num_epochs):
             for val_data in val_loader:
                 val_step += 1
                 val_inputs, val_targets = val_data["sct"].to(device), val_data["ct"].to(device)
-                val_outputs = model(val_inputs)
+                # Network predicts the residual (targets - inputs)
+                val_residual_outputs = model(val_inputs)
+                # Reconstruct full prediction by adding input and residual
+                val_outputs = val_inputs + val_residual_outputs
                 
                 # Calculate MAE
                 mae_metric(y_pred=val_outputs, y=val_targets)
-                
+            
             # Aggregate MAE metric and convert to HU
             mean_mae = mae_metric.aggregate().item()
             mean_mae_hu = mean_mae * (HU_MAX - HU_MIN)  # Convert normalized MAE to HU scale

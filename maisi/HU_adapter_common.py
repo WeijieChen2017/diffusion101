@@ -70,9 +70,12 @@ def get_folds_path():
     """Get the path to the folds.json file."""
     return os.path.join(ROOT_DIR, "folds.json")
 
-def get_fold_dir(fold_num):
+def get_fold_dir(fold_num, tag=None):
     """Get the directory for a specific fold."""
-    return os.path.join(ROOT_DIR, f"fold_{fold_num}")
+    folder_name = f"fold_{fold_num}"
+    if tag:
+        folder_name += f"_{tag}"
+    return os.path.join(ROOT_DIR, folder_name)
 
 def get_best_model_path(fold_num):
     """Get the path to the best model for a fold."""
