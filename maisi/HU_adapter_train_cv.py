@@ -265,6 +265,8 @@ for epoch in range(num_epochs):
         optimizer.zero_grad()
         # Network predicts the residual (targets - inputs) instead of targets directly
         residual_outputs = model(inputs)
+        # Clip residuals to [-1, 1] range
+        residual_outputs = torch.clamp(residual_outputs, -1.0, 1.0)
         # Reconstruct full prediction by adding input and residual
         outputs = inputs + residual_outputs
         
@@ -297,6 +299,8 @@ for epoch in range(num_epochs):
                 val_inputs, val_targets = val_data["sct"].to(device), val_data["ct"].to(device)
                 # Network predicts the residual (targets - inputs)
                 val_residual_outputs = model(val_inputs)
+                # Clip residuals to [-1, 1] range
+                val_residual_outputs = torch.clamp(val_residual_outputs, -1.0, 1.0)
                 # Reconstruct full prediction by adding input and residual
                 val_outputs = val_inputs + val_residual_outputs
                 
