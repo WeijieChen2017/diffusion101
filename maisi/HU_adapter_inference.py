@@ -10,7 +10,7 @@ from monai.transforms import (
     Compose,
     LoadImage,
     EnsureChannelFirst,
-    ScaleIntensity,
+    ScaleIntensityRanged,
     ToTensor,
     Spacing,
 )
@@ -83,7 +83,7 @@ inference_transforms = Compose([
         pixdim=(1.5, 1.5, 1.5),
         mode="bilinear",
     ),
-    ScaleIntensity(
+    ScaleIntensityRanged(
         minv=HU_MIN,
         maxv=HU_MAX,
         a_min=0.0,
