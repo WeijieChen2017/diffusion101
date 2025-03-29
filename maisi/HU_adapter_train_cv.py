@@ -274,8 +274,13 @@ for epoch in range(num_epochs):
         optimizer.step()
         
         epoch_loss += loss.item()
-        if step % 10 == 0:
+        if step == 1:
+            # Print data ranges
             print(f"{step}/{len(train_loader)}, train_loss: {loss.item():.4f}")
+            print(f"  Ranges - Inputs: [{inputs.min().item():.4f}, {inputs.max().item():.4f}], "
+                  f"Residuals: [{residual_outputs.min().item():.4f}, {residual_outputs.max().item():.4f}], "
+                  f"Outputs: [{outputs.min().item():.4f}, {outputs.max().item():.4f}], "
+                  f"Targets: [{targets.min().item():.4f}, {targets.max().item():.4f}]")
     
     epoch_loss /= step
     epoch_loss_values.append(epoch_loss)
@@ -294,6 +299,13 @@ for epoch in range(num_epochs):
                 val_residual_outputs = model(val_inputs)
                 # Reconstruct full prediction by adding input and residual
                 val_outputs = val_inputs + val_residual_outputs
+                
+                # Print validation data ranges for first batch
+                if val_step == 1:
+                    print(f"  Val Ranges - Inputs: [{val_inputs.min().item():.4f}, {val_inputs.max().item():.4f}], "
+                          f"Residuals: [{val_residual_outputs.min().item():.4f}, {val_residual_outputs.max().item():.4f}], "
+                          f"Outputs: [{val_outputs.min().item():.4f}, {val_outputs.max().item():.4f}], "
+                          f"Targets: [{val_targets.min().item():.4f}, {val_targets.max().item():.4f}]")
                 
                 # Calculate MAE
                 mae_metric(y_pred=val_outputs, y=val_targets)
