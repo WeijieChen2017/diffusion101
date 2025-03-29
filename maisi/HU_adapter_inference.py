@@ -84,10 +84,8 @@ inference_transforms = Compose([
         mode="bilinear",
     ),
     ScaleIntensityRanged(
-        minv=HU_MIN,
-        maxv=HU_MAX,
-        a_min=0.0,
-        a_max=1.0,
+        a_min=HU_MIN,
+        a_max=HU_MAX,
         b_min=0.0,
         b_max=1.0,
     ),
