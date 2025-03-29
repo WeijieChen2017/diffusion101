@@ -279,27 +279,32 @@ for epoch in range(num_epochs):
         step += 1
         inputs, targets = batch_data["sct"].to(device), batch_data["ct"].to(device)
         
+        # Calculate the target difference (CT - sCT)
+        diff_targets = targets - inputs
+        
         optimizer.zero_grad()
-        # Network predicts the residual (targets - inputs) instead of targets directly
-        residual_outputs = model(inputs)
-        # Clip residuals to [-1, 1] range
-        residual_outputs = torch.clamp(residual_outputs, -1.0, 1.0)
-        # Reconstruct full prediction by adding input and residual
-        outputs = inputs + residual_outputs
+        # Network directly predicts the difference (CT - sCT)
+        diff_outputs = model(inputs)
+        # Clip difference outputs to [-1, 1] range
+        diff_outputs = torch.clamp(diff_outputs, -1.0, 1.0)
         
         # Use the actual HU range instead of magic number 3000
-        loss = loss_function(outputs, targets) * (HU_MAX - HU_MIN)
+        loss = loss_function(diff_outputs, diff_targets) * (HU_MAX - HU_MIN)
         loss.backward()
         optimizer.step()
+        
+        # For monitoring, calculate the reconstructed CT
+        reconstructed_outputs = inputs + diff_outputs
         
         epoch_loss += loss.item()
         if step == 1:
             # Print data ranges
             print(f"{step}/{len(train_loader)}, train_loss: {loss.item():.4f}")
             print(f"  Ranges - Inputs: [{inputs.min().item():.4f}, {inputs.max().item():.4f}], "
-                  f"Residuals: [{residual_outputs.min().item():.4f}, {residual_outputs.max().item():.4f}], "
-                  f"Outputs: [{outputs.min().item():.4f}, {outputs.max().item():.4f}], "
-                  f"Targets: [{targets.min().item():.4f}, {targets.max().item():.4f}]")
+                  f"Diff Targets: [{diff_targets.min().item():.4f}, {diff_targets.max().item():.4f}], "
+                  f"Diff Outputs: [{diff_outputs.min().item():.4f}, {diff_outputs.max().item():.4f}], "
+                  f"Recon CT: [{reconstructed_outputs.min().item():.4f}, {reconstructed_outputs.max().item():.4f}], "
+                  f"Target CT: [{targets.min().item():.4f}, {targets.max().item():.4f}]")
     
     epoch_loss /= step
     epoch_loss_values.append(epoch_loss)
@@ -314,22 +319,28 @@ for epoch in range(num_epochs):
             for val_data in val_loader:
                 val_step += 1
                 val_inputs, val_targets = val_data["sct"].to(device), val_data["ct"].to(device)
-                # Network predicts the residual (targets - inputs)
-                val_residual_outputs = model(val_inputs)
-                # Clip residuals to [-1, 1] range
-                val_residual_outputs = torch.clamp(val_residual_outputs, -1.0, 1.0)
-                # Reconstruct full prediction by adding input and residual
-                val_outputs = val_inputs + val_residual_outputs
+                
+                # Calculate the target difference (CT - sCT)
+                val_diff_targets = val_targets - val_inputs
+                
+                # Network directly predicts the difference (CT - sCT)
+                val_diff_outputs = model(val_inputs)
+                # Clip difference outputs to [-1, 1] range
+                val_diff_outputs = torch.clamp(val_diff_outputs, -1.0, 1.0)
+                
+                # For evaluation, calculate the reconstructed CT
+                val_reconstructed_outputs = val_inputs + val_diff_outputs
                 
                 # Print validation data ranges for first batch
                 if val_step == 1:
                     print(f"  Val Ranges - Inputs: [{val_inputs.min().item():.4f}, {val_inputs.max().item():.4f}], "
-                          f"Residuals: [{val_residual_outputs.min().item():.4f}, {val_residual_outputs.max().item():.4f}], "
-                          f"Outputs: [{val_outputs.min().item():.4f}, {val_outputs.max().item():.4f}], "
-                          f"Targets: [{val_targets.min().item():.4f}, {val_targets.max().item():.4f}]")
+                          f"Diff Targets: [{val_diff_targets.min().item():.4f}, {val_diff_targets.max().item():.4f}], "
+                          f"Diff Outputs: [{val_diff_outputs.min().item():.4f}, {val_diff_outputs.max().item():.4f}], "
+                          f"Recon CT: [{val_reconstructed_outputs.min().item():.4f}, {val_reconstructed_outputs.max().item():.4f}], "
+                          f"Target CT: [{val_targets.min().item():.4f}, {val_targets.max().item():.4f}]")
                 
-                # Calculate MAE
-                mae_metric(y_pred=val_outputs, y=val_targets)
+                # Calculate MAE on the reconstructed CT vs. target CT
+                mae_metric(y_pred=val_reconstructed_outputs, y=val_targets)
             
             # Aggregate MAE metric and convert to HU
             mean_mae = mae_metric.aggregate().item()
