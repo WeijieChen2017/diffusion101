@@ -70,8 +70,9 @@ fold_key = f"fold_{args.fold}"
 if fold_key not in folds:
     raise ValueError(f"Invalid fold number: {args.fold}. Available folds: {list(folds.keys())}")
 
-test_cases = folds[fold_key]["test"]
-print(f"Running inference for {fold_key}")
+# Use the independent test cases from common module instead of validation set
+test_cases = TEST_CASES
+print(f"Running inference for {fold_key} using independent test set")
 print(f"Test cases: {len(test_cases)}")
 
 # Define transforms for inference
