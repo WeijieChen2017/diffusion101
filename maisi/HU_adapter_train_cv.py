@@ -227,6 +227,23 @@ model = UNet(
     strides=(2, 2, 2, 2),
     num_res_units=6,
 )
+
+# Initialize model weights with Kaiming initialization
+def init_weights(m):
+    if isinstance(m, (nn.Conv3d, nn.ConvTranspose3d)):
+        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+    elif isinstance(m, (nn.BatchNorm3d, nn.InstanceNorm3d)):
+        if m.weight is not None:
+            nn.init.constant_(m.weight, 1)
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+
+# Apply the initialization
+model.apply(init_weights)
+print("Applied Kaiming initialization to model weights")
+
 model = model.to(device)
 
 # Loss function and optimizer for synthesis task
