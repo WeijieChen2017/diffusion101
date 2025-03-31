@@ -108,6 +108,7 @@ model = UNet(
 
 # Load the model for this fold
 fold_dir = get_fold_dir(args.fold)
+fold_dir = fold_dir.replace(f"fold_{args.fold}", f"fold_{args.fold}_res")  # Change to _res folder
 checkpoint_path = os.path.join(fold_dir, "best_model.pth")
 if not os.path.exists(checkpoint_path):
     raise FileNotFoundError(f"Model checkpoint not found at {checkpoint_path}")
@@ -159,11 +160,15 @@ with torch.no_grad():
             predicted_numpy = predicted_output[0, 0].cpu().numpy()
             predicted_hu = normalize_to_hu(predicted_numpy)
             
-            # Verify denormalization
+            # Add prediction to input for final output
+            final_output = original_data + predicted_hu
+            
+            # Verify denormalization and addition
             print(f"  Predicted range: [{predicted_hu.min():.2f}, {predicted_hu.max():.2f}] HU")
+            print(f"  Final output range: [{final_output.min():.2f}, {final_output.max():.2f}] HU")
             
             # Save the prediction using original affine matrix from CT
-            output_nifti = nib.Nifti1Image(predicted_hu, original_ct.affine, original_ct.header)
+            output_nifti = nib.Nifti1Image(final_output, original_ct.affine, original_ct.header)
             output_path = os.path.join(output_dir, f"CTAC_{case_name}_predicted.nii.gz")
             nib.save(output_nifti, output_path)
             
