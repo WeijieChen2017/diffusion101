@@ -156,16 +156,29 @@ with torch.no_grad():
                 ct_img, roi_size, sw_batch_size, model, overlap=0.25
             )
             
-            # Convert normalized output back to HU range
+            # Clip the output to the range [-1, 1] before de-normalization
             predicted_numpy = predicted_output[0, 0].cpu().numpy()
-            predicted_hu = normalize_to_hu(predicted_numpy)
+            predicted_numpy_clipped = np.clip(predicted_numpy, -1.0, 1.0)
             
-            # Add prediction to input for final output
-            final_output = original_data + predicted_hu
+            # Convert normalized output back to HU range
+            predicted_hu = normalize_to_hu(predicted_numpy_clipped)
             
-            # Verify denormalization and addition
-            print(f"  Predicted range: [{predicted_hu.min():.2f}, {predicted_hu.max():.2f}] HU")
-            print(f"  Final output range: [{final_output.min():.2f}, {final_output.max():.2f}] HU")
+            # Normalize input and output to 0-1 range for addition
+            input_normalized = (original_data - HU_MIN) / (HU_MAX - HU_MIN)
+            output_normalized = (predicted_hu - HU_MIN) / (HU_MAX - HU_MIN)
+            
+            # Add prediction to input and clip to 0-1 range
+            final_output_normalized = np.clip(input_normalized + output_normalized, 0.0, 1.0)
+            
+            # Convert final output back to HU range
+            final_output = normalize_to_hu(final_output_normalized)
+            
+            # Verify ranges
+            print(f"  Original input normalized range: [{input_normalized.min():.2f}, {input_normalized.max():.2f}]")
+            print(f"  Predicted range (clipped): [{predicted_numpy_clipped.min():.2f}, {predicted_numpy_clipped.max():.2f}]")
+            print(f"  Predicted HU range: [{predicted_hu.min():.2f}, {predicted_hu.max():.2f}] HU")
+            print(f"  Final output normalized range: [{final_output_normalized.min():.2f}, {final_output_normalized.max():.2f}]")
+            print(f"  Final output HU range: [{final_output.min():.2f}, {final_output.max():.2f}] HU")
             
             # Save the prediction using original affine matrix from CT
             output_nifti = nib.Nifti1Image(final_output, original_ct.affine, original_ct.header)
