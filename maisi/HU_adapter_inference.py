@@ -129,46 +129,44 @@ with torch.no_grad():
     for case_name in test_cases:
         print(f"Processing case: {case_name}")
         
-        # Load the CT image
-        ct_path = get_ct_path(case_name)
-        if not os.path.exists(ct_path):
-            print(f"  Skipping {case_name}: file not found at {ct_path}")
+        # Load the sCT image instead of CT
+        sct_path = get_sct_path(case_name)
+        if not os.path.exists(sct_path):
+            print(f"  Skipping {case_name}: sCT file not found at {sct_path}")
             continue
             
-        # Get original CT image for reference (to preserve metadata)
-        original_ct = nib.load(ct_path)
-        original_data = original_ct.get_fdata()
-        print(f"  Original CT range: [{original_data.min():.2f}, {original_data.max():.2f}] HU")
+        # Get original sCT image for reference (to preserve metadata)
+        original_sct = nib.load(sct_path)
+        original_data = original_sct.get_fdata()
+        print(f"  Original sCT range: [{original_data.min():.2f}, {original_data.max():.2f}] HU")
         
         # Transform the image
         try:
-            ct_img = inference_transforms(ct_path)
-            ct_img = ct_img.unsqueeze(0).to(device)  # Add batch dimension
+            sct_img = inference_transforms(sct_path)
+            sct_img = sct_img.unsqueeze(0).to(device)  # Add batch dimension
             
             # Verify normalization
-            normalized_data = ct_img[0, 0].cpu().numpy()
+            normalized_data = sct_img[0, 0].cpu().numpy()
             print(f"  Normalized range: [{normalized_data.min():.2f}, {normalized_data.max():.2f}]")
             
             # Run inference with sliding window
             roi_size = (128, 128, 128)
             sw_batch_size = 16
             predicted_output = sliding_window_inference(
-                ct_img, roi_size, sw_batch_size, model, overlap=0.25
+                sct_img, roi_size, sw_batch_size, model, overlap=0.25
             )
             
             # Clip the output to the range [-1, 1] before de-normalization
             predicted_numpy = predicted_output[0, 0].cpu().numpy()
             predicted_numpy_clipped = np.clip(predicted_numpy, -1.0, 1.0)
-            
-            # Convert normalized output back to HU range
-            predicted_hu = normalize_to_hu(predicted_numpy_clipped)
-            
+        
             # Normalize input and output to 0-1 range for addition
             input_normalized = (original_data - HU_MIN) / (HU_MAX - HU_MIN)
-            output_normalized = (predicted_hu - HU_MIN) / (HU_MAX - HU_MIN)
-            
+            # clip the input to the range [-1, 1]
+            input_normalized_clipped = np.clip(input_normalized, 0.0, 1.0)
+
             # Add prediction to input and clip to 0-1 range
-            final_output_normalized = np.clip(input_normalized + output_normalized, 0.0, 1.0)
+            final_output_normalized = np.clip(input_normalized_clipped + predicted_numpy_clipped, 0.0, 1.0)
             
             # Convert final output back to HU range
             final_output = normalize_to_hu(final_output_normalized)
@@ -176,12 +174,11 @@ with torch.no_grad():
             # Verify ranges
             print(f"  Original input normalized range: [{input_normalized.min():.2f}, {input_normalized.max():.2f}]")
             print(f"  Predicted range (clipped): [{predicted_numpy_clipped.min():.2f}, {predicted_numpy_clipped.max():.2f}]")
-            print(f"  Predicted HU range: [{predicted_hu.min():.2f}, {predicted_hu.max():.2f}] HU")
             print(f"  Final output normalized range: [{final_output_normalized.min():.2f}, {final_output_normalized.max():.2f}]")
             print(f"  Final output HU range: [{final_output.min():.2f}, {final_output.max():.2f}] HU")
             
-            # Save the prediction using original affine matrix from CT
-            output_nifti = nib.Nifti1Image(final_output, original_ct.affine, original_ct.header)
+            # Save the prediction using original affine matrix from sCT
+            output_nifti = nib.Nifti1Image(final_output, original_sct.affine, original_sct.header)
             output_path = os.path.join(output_dir, f"CTAC_{case_name}_predicted.nii.gz")
             nib.save(output_nifti, output_path)
             
