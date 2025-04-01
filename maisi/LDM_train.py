@@ -245,21 +245,21 @@ def examine_data():
             shuffle=True,
             num_workers_loader=4,
             num_workers_cache=4,
-            cache_rate=1.0
+            cache_rate=0.25
         ),
         val=DataLoaderConfig(
             batch_size=1,
             shuffle=False,
             num_workers_loader=4,
             num_workers_cache=4,
-            cache_rate=1.0
+            cache_rate=0.5
         ),
         test=DataLoaderConfig(
             batch_size=1,
             shuffle=False,
             num_workers_loader=4,
             num_workers_cache=4,
-            cache_rate=1.0
+            cache_rate=0.1
         )
     )
     
