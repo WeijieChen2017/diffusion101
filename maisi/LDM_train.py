@@ -611,15 +611,13 @@ def train():
                 "train", model, volume_x, volume_y, optimizer, loss_fn, LOSS_FACTOR, 
                 batch_size_slice=args.batch_size_slice, logger=case_logger
             )
+            # Log current progress and losses in one line
+            logger(f"Epoch {epoch+1}/{args.num_epochs}, Batch [{idx+1}/{len(train_loader)}] - Axial: {axial_loss:.4f}, Coronal: {coronal_loss:.4f}, Sagittal: {sagittal_loss:.4f}")
             
             axial_train_loss += axial_loss
             coronal_train_loss += coronal_loss
             sagittal_train_loss += sagittal_loss
-            
-            if idx % 5 == 0:
-                logger(f"Epoch {epoch}, Batch {idx}/{len(train_loader)}, " 
-                      f"Axial: {axial_loss:.3f}, Coronal: {coronal_loss:.3f}, Sagittal: {sagittal_loss:.3f}")
-        
+                    
         # Average losses
         axial_train_loss /= len(train_loader)
         coronal_train_loss /= len(train_loader)
