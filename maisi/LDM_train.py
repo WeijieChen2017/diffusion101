@@ -45,7 +45,7 @@ def main():
     # Create data config
     data_config = DataConfig(
         root_folder="LDM_adapter",
-        cross_validation=1,  # Using fold_1
+        cross_validation="fold_1",  # Using fold_1 instead of 1
         input_modality=["CT", "sCT"],
         train=DataLoaderConfig(
             batch_size=1,
