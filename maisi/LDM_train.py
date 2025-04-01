@@ -51,10 +51,10 @@ def setup_logger(log_dir):
     
     return log_message
 
-def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_loss, LOSS_FACTOR, batch_size_slice=4, logger=None):
+def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_loss, LOSS_FACTOR, logger=None):
     """
     Train or evaluate the model using the given volumes.
-    batch_size_slice: Number of slices to process at once in each direction
+    Process slices one by one.
     """
     # 1, z, 256, 256 tensor
     axial_case_loss = 0
@@ -84,327 +84,200 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
     random.shuffle(indices_list_sagittal)
 
     if train_or_eval == "train":
-        # Process axial slices in batches
-        for start_idx in range(0, len(indices_list_axial), batch_size_slice):
-            end_idx = min(start_idx + batch_size_slice, len(indices_list_axial))
-            batch_indices = indices_list_axial[start_idx:end_idx]
+        # Process axial slices one by one
+        for indices in indices_list_axial:
+            # Input context: 3 adjacent slices
+            x = volume_x[:, indices-1:indices+2, :, :]  # 1, 3, 256, 256
             
-            # Initialize batch tensors
-            batch_inputs = []
-            batch_targets = []
-            batch_inputs_center = []
+            # Target: single slice
+            y_target = volume_y[:, indices, :, :].unsqueeze(1)  # 1, 1, 256, 256
             
-            for indices in batch_indices:
-                # Input context: 3 adjacent slices
-                x = volume_x[:, indices-1:indices+2, :, :]  # 1, 3, 256, 256
-                batch_inputs.append(x)
-                
-                # Target: single slice
-                y_target = volume_y[:, indices, :, :].unsqueeze(1)  # 1, 1, 256, 256
-                batch_targets.append(y_target)
-                
-                # Input center slice for residual addition
-                x_center = volume_x[:, indices, :, :].unsqueeze(1)  # 1, 1, 256, 256
-                batch_inputs_center.append(x_center)
-            
-            # Concatenate along batch dimension
-            x_batch = torch.cat(batch_inputs, dim=0)  # batch_size, 3, 256, 256
-            y_batch = torch.cat(batch_targets, dim=0)  # batch_size, 1, 256, 256
-            x_center_batch = torch.cat(batch_inputs_center, dim=0)  # batch_size, 1, 256, 256
+            # Input center slice for residual addition
+            x_center = volume_x[:, indices, :, :].unsqueeze(1)  # 1, 1, 256, 256
             
             optimizer.zero_grad()
             # Model predicts residual
-            residual_batch = model(x_batch)
+            residual = model(x)
             # Clip residual to [-1, 1] range
-            residual_batch = torch.clamp(residual_batch, -1.0, 1.0)
+            residual = torch.clamp(residual, -1.0, 1.0)
             # Final prediction = input + residual
-            prediction_batch = x_center_batch + residual_batch
+            prediction = x_center + residual
             # Loss between prediction and target
-            loss = output_loss(prediction_batch, y_batch)
+            loss = output_loss(prediction, y_target)
             loss.backward()
             optimizer.step()
             
             # Calculate per-slice losses for logging
             with torch.no_grad():
-                for i, indices in enumerate(batch_indices):
-                    slice_loss = output_loss(
-                        prediction_batch[i:i+1], 
-                        y_batch[i:i+1]
-                    ).item() * LOSS_FACTOR
-                    axial_slice_losses.append((indices, slice_loss))
+                slice_loss = output_loss(prediction, y_target).item() * LOSS_FACTOR
+                axial_slice_losses.append((indices, slice_loss))
             
-            axial_case_loss += loss.item() * (end_idx - start_idx)
+            axial_case_loss += loss.item()
         
         axial_case_loss /= len(indices_list_axial)
         axial_case_loss *= LOSS_FACTOR
 
-        # Process coronal slices in batches
-        for start_idx in range(0, len(indices_list_coronal), batch_size_slice):
-            end_idx = min(start_idx + batch_size_slice, len(indices_list_coronal))
-            batch_indices = indices_list_coronal[start_idx:end_idx]
+        # Process coronal slices one by one
+        for indices in indices_list_coronal:
+            x = volume_x[:, :, indices-1:indices+2, :]  # 1, z, 3, 256
+            x = x.permute(0, 2, 1, 3)  # 1, 3, z, 256
             
-            # Initialize batch tensors
-            batch_inputs = []
-            batch_targets = []
-            batch_inputs_center = []
+            # Target: single slice
+            y_target = volume_y[:, :, indices, :].unsqueeze(1)  # 1, 1, z, 256
             
-            for indices in batch_indices:
-                x = volume_x[:, :, indices-1:indices+2, :]  # 1, z, 3, 256
-                x = x.permute(0, 2, 1, 3)  # 1, 3, z, 256
-                batch_inputs.append(x)
-                
-                # Target: single slice
-                y_target = volume_y[:, :, indices, :].unsqueeze(1)  # 1, 1, z, 256
-                batch_targets.append(y_target)
-                
-                # Input center slice for residual addition
-                x_center = volume_x[:, :, indices, :].unsqueeze(1)  # 1, 1, z, 256
-                batch_inputs_center.append(x_center)
+            # Input center slice for residual addition
+            x_center = volume_x[:, :, indices, :].unsqueeze(1)  # 1, 1, z, 256
             
-            # Concatenate along batch dimension
-            x_batch = torch.cat(batch_inputs, dim=0)
-            y_batch = torch.cat(batch_targets, dim=0)
-            x_center_batch = torch.cat(batch_inputs_center, dim=0)
-
             optimizer.zero_grad()
             # Model predicts residual
-            residual_batch = model(x_batch)
+            residual = model(x)
             # Clip residual to [-1, 1] range
-            residual_batch = torch.clamp(residual_batch, -1.0, 1.0)
+            residual = torch.clamp(residual, -1.0, 1.0)
             # Final prediction = input + residual
-            prediction_batch = x_center_batch + residual_batch
+            prediction = x_center + residual
             # Loss between prediction and target
-            loss = output_loss(prediction_batch, y_batch)
+            loss = output_loss(prediction, y_target)
             loss.backward()
             optimizer.step()
             
             # Calculate per-slice losses for logging
             with torch.no_grad():
-                for i, indices in enumerate(batch_indices):
-                    slice_loss = output_loss(
-                        prediction_batch[i:i+1], 
-                        y_batch[i:i+1]
-                    ).item() * LOSS_FACTOR
-                    coronal_slice_losses.append((indices, slice_loss))
+                slice_loss = output_loss(prediction, y_target).item() * LOSS_FACTOR
+                coronal_slice_losses.append((indices, slice_loss))
             
-            coronal_case_loss += loss.item() * (end_idx - start_idx)
+            coronal_case_loss += loss.item()
         
         coronal_case_loss /= len(indices_list_coronal)
         coronal_case_loss *= LOSS_FACTOR
 
-        # Process sagittal slices in batches
-        for start_idx in range(0, len(indices_list_sagittal), batch_size_slice):
-            end_idx = min(start_idx + batch_size_slice, len(indices_list_sagittal))
-            batch_indices = indices_list_sagittal[start_idx:end_idx]
+        # Process sagittal slices one by one
+        for indices in indices_list_sagittal:
+            x = volume_x[:, :, :, indices-1:indices+2]  # 1, z, 256, 3
+            x = x.permute(0, 3, 1, 2)  # 1, 3, z, 256
             
-            # Initialize batch tensors
-            batch_inputs = []
-            batch_targets = []
-            batch_inputs_center = []
+            # Target: single slice
+            y_target = volume_y[:, :, :, indices].unsqueeze(1)  # 1, 1, z, 256
             
-            for indices in batch_indices:
-                x = volume_x[:, :, :, indices-1:indices+2]  # 1, z, 256, 3
-                x = x.permute(0, 3, 1, 2)  # 1, 3, z, 256
-                batch_inputs.append(x)
-                
-                # Target: single slice
-                y_target = volume_y[:, :, :, indices].unsqueeze(1)  # 1, 1, z, 256
-                batch_targets.append(y_target)
-                
-                # Input center slice for residual addition
-                x_center = volume_x[:, :, :, indices].unsqueeze(1)  # 1, 1, z, 256
-                batch_inputs_center.append(x_center)
+            # Input center slice for residual addition
+            x_center = volume_x[:, :, :, indices].unsqueeze(1)  # 1, 1, z, 256
             
-            # Concatenate along batch dimension
-            x_batch = torch.cat(batch_inputs, dim=0)
-            y_batch = torch.cat(batch_targets, dim=0)
-            x_center_batch = torch.cat(batch_inputs_center, dim=0)
-
             optimizer.zero_grad()
             # Model predicts residual
-            residual_batch = model(x_batch)
+            residual = model(x)
             # Clip residual to [-1, 1] range
-            residual_batch = torch.clamp(residual_batch, -1.0, 1.0)
+            residual = torch.clamp(residual, -1.0, 1.0)
             # Final prediction = input + residual
-            prediction_batch = x_center_batch + residual_batch
+            prediction = x_center + residual
             # Loss between prediction and target
-            loss = output_loss(prediction_batch, y_batch)
+            loss = output_loss(prediction, y_target)
             loss.backward()
             optimizer.step()
             
             # Calculate per-slice losses for logging
             with torch.no_grad():
-                for i, indices in enumerate(batch_indices):
-                    slice_loss = output_loss(
-                        prediction_batch[i:i+1], 
-                        y_batch[i:i+1]
-                    ).item() * LOSS_FACTOR
-                    sagittal_slice_losses.append((indices, slice_loss))
+                slice_loss = output_loss(prediction, y_target).item() * LOSS_FACTOR
+                sagittal_slice_losses.append((indices, slice_loss))
             
-            sagittal_case_loss += loss.item() * (end_idx - start_idx)
+            sagittal_case_loss += loss.item()
         
         sagittal_case_loss /= len(indices_list_sagittal)
         sagittal_case_loss *= LOSS_FACTOR
 
     elif train_or_eval == "val":
-        # Process axial slices in batches
-        for start_idx in range(0, len(indices_list_axial), batch_size_slice):
-            end_idx = min(start_idx + batch_size_slice, len(indices_list_axial))
-            batch_indices = indices_list_axial[start_idx:end_idx]
+        # Process axial slices one by one
+        for indices in indices_list_axial:
+            # Input context: 3 adjacent slices
+            x = volume_x[:, indices-1:indices+2, :, :]  # 1, 3, 256, 256
             
-            # Initialize batch tensors
-            batch_inputs = []
-            batch_targets = []
-            batch_inputs_center = []
+            # Target: single slice
+            y_target = volume_y[:, indices, :, :].unsqueeze(1)  # 1, 1, 256, 256
             
-            for indices in batch_indices:
-                # Input context: 3 adjacent slices
-                x = volume_x[:, indices-1:indices+2, :, :]  # 1, 3, 256, 256
-                batch_inputs.append(x)
-                
-                # Target: single slice
-                y_target = volume_y[:, indices, :, :].unsqueeze(1)  # 1, 1, 256, 256
-                batch_targets.append(y_target)
-                
-                # Input center slice for residual addition
-                x_center = volume_x[:, indices, :, :].unsqueeze(1)  # 1, 1, 256, 256
-                batch_inputs_center.append(x_center)
-            
-            # Concatenate along batch dimension
-            x_batch = torch.cat(batch_inputs, dim=0)  # batch_size, 3, 256, 256
-            y_batch = torch.cat(batch_targets, dim=0)  # batch_size, 1, 256, 256
-            x_center_batch = torch.cat(batch_inputs_center, dim=0)  # batch_size, 1, 256, 256
+            # Input center slice for residual addition
+            x_center = volume_x[:, indices, :, :].unsqueeze(1)  # 1, 1, 256, 256
             
             with torch.no_grad():
                 # Model predicts residual
-                residual_batch = model(x_batch)
+                residual = model(x)
                 # Clip residual to [-1, 1] range
-                residual_batch = torch.clamp(residual_batch, -1.0, 1.0)
+                residual = torch.clamp(residual, -1.0, 1.0)
                 # Final prediction = input + residual
-                prediction_batch = x_center_batch + residual_batch
+                prediction = x_center + residual
                 # Loss between prediction and target
-                loss = output_loss(prediction_batch, y_batch)
+                loss = output_loss(prediction, y_target)
                 
                 # Calculate per-slice losses for logging
-                for i, indices in enumerate(batch_indices):
-                    slice_loss = output_loss(
-                        prediction_batch[i:i+1], 
-                        y_batch[i:i+1]
-                    ).item() * LOSS_FACTOR
-                    axial_slice_losses.append((indices, slice_loss))
+                slice_loss = output_loss(prediction, y_target).item() * LOSS_FACTOR
+                axial_slice_losses.append((indices, slice_loss))
                 
-                axial_case_loss += loss.item() * (end_idx - start_idx)
+                axial_case_loss += loss.item()
         
         axial_case_loss /= len(indices_list_axial)
         axial_case_loss *= LOSS_FACTOR
 
-        # Process coronal slices in batches
-        for start_idx in range(0, len(indices_list_coronal), batch_size_slice):
-            end_idx = min(start_idx + batch_size_slice, len(indices_list_coronal))
-            batch_indices = indices_list_coronal[start_idx:end_idx]
+        # Process coronal slices one by one
+        for indices in indices_list_coronal:
+            x = volume_x[:, :, indices-1:indices+2, :]  # 1, z, 3, 256
+            x = x.permute(0, 2, 1, 3)  # 1, 3, z, 256
             
-            # Initialize batch tensors
-            batch_inputs = []
-            batch_targets = []
-            batch_inputs_center = []
+            # Target: single slice
+            y_target = volume_y[:, :, indices, :].unsqueeze(1)  # 1, 1, z, 256
             
-            for indices in batch_indices:
-                x = volume_x[:, :, indices-1:indices+2, :]  # 1, z, 3, 256
-                x = x.permute(0, 2, 1, 3)  # 1, 3, z, 256
-                batch_inputs.append(x)
-                
-                # Target: single slice
-                y_target = volume_y[:, :, indices, :].unsqueeze(1)  # 1, 1, z, 256
-                batch_targets.append(y_target)
-                
-                # Input center slice for residual addition
-                x_center = volume_x[:, :, indices, :].unsqueeze(1)  # 1, 1, z, 256
-                batch_inputs_center.append(x_center)
+            # Input center slice for residual addition
+            x_center = volume_x[:, :, indices, :].unsqueeze(1)  # 1, 1, z, 256
             
-            # Concatenate along batch dimension
-            x_batch = torch.cat(batch_inputs, dim=0)
-            y_batch = torch.cat(batch_targets, dim=0)
-            x_center_batch = torch.cat(batch_inputs_center, dim=0)
-
             with torch.no_grad():
                 # Model predicts residual
-                residual_batch = model(x_batch)
+                residual = model(x)
                 # Clip residual to [-1, 1] range
-                residual_batch = torch.clamp(residual_batch, -1.0, 1.0)
+                residual = torch.clamp(residual, -1.0, 1.0)
                 # Final prediction = input + residual
-                prediction_batch = x_center_batch + residual_batch
+                prediction = x_center + residual
                 # Loss between prediction and target
-                loss = output_loss(prediction_batch, y_batch)
+                loss = output_loss(prediction, y_target)
                 
                 # Calculate per-slice losses for logging
-                for i, indices in enumerate(batch_indices):
-                    slice_loss = output_loss(
-                        prediction_batch[i:i+1], 
-                        y_batch[i:i+1]
-                    ).item() * LOSS_FACTOR
-                    coronal_slice_losses.append((indices, slice_loss))
+                slice_loss = output_loss(prediction, y_target).item() * LOSS_FACTOR
+                coronal_slice_losses.append((indices, slice_loss))
                 
-                coronal_case_loss += loss.item() * (end_idx - start_idx)
+                coronal_case_loss += loss.item()
         
         coronal_case_loss /= len(indices_list_coronal)
         coronal_case_loss *= LOSS_FACTOR
 
-        # Process sagittal slices in batches
-        for start_idx in range(0, len(indices_list_sagittal), batch_size_slice):
-            end_idx = min(start_idx + batch_size_slice, len(indices_list_sagittal))
-            batch_indices = indices_list_sagittal[start_idx:end_idx]
+        # Process sagittal slices one by one
+        for indices in indices_list_sagittal:
+            x = volume_x[:, :, :, indices-1:indices+2]  # 1, z, 256, 3
+            x = x.permute(0, 3, 1, 2)  # 1, 3, z, 256
             
-            # Initialize batch tensors
-            batch_inputs = []
-            batch_targets = []
-            batch_inputs_center = []
+            # Target: single slice
+            y_target = volume_y[:, :, :, indices].unsqueeze(1)  # 1, 1, z, 256
             
-            for indices in batch_indices:
-                x = volume_x[:, :, :, indices-1:indices+2]  # 1, z, 256, 3
-                x = x.permute(0, 3, 1, 2)  # 1, 3, z, 256
-                batch_inputs.append(x)
-                
-                # Target: single slice
-                y_target = volume_y[:, :, :, indices].unsqueeze(1)  # 1, 1, z, 256
-                batch_targets.append(y_target)
-                
-                # Input center slice for residual addition
-                x_center = volume_x[:, :, :, indices].unsqueeze(1)  # 1, 1, z, 256
-                batch_inputs_center.append(x_center)
+            # Input center slice for residual addition
+            x_center = volume_x[:, :, :, indices].unsqueeze(1)  # 1, 1, z, 256
             
-            # Concatenate along batch dimension
-            x_batch = torch.cat(batch_inputs, dim=0)
-            y_batch = torch.cat(batch_targets, dim=0)
-            x_center_batch = torch.cat(batch_inputs_center, dim=0)
-
             with torch.no_grad():
                 # Model predicts residual
-                residual_batch = model(x_batch)
+                residual = model(x)
                 # Clip residual to [-1, 1] range
-                residual_batch = torch.clamp(residual_batch, -1.0, 1.0)
+                residual = torch.clamp(residual, -1.0, 1.0)
                 # Final prediction = input + residual
-                prediction_batch = x_center_batch + residual_batch
+                prediction = x_center + residual
                 # Loss between prediction and target
-                loss = output_loss(prediction_batch, y_batch)
+                loss = output_loss(prediction, y_target)
                 
                 # Calculate per-slice losses for logging
-                for i, indices in enumerate(batch_indices):
-                    slice_loss = output_loss(
-                        prediction_batch[i:i+1], 
-                        y_batch[i:i+1]
-                    ).item() * LOSS_FACTOR
-                    sagittal_slice_losses.append((indices, slice_loss))
+                slice_loss = output_loss(prediction, y_target).item() * LOSS_FACTOR
+                sagittal_slice_losses.append((indices, slice_loss))
                 
-                sagittal_case_loss += loss.item() * (end_idx - start_idx)
+                sagittal_case_loss += loss.item()
         
         sagittal_case_loss /= len(indices_list_sagittal)
         sagittal_case_loss *= LOSS_FACTOR
     
-    # Log per-slice losses if logger is provided
-    if logger is not None:
-        logger(f"Axial slice losses (index, loss): {axial_slice_losses}")
-        logger(f"Coronal slice losses (index, loss): {coronal_slice_losses}")
-        logger(f"Sagittal slice losses (index, loss): {sagittal_slice_losses}")
+    # if logger is not None:
+    #     logger(f"Axial slice losses (index, loss): {axial_slice_losses}")
+    #     logger(f"Coronal slice losses (index, loss): {coronal_slice_losses}")
+    #     logger(f"Sagittal slice losses (index, loss): {sagittal_slice_losses}")
 
     return axial_case_loss, coronal_case_loss, sagittal_case_loss, (axial_slice_losses, coronal_slice_losses, sagittal_slice_losses)
 
@@ -493,8 +366,6 @@ def train():
     argparser.add_argument('--log_dir', type=str, default='LDM_adapter/logs', help='Directory to save logs')
     argparser.add_argument('--checkpoint', type=str, default='LDM_adapter/f4_noattn.pth', 
                           help='Path to pretrained checkpoint')
-    argparser.add_argument('--batch_size_slice', type=int, default=1, 
-                          help='Number of slices to process at once in each direction')
     args = argparser.parse_args()
     
     # Set random seed for reproducibility
@@ -512,7 +383,6 @@ def train():
     logger = setup_logger(log_dir)
     logger(f"Starting training with fold {args.cross_validation}")
     logger(f"Random seed: {random_seed}")
-    logger(f"Batch size slice: {args.batch_size_slice}")
     
     # Device setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -608,8 +478,7 @@ def train():
             
             case_logger = logger if idx % 5 == 0 else None
             axial_loss, coronal_loss, sagittal_loss, slice_losses = train_or_eval(
-                "train", model, volume_x, volume_y, optimizer, loss_fn, LOSS_FACTOR, 
-                batch_size_slice=args.batch_size_slice, logger=case_logger
+                "train", model, volume_x, volume_y, optimizer, loss_fn, LOSS_FACTOR, logger=case_logger
             )
             # Log current progress and losses in one line
             logger(f"Epoch {epoch+1}/{args.num_epochs}, Batch [{idx+1}/{len(train_loader)}] - Axial: {axial_loss:.4f}, Coronal: {coronal_loss:.4f}, Sagittal: {sagittal_loss:.4f}")
@@ -643,7 +512,7 @@ def train():
                 
                 axial_loss, coronal_loss, sagittal_loss, _ = train_or_eval(
                     "val", model, volume_x, volume_y, optimizer, loss_fn, LOSS_FACTOR,
-                    batch_size_slice=args.batch_size_slice
+                    logger=case_logger
                 )
                 
                 axial_val_loss += axial_loss
@@ -680,7 +549,7 @@ def train():
                     
                     axial_loss, coronal_loss, sagittal_loss, _ = train_or_eval(
                         "val", model, volume_x, volume_y, optimizer, loss_fn, LOSS_FACTOR,
-                        batch_size_slice=args.batch_size_slice
+                        logger=case_logger
                     )
                     
                     axial_test_loss += axial_loss
