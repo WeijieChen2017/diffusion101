@@ -45,7 +45,7 @@ def main():
     # Create data config
     data_config = DataConfig(
         root_folder="LDM_adapter",
-        cross_validation="fold_1",  # Using fold_1 instead of 1
+        cross_validation="fold_1",  # Using the exact key from folds.json
         input_modality=["CT", "sCT"],
         train=DataLoaderConfig(
             batch_size=1,
@@ -70,16 +70,8 @@ def main():
         )
     )
     
-    # Create train and val dataloaders using the prepare_dataset function
-    train_loader, val_loader, _ = prepare_dataset("LDM_adapter/folds.json", data_config)
-    
-    # Create test dataloader separately
-    test_names = ['E4055', 'E4069', 'E4079', 'E4094', 'E4105', 'E4120', 'E4130', 'E4139', 
-                  'E4058', 'E4073', 'E4081', 'E4096', 'E4106', 'E4124', 'E4131', 'E4061', 
-                  'E4074', 'E4084', 'E4098', 'E4114', 'E4125', 'E4134', 'E4066', 'E4077', 
-                  'E4091', 'E4099', 'E4115', 'E4128', 'E4137', 'E4068', 'E4078', 'E4092', 
-                  'E4103', 'E4118', 'E4129', 'E4138']
-    test_loader = create_test_loader(test_names, data_config)
+    # Create train, val, and test dataloaders using the prepare_dataset function
+    train_loader, val_loader, test_loader = prepare_dataset("LDM_adapter/LDM_folds_with_test.json", data_config)
     
     # Get first batch and examine data
     first_batch = next(iter(train_loader))
