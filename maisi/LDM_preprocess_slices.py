@@ -132,33 +132,37 @@ def preprocess_all_cases(
     with open(data_div_json, 'r') as f:
         data_div = json.load(f)
 
-    # Process each cross-validation fold
-    for cv_key in data_div.keys():
-        logging.info(f"Processing {cv_key}")
-        
-        # Process each case in the fold
-        for case_name in tqdm(data_div[cv_key], desc=f"Processing {cv_key}"):
-            try:
-                # Construct paths
-                ct_path = f"LDM_adapter/data/CT/CTAC_{case_name}_cropped.nii.gz"
-                sct_path = f"LDM_adapter/data/sCT/CTAC_{case_name}_TS_MAISI.nii.gz"
+    # Create a set of all unique case names
+    all_cases = set()
+    for fold in data_div.values():
+        for split in fold.values():
+            all_cases.update(split)
+    
+    logging.info(f"Total unique cases to process: {len(all_cases)}")
 
-                # Process the case
-                process_single_case(
-                    ct_path=ct_path,
-                    sct_path=sct_path,
-                    case_name=case_name,
-                    config=config
-                )
-                
-                logging.info(f"Successfully processed case: {case_name}")
-            except Exception as e:
-                logging.error(f"Error processing case {case_name}: {str(e)}")
+    # Process each case
+    for case_name in tqdm(all_cases, desc="Processing all cases"):
+        try:
+            # Construct paths
+            ct_path = f"LDM_adapter/data/CT/CTAC_{case_name}_cropped.nii.gz"
+            sct_path = f"LDM_adapter/data/sCT/CTAC_{case_name}_TS_MAISI.nii.gz"
+
+            # Process the case
+            process_single_case(
+                ct_path=ct_path,
+                sct_path=sct_path,
+                case_name=case_name,
+                config=config
+            )
+            
+            logging.info(f"Successfully processed case: {case_name}")
+        except Exception as e:
+            logging.error(f"Error processing case {case_name}: {str(e)}")
 
 if __name__ == "__main__":
     # Example usage
-    data_div_json = "path/to/your/data_division.json"
-    output_dir = "path/to/output/directory"
+    data_div_json = "LDM_adapter/folds.json"
+    output_dir = "LDM_adapter/dataset/slices"
     
     preprocess_all_cases(
         data_div_json=data_div_json,
