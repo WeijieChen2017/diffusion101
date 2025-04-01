@@ -14,10 +14,6 @@ from monai.transforms import (
     Compose, 
     LoadImaged, 
     EnsureChannelFirstd,
-    RandSpatialCropd,
-    NormalizeIntensityd,
-    Transform,
-    MapTransform,
 )
 
 from monai.data import CacheDataset, DataLoader
@@ -76,98 +72,6 @@ class DataConfig:
         )
 
 
-class SliceExtractord(MapTransform):
-    """
-    Extract 2D slices from 3D volumes along z-axis and create a 3-channel image
-    using adjacent slices. Handles edge cases at both ends of the volume.
-    
-    Input shape: (c, h, w, d) where d is the z-dimension
-    Output shape: (3, h, w) by combining three adjacent slices
-    """
-    def __init__(
-        self, 
-        keys: List[str],
-        slice_index: Optional[int] = None, 
-        random_slice: bool = False,
-        channel_dim: int = 0
-    ):
-        super().__init__(keys)
-        self.slice_index = slice_index
-        self.random_slice = random_slice
-        self.channel_dim = channel_dim
-
-    def __call__(self, data):
-        d = dict(data)
-        for key in self.keys:
-            # Get the volume
-            volume = d[key]
-            
-            # Determine slice dimensions
-            if self.channel_dim == 0:  # If shape is (c, h, w, d)
-                z_dim = volume.shape[3]
-                h, w = volume.shape[1], volume.shape[2]
-            else:  # If shape is (h, w, d, c) or other
-                z_dim = volume.shape[2]
-                h, w = volume.shape[0], volume.shape[1]
-            
-            # Choose central slice index
-            if self.random_slice:
-                # Avoid selecting the first or last slice as the center
-                idx = random.randint(1, z_dim - 2) if z_dim > 3 else z_dim // 2
-            elif self.slice_index is not None:
-                idx = min(max(1, self.slice_index), z_dim - 2) if z_dim > 3 else z_dim // 2
-            else:
-                idx = z_dim // 2  # Default to middle slice
-            
-            # Get adjacent slices with boundary handling
-            if z_dim > 2:
-                prev_idx = idx - 1
-                next_idx = idx + 1
-            elif z_dim == 2:
-                prev_idx = 0
-                next_idx = 1
-            else:  # z_dim == 1
-                prev_idx = next_idx = 0
-            
-            # Extract the slices
-            if self.channel_dim == 0:  # If shape is (c, h, w, d)
-                prev_slice = volume[:, :, :, prev_idx]
-                curr_slice = volume[:, :, :, idx]
-                next_slice = volume[:, :, :, next_idx]
-                
-                # Handle single-channel case
-                if prev_slice.shape[0] == 1:
-                    prev_slice = prev_slice.squeeze(0)
-                    curr_slice = curr_slice.squeeze(0)
-                    next_slice = next_slice.squeeze(0)
-                    
-                    # Stack adjacent slices as channels
-                    slice_3ch = torch.stack([prev_slice, curr_slice, next_slice], dim=0)
-                else:
-                    # If already multi-channel, take first channel from each slice
-                    slice_3ch = torch.stack([prev_slice[0], curr_slice[0], next_slice[0]], dim=0)
-            else:  # If shape is (h, w, d, c) or other
-                prev_slice = volume[:, :, prev_idx, :]
-                curr_slice = volume[:, :, idx, :]
-                next_slice = volume[:, :, next_idx, :]
-                
-                # Handle single-channel case
-                if prev_slice.shape[-1] == 1:
-                    prev_slice = prev_slice.squeeze(-1)
-                    curr_slice = curr_slice.squeeze(-1)
-                    next_slice = next_slice.squeeze(-1)
-                    
-                    # Stack adjacent slices as channels
-                    slice_3ch = torch.stack([prev_slice, curr_slice, next_slice], dim=0)
-                else:
-                    # If already multi-channel, take first channel from each slice
-                    slice_3ch = torch.stack([prev_slice[..., 0], curr_slice[..., 0], next_slice[..., 0]], dim=0)
-            
-            d[key] = slice_3ch
-        
-        return d
-
-
 def prepare_dataset(data_div_json, config: DataConfig):
     
     with open(data_div_json, "r") as f:
@@ -175,13 +79,9 @@ def prepare_dataset(data_div_json, config: DataConfig):
     
     cv = config.cross_validation
 
-    train_list = data_div[f"cv_{cv}"]["train"]
-    val_list = data_div[f"cv_{cv}"]["val"]
-    test_list = data_div[f"cv_{cv}"]["test"]
-
-    str_train_list = ", ".join(train_list)
-    str_val_list = ", ".join(val_list)
-    str_test_list = ", ".join(test_list)
+    train_list = data_div[f"fold_{cv}"]["train"]
+    val_list = data_div[f"fold_{cv}"]["val"]
+    test_list = data_div[f"fold_{cv}"]["test"]
 
     # construct the data path list
     train_path_list = []
@@ -226,7 +126,6 @@ def prepare_dataset(data_div_json, config: DataConfig):
         [
             LoadImaged(keys=config.input_modality, image_only=True),
             EnsureChannelFirstd(keys=config.input_modality, channel_dim=-1),
-            SliceExtractord(keys=config.input_modality, random_slice=True),
         ]
     )
 
@@ -234,7 +133,6 @@ def prepare_dataset(data_div_json, config: DataConfig):
         [
             LoadImaged(keys=config.input_modality, image_only=True),
             EnsureChannelFirstd(keys=config.input_modality, channel_dim=-1),
-            SliceExtractord(keys=config.input_modality, random_slice=False),  # Use middle slice for validation
         ]
     )
 
@@ -242,33 +140,24 @@ def prepare_dataset(data_div_json, config: DataConfig):
         [
             LoadImaged(keys=config.input_modality, image_only=True),
             EnsureChannelFirstd(keys=config.input_modality, channel_dim=-1),
-            SliceExtractord(keys=config.input_modality, random_slice=False),  # Use middle slice for testing
         ]
     )
 
-    # Create a dataset that generates slices from 3D volumes
-    class SliceDataset(CacheDataset):
-        def __init__(self, data, transform, cache_rate=1.0, num_workers=0):
-            super().__init__(data=data, transform=transform, cache_rate=cache_rate, num_workers=num_workers)
-            
-        def __getitem__(self, index):
-            return super().__getitem__(index)
-
-    train_ds = SliceDataset(
+    train_ds = CacheDataset(
         data=train_path_list,
         transform=train_transforms,
         cache_rate=config.train.cache_rate,
         num_workers=config.train.num_workers_cache,
     )
 
-    val_ds = SliceDataset(
+    val_ds = CacheDataset(
         data=val_path_list,
         transform=val_transforms, 
         cache_rate=config.val.cache_rate,
         num_workers=config.val.num_workers_cache,
     )
 
-    test_ds = SliceDataset(
+    test_ds = CacheDataset(
         data=test_path_list,
         transform=test_transforms,
         cache_rate=config.test.cache_rate,
