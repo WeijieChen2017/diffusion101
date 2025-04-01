@@ -79,9 +79,9 @@ def prepare_dataset(data_div_json, config: DataConfig):
     
     cv = config.cross_validation
 
-    train_list = data_div[f"fold_{cv}"]["train"]
-    val_list = data_div[f"fold_{cv}"]["val"]
-    test_list = data_div[f"fold_{cv}"]["test"]
+    train_list = data_div[cv]["train"]
+    val_list = data_div[cv]["val"]
+    test_list = data_div[cv]["test"]
 
     # construct the data path list
     train_path_list = []
