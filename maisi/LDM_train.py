@@ -493,7 +493,7 @@ def train():
     argparser.add_argument('--log_dir', type=str, default='LDM_adapter/logs', help='Directory to save logs')
     argparser.add_argument('--checkpoint', type=str, default='LDM_adapter/f4_noattn.pth', 
                           help='Path to pretrained checkpoint')
-    argparser.add_argument('--batch_size_slice', type=int, default=2, 
+    argparser.add_argument('--batch_size_slice', type=int, default=1, 
                           help='Number of slices to process at once in each direction')
     args = argparser.parse_args()
     
