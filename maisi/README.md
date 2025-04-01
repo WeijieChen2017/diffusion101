@@ -52,7 +52,7 @@ We retrained several state-of-the-art diffusion model-based methods using our da
 | Brats18     | MAIS VAE        | **0.026**|**0.977**| **39.003**| **0h** |
 |             | Dedicated VAE   | 0.030    | 0.975 | 38.971  | 672h   |
 
-**Table 2:** Performance comparison of the `MAIS VAE` model on out-of-distribution datasets (i.e., unseen during MAISI VAE training) versus `Dedicated VAE` models (i.e., train from scratch on in-distribution data). The “GPU” column shows additional GPU hours for training with one 32G V100 GPU. MAISI VAE model achieved comparable results without additional GPU resource expenditure on unseen datasets.
+**Table 2:** Performance comparison of the `MAIS VAE` model on out-of-distribution datasets (i.e., unseen during MAISI VAE training) versus `Dedicated VAE` models (i.e., train from scratch on in-distribution data). The "GPU" column shows additional GPU hours for training with one 32G V100 GPU. MAISI VAE model achieved comparable results without additional GPU resource expenditure on unseen datasets.
 
 
 ## Time Cost and GPU Memory Usage
@@ -118,7 +118,7 @@ MAISI is based on the following papers:
 
 [**Latent Diffusion:** Rombach, Robin, et al. "High-resolution image synthesis with latent diffusion models." CVPR 2022.](https://openaccess.thecvf.com/content/CVPR2022/papers/Rombach_High-Resolution_Image_Synthesis_With_Latent_Diffusion_Models_CVPR_2022_paper.pdf)
 
-[**ControlNet:**  Lvmin Zhang, Anyi Rao, Maneesh Agrawala; “Adding Conditional Control to Text-to-Image Diffusion Models.” ICCV 2023.](https://openaccess.thecvf.com/content/ICCV2023/papers/Zhang_Adding_Conditional_Control_to_Text-to-Image_Diffusion_Models_ICCV_2023_paper.pdf)
+[**ControlNet:**  Lvmin Zhang, Anyi Rao, Maneesh Agrawala; "Adding Conditional Control to Text-to-Image Diffusion Models." ICCV 2023.](https://openaccess.thecvf.com/content/ICCV2023/papers/Zhang_Adding_Conditional_Control_to_Text-to-Image_Diffusion_Models_ICCV_2023_paper.pdf)
 
 ### 1. Network Definition
 Network definition is stored in [./configs/config_maisi.json](./configs/config_maisi.json). Training and inference should use the same [./configs/config_maisi.json](./configs/config_maisi.json).
@@ -248,3 +248,91 @@ The model weight is released under [NSCLv1 License](./LICENSE.weights).
 - For questions relating to the use of MONAI, please use our [Discussions tab](https://github.com/Project-MONAI/MONAI/discussions) on the main repository of MONAI.
 - For bugs relating to MONAI functionality, please create an issue on the [main repository](https://github.com/Project-MONAI/MONAI/issues).
 - For bugs relating to the running of a tutorial, please create an issue in [this repository](https://github.com/Project-MONAI/Tutorials/issues).
+
+# HU Adapter UNet for CT Synthesis
+
+This directory contains scripts for training and evaluating a 3D UNet model for CT to synthetic CT (sCT) image translation using MONAI.
+
+## Overview
+
+The model is a 3D UNet that takes CT images as input and generates synthetic CT images. The training is performed using 4-fold cross-validation, with each fold running on a separate GPU.
+
+## Scripts
+
+- `HU_adapter_UNet.py` - Contains the case lists for training and testing
+- `HU_adapter_create_folds.py` - Divides the training list into 4 folds and saves to a JSON file
+- `HU_adapter_train_cv.py` - Performs training for a specific fold on a specific GPU
+- `HU_adapter_run_cv.py` - Runs all 4 cross-validation folds in parallel on 4 GPUs
+- `HU_adapter_analyze_cv.py` - Analyzes the results of the cross-validation and generates summary statistics
+- `HU_adapter_inference.py` - Performs inference on test data using a trained model
+
+## Workflow
+
+### 1. Prepare Data
+
+Ensure your data is organized in the expected format:
+- CT images: `NAC_CTAC_Spacing15/CTAC_{case_name}_cropped.nii.gz`
+- SCT images: `NAC_CTAC_Spacing15/CTAC_{case_name}_TS_MAISI.nii.gz`
+
+### 2. Create Cross-Validation Folds
+
+```bash
+python -m maisi.HU_adapter_create_folds
+```
+
+This script divides the training cases into 4 folds and saves them to `HU_adapter_UNet/folds.json`.
+
+### 3. Run Cross-Validation Training
+
+To train all 4 folds in parallel on 4 GPUs:
+
+```bash
+python -m maisi.HU_adapter_run_cv
+```
+
+Alternatively, to train a specific fold on a specific GPU:
+
+```bash
+python -m maisi.HU_adapter_train_cv --fold 1 --gpu 0
+```
+
+Training logs will be saved to `HU_adapter_UNet/logs/fold{fold}_gpu{gpu}.log`.
+
+### 4. Analyze Cross-Validation Results
+
+```bash
+python -m maisi.HU_adapter_analyze_cv
+```
+
+This script analyzes the cross-validation results and produces:
+- A summary CSV file: `HU_adapter_UNet/cv_summary.csv`
+- Learning curves plot: `HU_adapter_UNet/learning_curves.png`
+
+### 5. Run Inference
+
+After training, you can run inference on test data:
+
+```bash
+python -m maisi.HU_adapter_inference
+```
+
+This will generate predictions for the test set and save them to `HU_adapter_UNet/predictions/`.
+
+## Model Architecture
+
+The 3D UNet model has the following configuration:
+- Spatial dimensions: 3
+- Input channels: 1
+- Output channels: 1
+- Feature channels: (16, 32, 64, 128, 256)
+- Strides: (2, 2, 2, 2)
+- Residual units: 2
+
+## Training Details
+
+- Loss function: L1 Loss
+- Optimizer: AdamW with learning rate 1e-4
+- Epochs: 300
+- Batch size: 2
+- Random crop size: 96×96×96
+- HU range normalization: -1024 to 1976 → 0 to 1
