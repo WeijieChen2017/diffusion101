@@ -107,10 +107,52 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
             loss.backward()
             optimizer.step()
             
-            # Calculate per-slice losses for logging
+            # Log detailed statistics without scaling by LOSS_FACTOR
             with torch.no_grad():
-                slice_loss = output_loss(prediction, y_target).item() * LOSS_FACTOR
-                axial_slice_losses.append((indices, slice_loss))
+                # Calculate raw loss (not scaled by LOSS_FACTOR)
+                raw_loss = output_loss(prediction, y_target).item()
+                
+                # Log detailed statistics
+                if logger is not None and indices % 50 == 0:  # Log every 50th slice to avoid too much output
+                    # Calculate statistics for input, target, prediction, residual
+                    x_stats = {
+                        'min': x.min().item(),
+                        'max': x.max().item(),
+                        'mean': x.mean().item(),
+                        'std': x.std().item()
+                    }
+                    
+                    y_stats = {
+                        'min': y_target.min().item(),
+                        'max': y_target.max().item(),
+                        'mean': y_target.mean().item(),
+                        'std': y_target.std().item()
+                    }
+                    
+                    # Convert normalized prediction back to HU range for comparison
+                    pred_hu = prediction * (HU_MAX - HU_MIN) + HU_MIN
+                    pred_stats = {
+                        'min': pred_hu.min().item(),
+                        'max': pred_hu.max().item(),
+                        'mean': pred_hu.mean().item(),
+                        'std': pred_hu.std().item()
+                    }
+                    
+                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
+                    residual_stats = {
+                        'min': residual_hu.min().item(),
+                        'max': residual_hu.max().item(),
+                        'mean': residual_hu.mean().item(),
+                        'std': residual_hu.std().item()
+                    }
+                    
+                    logger(f"Axial slice {indices} - Loss: {raw_loss:.6f}")
+                    logger(f"  Input: min={x_stats['min']:.1f}, max={x_stats['max']:.1f}, mean={x_stats['mean']:.1f}, std={x_stats['std']:.1f}")
+                    logger(f"  Target: min={y_stats['min']:.1f}, max={y_stats['max']:.1f}, mean={y_stats['mean']:.1f}, std={y_stats['std']:.1f}")
+                    logger(f"  Prediction: min={pred_stats['min']:.1f}, max={pred_stats['max']:.1f}, mean={pred_stats['mean']:.1f}, std={pred_stats['std']:.1f}")
+                    logger(f"  Residual: min={residual_stats['min']:.1f}, max={residual_stats['max']:.1f}, mean={residual_stats['mean']:.1f}, std={residual_stats['std']:.1f}")
+                
+                axial_slice_losses.append((indices, raw_loss))
             
             axial_case_loss += loss.item()
         
@@ -140,10 +182,52 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
             loss.backward()
             optimizer.step()
             
-            # Calculate per-slice losses for logging
+            # Log detailed statistics without scaling by LOSS_FACTOR
             with torch.no_grad():
-                slice_loss = output_loss(prediction, y_target).item() * LOSS_FACTOR
-                coronal_slice_losses.append((indices, slice_loss))
+                # Calculate raw loss (not scaled by LOSS_FACTOR)
+                raw_loss = output_loss(prediction, y_target).item()
+                
+                # Log detailed statistics
+                if logger is not None and indices % 50 == 0:  # Log every 50th slice
+                    # Calculate statistics for input, target, prediction, residual
+                    x_stats = {
+                        'min': x.min().item(),
+                        'max': x.max().item(),
+                        'mean': x.mean().item(),
+                        'std': x.std().item()
+                    }
+                    
+                    y_stats = {
+                        'min': y_target.min().item(),
+                        'max': y_target.max().item(),
+                        'mean': y_target.mean().item(),
+                        'std': y_target.std().item()
+                    }
+                    
+                    # Convert normalized prediction back to HU range for comparison
+                    pred_hu = prediction * (HU_MAX - HU_MIN) + HU_MIN
+                    pred_stats = {
+                        'min': pred_hu.min().item(),
+                        'max': pred_hu.max().item(),
+                        'mean': pred_hu.mean().item(),
+                        'std': pred_hu.std().item()
+                    }
+                    
+                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
+                    residual_stats = {
+                        'min': residual_hu.min().item(),
+                        'max': residual_hu.max().item(),
+                        'mean': residual_hu.mean().item(),
+                        'std': residual_hu.std().item()
+                    }
+                    
+                    logger(f"Coronal slice {indices} - Loss: {raw_loss:.6f}")
+                    logger(f"  Input: min={x_stats['min']:.1f}, max={x_stats['max']:.1f}, mean={x_stats['mean']:.1f}, std={x_stats['std']:.1f}")
+                    logger(f"  Target: min={y_stats['min']:.1f}, max={y_stats['max']:.1f}, mean={y_stats['mean']:.1f}, std={y_stats['std']:.1f}")
+                    logger(f"  Prediction: min={pred_stats['min']:.1f}, max={pred_stats['max']:.1f}, mean={pred_stats['mean']:.1f}, std={pred_stats['std']:.1f}")
+                    logger(f"  Residual: min={residual_stats['min']:.1f}, max={residual_stats['max']:.1f}, mean={residual_stats['mean']:.1f}, std={residual_stats['std']:.1f}")
+                
+                coronal_slice_losses.append((indices, raw_loss))
             
             coronal_case_loss += loss.item()
         
@@ -173,10 +257,52 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
             loss.backward()
             optimizer.step()
             
-            # Calculate per-slice losses for logging
+            # Log detailed statistics without scaling by LOSS_FACTOR
             with torch.no_grad():
-                slice_loss = output_loss(prediction, y_target).item() * LOSS_FACTOR
-                sagittal_slice_losses.append((indices, slice_loss))
+                # Calculate raw loss (not scaled by LOSS_FACTOR)
+                raw_loss = output_loss(prediction, y_target).item()
+                
+                # Log detailed statistics
+                if logger is not None and indices % 50 == 0:  # Log every 50th slice
+                    # Calculate statistics for input, target, prediction, residual
+                    x_stats = {
+                        'min': x.min().item(),
+                        'max': x.max().item(),
+                        'mean': x.mean().item(),
+                        'std': x.std().item()
+                    }
+                    
+                    y_stats = {
+                        'min': y_target.min().item(),
+                        'max': y_target.max().item(),
+                        'mean': y_target.mean().item(),
+                        'std': y_target.std().item()
+                    }
+                    
+                    # Convert normalized prediction back to HU range for comparison
+                    pred_hu = prediction * (HU_MAX - HU_MIN) + HU_MIN
+                    pred_stats = {
+                        'min': pred_hu.min().item(),
+                        'max': pred_hu.max().item(),
+                        'mean': pred_hu.mean().item(),
+                        'std': pred_hu.std().item()
+                    }
+                    
+                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
+                    residual_stats = {
+                        'min': residual_hu.min().item(),
+                        'max': residual_hu.max().item(),
+                        'mean': residual_hu.mean().item(),
+                        'std': residual_hu.std().item()
+                    }
+                    
+                    logger(f"Sagittal slice {indices} - Loss: {raw_loss:.6f}")
+                    logger(f"  Input: min={x_stats['min']:.1f}, max={x_stats['max']:.1f}, mean={x_stats['mean']:.1f}, std={x_stats['std']:.1f}")
+                    logger(f"  Target: min={y_stats['min']:.1f}, max={y_stats['max']:.1f}, mean={y_stats['mean']:.1f}, std={y_stats['std']:.1f}")
+                    logger(f"  Prediction: min={pred_stats['min']:.1f}, max={pred_stats['max']:.1f}, mean={pred_stats['mean']:.1f}, std={pred_stats['std']:.1f}")
+                    logger(f"  Residual: min={residual_stats['min']:.1f}, max={residual_stats['max']:.1f}, mean={residual_stats['mean']:.1f}, std={residual_stats['std']:.1f}")
+                
+                sagittal_slice_losses.append((indices, raw_loss))
             
             sagittal_case_loss += loss.item()
         
@@ -205,9 +331,50 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
                 # Loss between prediction and target
                 loss = output_loss(prediction, y_target)
                 
-                # Calculate per-slice losses for logging
-                slice_loss = output_loss(prediction, y_target).item() * LOSS_FACTOR
-                axial_slice_losses.append((indices, slice_loss))
+                # Calculate raw loss (not scaled by LOSS_FACTOR)
+                raw_loss = loss.item()
+                
+                # Log detailed statistics
+                if logger is not None and indices % 50 == 0:  # Log every 50th slice
+                    # Calculate statistics for input, target, prediction, residual
+                    x_stats = {
+                        'min': x.min().item(),
+                        'max': x.max().item(),
+                        'mean': x.mean().item(),
+                        'std': x.std().item()
+                    }
+                    
+                    y_stats = {
+                        'min': y_target.min().item(),
+                        'max': y_target.max().item(),
+                        'mean': y_target.mean().item(),
+                        'std': y_target.std().item()
+                    }
+                    
+                    # Convert normalized prediction back to HU range for comparison
+                    pred_hu = prediction * (HU_MAX - HU_MIN) + HU_MIN
+                    pred_stats = {
+                        'min': pred_hu.min().item(),
+                        'max': pred_hu.max().item(),
+                        'mean': pred_hu.mean().item(),
+                        'std': pred_hu.std().item()
+                    }
+                    
+                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
+                    residual_stats = {
+                        'min': residual_hu.min().item(),
+                        'max': residual_hu.max().item(),
+                        'mean': residual_hu.mean().item(),
+                        'std': residual_hu.std().item()
+                    }
+                    
+                    logger(f"Val Axial slice {indices} - Loss: {raw_loss:.6f}")
+                    logger(f"  Input: min={x_stats['min']:.1f}, max={x_stats['max']:.1f}, mean={x_stats['mean']:.1f}, std={x_stats['std']:.1f}")
+                    logger(f"  Target: min={y_stats['min']:.1f}, max={y_stats['max']:.1f}, mean={y_stats['mean']:.1f}, std={y_stats['std']:.1f}")
+                    logger(f"  Prediction: min={pred_stats['min']:.1f}, max={pred_stats['max']:.1f}, mean={pred_stats['mean']:.1f}, std={pred_stats['std']:.1f}")
+                    logger(f"  Residual: min={residual_stats['min']:.1f}, max={residual_stats['max']:.1f}, mean={residual_stats['mean']:.1f}, std={residual_stats['std']:.1f}")
+                
+                axial_slice_losses.append((indices, raw_loss))
                 
                 axial_case_loss += loss.item()
         
@@ -235,9 +402,50 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
                 # Loss between prediction and target
                 loss = output_loss(prediction, y_target)
                 
-                # Calculate per-slice losses for logging
-                slice_loss = output_loss(prediction, y_target).item() * LOSS_FACTOR
-                coronal_slice_losses.append((indices, slice_loss))
+                # Calculate raw loss (not scaled by LOSS_FACTOR)
+                raw_loss = loss.item()
+                
+                # Log detailed statistics
+                if logger is not None and indices % 50 == 0:  # Log every 50th slice
+                    # Calculate statistics for input, target, prediction, residual
+                    x_stats = {
+                        'min': x.min().item(),
+                        'max': x.max().item(),
+                        'mean': x.mean().item(),
+                        'std': x.std().item()
+                    }
+                    
+                    y_stats = {
+                        'min': y_target.min().item(),
+                        'max': y_target.max().item(),
+                        'mean': y_target.mean().item(),
+                        'std': y_target.std().item()
+                    }
+                    
+                    # Convert normalized prediction back to HU range for comparison
+                    pred_hu = prediction * (HU_MAX - HU_MIN) + HU_MIN
+                    pred_stats = {
+                        'min': pred_hu.min().item(),
+                        'max': pred_hu.max().item(),
+                        'mean': pred_hu.mean().item(),
+                        'std': pred_hu.std().item()
+                    }
+                    
+                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
+                    residual_stats = {
+                        'min': residual_hu.min().item(),
+                        'max': residual_hu.max().item(),
+                        'mean': residual_hu.mean().item(),
+                        'std': residual_hu.std().item()
+                    }
+                    
+                    logger(f"Val Coronal slice {indices} - Loss: {raw_loss:.6f}")
+                    logger(f"  Input: min={x_stats['min']:.1f}, max={x_stats['max']:.1f}, mean={x_stats['mean']:.1f}, std={x_stats['std']:.1f}")
+                    logger(f"  Target: min={y_stats['min']:.1f}, max={y_stats['max']:.1f}, mean={y_stats['mean']:.1f}, std={y_stats['std']:.1f}")
+                    logger(f"  Prediction: min={pred_stats['min']:.1f}, max={pred_stats['max']:.1f}, mean={pred_stats['mean']:.1f}, std={pred_stats['std']:.1f}")
+                    logger(f"  Residual: min={residual_stats['min']:.1f}, max={residual_stats['max']:.1f}, mean={residual_stats['mean']:.1f}, std={residual_stats['std']:.1f}")
+                
+                coronal_slice_losses.append((indices, raw_loss))
                 
                 coronal_case_loss += loss.item()
         
@@ -265,9 +473,50 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
                 # Loss between prediction and target
                 loss = output_loss(prediction, y_target)
                 
-                # Calculate per-slice losses for logging
-                slice_loss = output_loss(prediction, y_target).item() * LOSS_FACTOR
-                sagittal_slice_losses.append((indices, slice_loss))
+                # Calculate raw loss (not scaled by LOSS_FACTOR)
+                raw_loss = loss.item()
+                
+                # Log detailed statistics
+                if logger is not None and indices % 50 == 0:  # Log every 50th slice
+                    # Calculate statistics for input, target, prediction, residual
+                    x_stats = {
+                        'min': x.min().item(),
+                        'max': x.max().item(),
+                        'mean': x.mean().item(),
+                        'std': x.std().item()
+                    }
+                    
+                    y_stats = {
+                        'min': y_target.min().item(),
+                        'max': y_target.max().item(),
+                        'mean': y_target.mean().item(),
+                        'std': y_target.std().item()
+                    }
+                    
+                    # Convert normalized prediction back to HU range for comparison
+                    pred_hu = prediction * (HU_MAX - HU_MIN) + HU_MIN
+                    pred_stats = {
+                        'min': pred_hu.min().item(),
+                        'max': pred_hu.max().item(),
+                        'mean': pred_hu.mean().item(),
+                        'std': pred_hu.std().item()
+                    }
+                    
+                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
+                    residual_stats = {
+                        'min': residual_hu.min().item(),
+                        'max': residual_hu.max().item(),
+                        'mean': residual_hu.mean().item(),
+                        'std': residual_hu.std().item()
+                    }
+                    
+                    logger(f"Val Sagittal slice {indices} - Loss: {raw_loss:.6f}")
+                    logger(f"  Input: min={x_stats['min']:.1f}, max={x_stats['max']:.1f}, mean={x_stats['mean']:.1f}, std={x_stats['std']:.1f}")
+                    logger(f"  Target: min={y_stats['min']:.1f}, max={y_stats['max']:.1f}, mean={y_stats['mean']:.1f}, std={y_stats['std']:.1f}")
+                    logger(f"  Prediction: min={pred_stats['min']:.1f}, max={pred_stats['max']:.1f}, mean={pred_stats['mean']:.1f}, std={pred_stats['std']:.1f}")
+                    logger(f"  Residual: min={residual_stats['min']:.1f}, max={residual_stats['max']:.1f}, mean={residual_stats['mean']:.1f}, std={residual_stats['std']:.1f}")
+                
+                sagittal_slice_losses.append((indices, raw_loss))
                 
                 sagittal_case_loss += loss.item()
         
