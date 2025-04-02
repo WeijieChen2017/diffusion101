@@ -82,6 +82,17 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
     random.shuffle(indices_list_axial)
     random.shuffle(indices_list_coronal)
     random.shuffle(indices_list_sagittal)
+    
+    # Helper function for normalization
+    def normalize(tensor):
+        # Clip to the HU range
+        tensor_clipped = torch.clamp(tensor, HU_MIN, HU_MAX)
+        # Scale to [0, 1]
+        return (tensor_clipped - HU_MIN) / (HU_MAX - HU_MIN)
+    
+    # Helper function for denormalization
+    def denormalize(tensor):
+        return tensor * (HU_MAX - HU_MIN) + HU_MIN
 
     if train_or_eval == "train":
         # Process axial slices one by one
@@ -95,25 +106,36 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
             # Input center slice for residual addition
             x_center = volume_x[:, indices, :, :].unsqueeze(1)  # 1, 1, 256, 256
             
+            # Normalize input and target
+            x_norm = normalize(x)
+            y_norm = normalize(y_target)
+            x_center_norm = normalize(x_center)
+            
             optimizer.zero_grad()
             # Model predicts residual
-            residual = model(x)
+            residual = model(x_norm)
             # Clip residual to [-1, 1] range
             residual = torch.clamp(residual, -1.0, 1.0)
-            # Final prediction = input + residual
-            prediction = x_center + residual
+            # Final prediction = input + residual (still in normalized space)
+            prediction_norm = x_center_norm + residual
+            # Ensure prediction stays in [0, 1] range
+            prediction_norm = torch.clamp(prediction_norm, 0.0, 1.0)
             # Loss between prediction and target
-            loss = output_loss(prediction, y_target)
+            loss = output_loss(prediction_norm, y_norm)
             loss.backward()
             optimizer.step()
             
             # Log detailed statistics without scaling by LOSS_FACTOR
             with torch.no_grad():
                 # Calculate raw loss (not scaled by LOSS_FACTOR)
-                raw_loss = output_loss(prediction, y_target).item()
+                raw_loss = output_loss(prediction_norm, y_norm).item()
                 
                 # Log detailed statistics
                 if logger is not None and indices % 50 == 0:  # Log every 50th slice to avoid too much output
+                    # Convert normalized prediction back to HU range for comparison
+                    prediction = denormalize(prediction_norm)
+                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
+                    
                     # Calculate statistics for input, target, prediction, residual
                     x_stats = {
                         'min': x.min().item(),
@@ -129,16 +151,13 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
                         'std': y_target.std().item()
                     }
                     
-                    # Convert normalized prediction back to HU range for comparison
-                    pred_hu = prediction * (HU_MAX - HU_MIN) + HU_MIN
                     pred_stats = {
-                        'min': pred_hu.min().item(),
-                        'max': pred_hu.max().item(),
-                        'mean': pred_hu.mean().item(),
-                        'std': pred_hu.std().item()
+                        'min': prediction.min().item(),
+                        'max': prediction.max().item(),
+                        'mean': prediction.mean().item(),
+                        'std': prediction.std().item()
                     }
                     
-                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
                     residual_stats = {
                         'min': residual_hu.min().item(),
                         'max': residual_hu.max().item(),
@@ -170,25 +189,36 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
             # Input center slice for residual addition
             x_center = volume_x[:, :, indices, :].unsqueeze(1)  # 1, 1, z, 256
             
+            # Normalize input and target
+            x_norm = normalize(x)
+            y_norm = normalize(y_target)
+            x_center_norm = normalize(x_center)
+            
             optimizer.zero_grad()
             # Model predicts residual
-            residual = model(x)
+            residual = model(x_norm)
             # Clip residual to [-1, 1] range
             residual = torch.clamp(residual, -1.0, 1.0)
-            # Final prediction = input + residual
-            prediction = x_center + residual
+            # Final prediction = input + residual (still in normalized space)
+            prediction_norm = x_center_norm + residual
+            # Ensure prediction stays in [0, 1] range
+            prediction_norm = torch.clamp(prediction_norm, 0.0, 1.0)
             # Loss between prediction and target
-            loss = output_loss(prediction, y_target)
+            loss = output_loss(prediction_norm, y_norm)
             loss.backward()
             optimizer.step()
             
             # Log detailed statistics without scaling by LOSS_FACTOR
             with torch.no_grad():
                 # Calculate raw loss (not scaled by LOSS_FACTOR)
-                raw_loss = output_loss(prediction, y_target).item()
+                raw_loss = output_loss(prediction_norm, y_norm).item()
                 
                 # Log detailed statistics
                 if logger is not None and indices % 50 == 0:  # Log every 50th slice
+                    # Convert normalized prediction back to HU range for comparison
+                    prediction = denormalize(prediction_norm)
+                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
+                    
                     # Calculate statistics for input, target, prediction, residual
                     x_stats = {
                         'min': x.min().item(),
@@ -204,16 +234,13 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
                         'std': y_target.std().item()
                     }
                     
-                    # Convert normalized prediction back to HU range for comparison
-                    pred_hu = prediction * (HU_MAX - HU_MIN) + HU_MIN
                     pred_stats = {
-                        'min': pred_hu.min().item(),
-                        'max': pred_hu.max().item(),
-                        'mean': pred_hu.mean().item(),
-                        'std': pred_hu.std().item()
+                        'min': prediction.min().item(),
+                        'max': prediction.max().item(),
+                        'mean': prediction.mean().item(),
+                        'std': prediction.std().item()
                     }
                     
-                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
                     residual_stats = {
                         'min': residual_hu.min().item(),
                         'max': residual_hu.max().item(),
@@ -245,25 +272,36 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
             # Input center slice for residual addition
             x_center = volume_x[:, :, :, indices].unsqueeze(1)  # 1, 1, z, 256
             
+            # Normalize input and target
+            x_norm = normalize(x)
+            y_norm = normalize(y_target)
+            x_center_norm = normalize(x_center)
+            
             optimizer.zero_grad()
             # Model predicts residual
-            residual = model(x)
+            residual = model(x_norm)
             # Clip residual to [-1, 1] range
             residual = torch.clamp(residual, -1.0, 1.0)
-            # Final prediction = input + residual
-            prediction = x_center + residual
+            # Final prediction = input + residual (still in normalized space)
+            prediction_norm = x_center_norm + residual
+            # Ensure prediction stays in [0, 1] range
+            prediction_norm = torch.clamp(prediction_norm, 0.0, 1.0)
             # Loss between prediction and target
-            loss = output_loss(prediction, y_target)
+            loss = output_loss(prediction_norm, y_norm)
             loss.backward()
             optimizer.step()
             
             # Log detailed statistics without scaling by LOSS_FACTOR
             with torch.no_grad():
                 # Calculate raw loss (not scaled by LOSS_FACTOR)
-                raw_loss = output_loss(prediction, y_target).item()
+                raw_loss = output_loss(prediction_norm, y_norm).item()
                 
                 # Log detailed statistics
                 if logger is not None and indices % 50 == 0:  # Log every 50th slice
+                    # Convert normalized prediction back to HU range for comparison
+                    prediction = denormalize(prediction_norm)
+                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
+                    
                     # Calculate statistics for input, target, prediction, residual
                     x_stats = {
                         'min': x.min().item(),
@@ -279,16 +317,13 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
                         'std': y_target.std().item()
                     }
                     
-                    # Convert normalized prediction back to HU range for comparison
-                    pred_hu = prediction * (HU_MAX - HU_MIN) + HU_MIN
                     pred_stats = {
-                        'min': pred_hu.min().item(),
-                        'max': pred_hu.max().item(),
-                        'mean': pred_hu.mean().item(),
-                        'std': pred_hu.std().item()
+                        'min': prediction.min().item(),
+                        'max': prediction.max().item(),
+                        'mean': prediction.mean().item(),
+                        'std': prediction.std().item()
                     }
                     
-                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
                     residual_stats = {
                         'min': residual_hu.min().item(),
                         'max': residual_hu.max().item(),
@@ -321,21 +356,32 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
             # Input center slice for residual addition
             x_center = volume_x[:, indices, :, :].unsqueeze(1)  # 1, 1, 256, 256
             
+            # Normalize input and target
+            x_norm = normalize(x)
+            y_norm = normalize(y_target)
+            x_center_norm = normalize(x_center)
+            
             with torch.no_grad():
                 # Model predicts residual
-                residual = model(x)
+                residual = model(x_norm)
                 # Clip residual to [-1, 1] range
                 residual = torch.clamp(residual, -1.0, 1.0)
-                # Final prediction = input + residual
-                prediction = x_center + residual
+                # Final prediction = input + residual (still in normalized space)
+                prediction_norm = x_center_norm + residual
+                # Ensure prediction stays in [0, 1] range
+                prediction_norm = torch.clamp(prediction_norm, 0.0, 1.0)
                 # Loss between prediction and target
-                loss = output_loss(prediction, y_target)
+                loss = output_loss(prediction_norm, y_norm)
                 
                 # Calculate raw loss (not scaled by LOSS_FACTOR)
                 raw_loss = loss.item()
                 
                 # Log detailed statistics
                 if logger is not None and indices % 50 == 0:  # Log every 50th slice
+                    # Convert normalized prediction back to HU range for comparison
+                    prediction = denormalize(prediction_norm)
+                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
+                    
                     # Calculate statistics for input, target, prediction, residual
                     x_stats = {
                         'min': x.min().item(),
@@ -351,16 +397,13 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
                         'std': y_target.std().item()
                     }
                     
-                    # Convert normalized prediction back to HU range for comparison
-                    pred_hu = prediction * (HU_MAX - HU_MIN) + HU_MIN
                     pred_stats = {
-                        'min': pred_hu.min().item(),
-                        'max': pred_hu.max().item(),
-                        'mean': pred_hu.mean().item(),
-                        'std': pred_hu.std().item()
+                        'min': prediction.min().item(),
+                        'max': prediction.max().item(),
+                        'mean': prediction.mean().item(),
+                        'std': prediction.std().item()
                     }
                     
-                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
                     residual_stats = {
                         'min': residual_hu.min().item(),
                         'max': residual_hu.max().item(),
@@ -392,21 +435,32 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
             # Input center slice for residual addition
             x_center = volume_x[:, :, indices, :].unsqueeze(1)  # 1, 1, z, 256
             
+            # Normalize input and target
+            x_norm = normalize(x)
+            y_norm = normalize(y_target)
+            x_center_norm = normalize(x_center)
+            
             with torch.no_grad():
                 # Model predicts residual
-                residual = model(x)
+                residual = model(x_norm)
                 # Clip residual to [-1, 1] range
                 residual = torch.clamp(residual, -1.0, 1.0)
-                # Final prediction = input + residual
-                prediction = x_center + residual
+                # Final prediction = input + residual (still in normalized space)
+                prediction_norm = x_center_norm + residual
+                # Ensure prediction stays in [0, 1] range
+                prediction_norm = torch.clamp(prediction_norm, 0.0, 1.0)
                 # Loss between prediction and target
-                loss = output_loss(prediction, y_target)
+                loss = output_loss(prediction_norm, y_norm)
                 
                 # Calculate raw loss (not scaled by LOSS_FACTOR)
                 raw_loss = loss.item()
                 
                 # Log detailed statistics
                 if logger is not None and indices % 50 == 0:  # Log every 50th slice
+                    # Convert normalized prediction back to HU range for comparison
+                    prediction = denormalize(prediction_norm)
+                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
+                    
                     # Calculate statistics for input, target, prediction, residual
                     x_stats = {
                         'min': x.min().item(),
@@ -422,16 +476,13 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
                         'std': y_target.std().item()
                     }
                     
-                    # Convert normalized prediction back to HU range for comparison
-                    pred_hu = prediction * (HU_MAX - HU_MIN) + HU_MIN
                     pred_stats = {
-                        'min': pred_hu.min().item(),
-                        'max': pred_hu.max().item(),
-                        'mean': pred_hu.mean().item(),
-                        'std': pred_hu.std().item()
+                        'min': prediction.min().item(),
+                        'max': prediction.max().item(),
+                        'mean': prediction.mean().item(),
+                        'std': prediction.std().item()
                     }
                     
-                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
                     residual_stats = {
                         'min': residual_hu.min().item(),
                         'max': residual_hu.max().item(),
@@ -463,21 +514,32 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
             # Input center slice for residual addition
             x_center = volume_x[:, :, :, indices].unsqueeze(1)  # 1, 1, z, 256
             
+            # Normalize input and target
+            x_norm = normalize(x)
+            y_norm = normalize(y_target)
+            x_center_norm = normalize(x_center)
+            
             with torch.no_grad():
                 # Model predicts residual
-                residual = model(x)
+                residual = model(x_norm)
                 # Clip residual to [-1, 1] range
                 residual = torch.clamp(residual, -1.0, 1.0)
-                # Final prediction = input + residual
-                prediction = x_center + residual
+                # Final prediction = input + residual (still in normalized space)
+                prediction_norm = x_center_norm + residual
+                # Ensure prediction stays in [0, 1] range
+                prediction_norm = torch.clamp(prediction_norm, 0.0, 1.0)
                 # Loss between prediction and target
-                loss = output_loss(prediction, y_target)
+                loss = output_loss(prediction_norm, y_norm)
                 
                 # Calculate raw loss (not scaled by LOSS_FACTOR)
                 raw_loss = loss.item()
                 
                 # Log detailed statistics
                 if logger is not None and indices % 50 == 0:  # Log every 50th slice
+                    # Convert normalized prediction back to HU range for comparison
+                    prediction = denormalize(prediction_norm)
+                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
+                    
                     # Calculate statistics for input, target, prediction, residual
                     x_stats = {
                         'min': x.min().item(),
@@ -493,16 +555,13 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
                         'std': y_target.std().item()
                     }
                     
-                    # Convert normalized prediction back to HU range for comparison
-                    pred_hu = prediction * (HU_MAX - HU_MIN) + HU_MIN
                     pred_stats = {
-                        'min': pred_hu.min().item(),
-                        'max': pred_hu.max().item(),
-                        'mean': pred_hu.mean().item(),
-                        'std': pred_hu.std().item()
+                        'min': prediction.min().item(),
+                        'max': prediction.max().item(),
+                        'mean': prediction.mean().item(),
+                        'std': prediction.std().item()
                     }
                     
-                    residual_hu = residual * (HU_MAX - HU_MIN) / 2.0  # Denormalize residual
                     residual_stats = {
                         'min': residual_hu.min().item(),
                         'max': residual_hu.max().item(),
