@@ -590,35 +590,10 @@ def train_or_eval(train_or_eval, model, volume_x, volume_y, optimizer, output_lo
     return axial_case_loss, coronal_case_loss, sagittal_case_loss, (axial_slice_losses, coronal_slice_losses, sagittal_slice_losses)
 
 
-def examine_data():
-    # Create data config
-    data_config = DataConfig(
-        root_folder="LDM_adapter",
-        cross_validation="fold_1",  # Using the exact key from folds.json
-        input_modality=["CT", "sCT"],
-        train=DataLoaderConfig(
-            batch_size=1,
-            shuffle=True,
-            num_workers_loader=4,
-            num_workers_cache=4,
-            cache_rate=0.25
-        ),
-        val=DataLoaderConfig(
-            batch_size=1,
-            shuffle=False,
-            num_workers_loader=4,
-            num_workers_cache=4,
-            cache_rate=0.5
-        ),
-        test=DataLoaderConfig(
-            batch_size=1,
-            shuffle=False,
-            num_workers_loader=4,
-            num_workers_cache=4,
-            cache_rate=0.1
-        )
-    )
-    
+def examine_data(data_config):
+    """
+    Examine data from dataloaders
+    """
     # Create train, val, and test dataloaders using the prepare_dataset function
     train_loader, val_loader, test_loader = prepare_dataset("LDM_adapter/LDM_folds_with_test.json", data_config)
     
@@ -664,10 +639,11 @@ def examine_data():
     return train_loader, val_loader, test_loader
 
 
-def train():
+def main():
     # Parse arguments
     argparser = argparse.ArgumentParser(description='Train latent diffusion model')
     argparser.add_argument('--cross_validation', type=int, default=1, help='Index of the cross validation fold')
+    argparser.add_argument('--gpu', type=int, default=0, help='GPU device index to use')
     argparser.add_argument('--num_epochs', type=int, default=100, help='Number of training epochs')
     argparser.add_argument('--val_interval', type=int, default=5, help='Validate every N epochs')
     argparser.add_argument('--save_interval', type=int, default=10, help='Save model every N epochs')
@@ -675,6 +651,9 @@ def train():
     argparser.add_argument('--checkpoint', type=str, default='LDM_adapter/f4_noattn.pth', 
                           help='Path to pretrained checkpoint')
     args = argparser.parse_args()
+    
+    # Set the GPU device
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
     
     # Set random seed for reproducibility
     random_seed = 729
@@ -690,6 +669,7 @@ def train():
     log_dir = args.log_dir
     logger = setup_logger(log_dir)
     logger(f"Starting training with fold {args.cross_validation}")
+    logger(f"Using GPU device: {args.gpu}")
     logger(f"Random seed: {random_seed}")
     
     # Device setup
@@ -703,9 +683,37 @@ def train():
         os.makedirs(root_folder)
     logger(f"Results will be saved to: {root_folder}")
     
+    # Create data config
+    data_config = DataConfig(
+        root_folder="LDM_adapter",
+        cross_validation=f"fold_{args.cross_validation}",  # Convert to the format expected by the data loader
+        input_modality=["CT", "sCT"],
+        train=DataLoaderConfig(
+            batch_size=1,
+            shuffle=True,
+            num_workers_loader=4,
+            num_workers_cache=4,
+            cache_rate=0.25
+        ),
+        val=DataLoaderConfig(
+            batch_size=1,
+            shuffle=False,
+            num_workers_loader=4,
+            num_workers_cache=4,
+            cache_rate=0.5
+        ),
+        test=DataLoaderConfig(
+            batch_size=1,
+            shuffle=False,
+            num_workers_loader=4,
+            num_workers_cache=4,
+            cache_rate=0.1
+        )
+    )
+    
     # Get data loaders
     logger("Loading data...")
-    train_loader, val_loader, test_loader = examine_data()
+    train_loader, val_loader, test_loader = examine_data(data_config)
     logger(f"Train dataset size: {len(train_loader)}")
     logger(f"Validation dataset size: {len(val_loader)}")
     logger(f"Test dataset size: {len(test_loader)}")
@@ -890,8 +898,4 @@ def train():
 
 
 if __name__ == "__main__":
-    # For examining data only:
-    # examine_data()
-    
-    # For training:
-    train()
+    main()
