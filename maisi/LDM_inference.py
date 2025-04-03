@@ -309,7 +309,7 @@ def main():
     argparser.add_argument('--cross_validation', type=int, default=1, help='Index of the cross validation fold')
     argparser.add_argument('--checkpoint', type=str, default='results/fold_1/best_model_fold_1.pth', help='Path to model checkpoint')
     argparser.add_argument('--test_cases', type=str, default='LDM_adapter/LDM_folds_with_test.json', help='JSON file with test cases')
-    argparser.add_argument('--data_dir', type=str, default='LDM_adapter/data', help='Directory containing the data')
+    argparser.add_argument('--data_dir', type=str, default='LDM_adapter', help='Root directory containing the data')
     argparser.add_argument('--output_dir', type=str, default='LDM_adapter/results/predictions', help='Directory to save predictions')
     argparser.add_argument('--mask_dir', type=str, default='LDM_adapter/results/masks', help='Directory to save masks')
     argparser.add_argument('--metrics_dir', type=str, default='LDM_adapter/results/metrics', help='Directory to save metrics')
@@ -398,9 +398,9 @@ def main():
     for idx, case_id in enumerate(test_cases):
         logger(f"Processing case {idx+1}/{len(test_cases)}: {case_id}")
         
-        # Construct paths for input and reference volumes
-        sct_path = os.path.join(args.data_dir, f"{case_id}_sCT.nii.gz")
-        ct_path = os.path.join(args.data_dir, f"{case_id}_CT.nii.gz")
+        # Construct paths for input and reference volumes using the format from LDM_utils.py
+        ct_path = f"{args.data_dir}/data/CT/CTAC_{case_id}_cropped.nii.gz"
+        sct_path = f"{args.data_dir}/data/sCT/CTAC_{case_id}_TS_MAISI.nii.gz"
         
         # Load nifti files directly
         try:
