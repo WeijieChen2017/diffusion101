@@ -7,9 +7,6 @@ import nibabel as nib
 import numpy as np
 import torch
 from scipy.ndimage import binary_fill_holes
-from skimage.metrics import structural_similarity as ssim
-from skimage.metrics import peak_signal_noise_ratio as psnr
-from scipy.ndimage import sobel
 
 from LDM_utils import VQModel
 
@@ -245,61 +242,21 @@ def process_volume(model, volume, logger=None):
     return original_pred
 
 def calculate_metrics(ct_data, pred_data, masks, region_names, logger=None):
-    """Calculate metrics for different regions"""
+    """Calculate only MAE for different regions using masks"""
     metrics = {}
-    
-    # Clip data to valid range and normalize for SSIM/PSNR calculation
-    ct_norm = ct_data.clip(MIN_BOUNDARY, MAX_BOUNDARY)
-    ct_norm = ct_norm + (-MIN_BOUNDARY)
-    
-    pred_norm = pred_data.clip(MIN_BOUNDARY, MAX_BOUNDARY)
-    pred_norm = pred_norm + (-MIN_BOUNDARY)
-    
-    # Calculate edge acutance using Sobel filter
-    acutance_whole = np.absolute(sobel(pred_data))
-    
-    # Generate masks for predicted data for DSC calculation
-    pred_body_mask = pred_data >= BODY_CONTOUR_BOUNDARY
-    for i in range(pred_body_mask.shape[2]):
-        pred_body_mask[:, :, i] = binary_fill_holes(pred_body_mask[:, :, i])
-    
-    pred_soft_mask = (pred_data >= SOFT_BOUNDARY) & (pred_data <= BONE_BOUNDARY)
-    pred_bone_mask = (pred_data >= BONE_BOUNDARY) & (pred_data <= MAX_BOUNDARY)
-    
-    pred_masks = [pred_body_mask, pred_soft_mask, pred_bone_mask]
     
     for i, region in enumerate(region_names):
         gt_mask = masks[i]
-        pred_mask = pred_masks[i]
         
-        # Calculate MAE
+        # Calculate MAE only
         mae = np.mean(np.abs(ct_data[gt_mask] - pred_data[gt_mask]))
         
-        # Calculate SSIM
-        ssim_val = ssim(ct_norm[gt_mask], pred_norm[gt_mask], 
-                         data_range=MAX_BOUNDARY-MIN_BOUNDARY, mask=gt_mask)
-        
-        # Calculate PSNR
-        psnr_val = psnr(ct_norm[gt_mask], pred_norm[gt_mask], 
-                        data_range=MAX_BOUNDARY-MIN_BOUNDARY)
-        
-        # Calculate Dice score (DSC)
-        intersection = np.sum(gt_mask & pred_mask)
-        dsc = 2 * intersection / (np.sum(gt_mask) + np.sum(pred_mask))
-        
-        # Calculate acutance
-        acutance = np.mean(acutance_whole[gt_mask])
-        
         metrics[region] = {
-            'mae': mae,
-            'ssim': ssim_val,
-            'psnr': psnr_val,
-            'dsc': dsc,
-            'acutance': acutance
+            'mae': mae
         }
         
         if logger:
-            logger(f"Region {region}: MAE={mae:.4f}, SSIM={ssim_val:.4f}, PSNR={psnr_val:.4f}, DSC={dsc:.4f}, Acutance={acutance:.4f}")
+            logger(f"Region {region}: MAE={mae:.4f} HU")
     
     return metrics
 
@@ -387,7 +344,7 @@ def main():
     # Prepare for storing metrics
     region_names = ["body", "soft", "bone"]
     all_metrics = {region: {
-        'mae': [], 'ssim': [], 'psnr': [], 'dsc': [], 'acutance': []
+        'mae': []
     } for region in region_names}
     
     case_metrics = {}
@@ -435,17 +392,13 @@ def main():
             logger(f"Warning: Predicted volume shape {predicted_volume.shape} does not match input shape {input_volume.shape}")
             predicted_volume = predicted_volume[:input_volume.shape[0], :input_volume.shape[1], :input_volume.shape[2]]
         
-        # Calculate metrics for different regions
+        # Calculate metrics for different regions (only MAE)
         metrics = calculate_metrics(reference_volume, predicted_volume, masks, region_names, logger)
         case_metrics[case_id] = metrics
         
         # Add metrics to overall statistics
         for region in region_names:
             all_metrics[region]['mae'].append(metrics[region]['mae'])
-            all_metrics[region]['ssim'].append(metrics[region]['ssim'])
-            all_metrics[region]['psnr'].append(metrics[region]['psnr'])
-            all_metrics[region]['dsc'].append(metrics[region]['dsc'])
-            all_metrics[region]['acutance'].append(metrics[region]['acutance'])
         
         logger(f"Case {case_id} - Inference time: {inference_time:.2f}s")
         
@@ -457,18 +410,13 @@ def main():
     
     # Calculate average metrics across all cases
     avg_metrics = {region: {
-        metric: np.mean(values) for metric, values in metrics_dict.items()
-    } for region, metrics_dict in all_metrics.items()}
+        'mae': np.mean(all_metrics[region]['mae'])
+    } for region in region_names}
     
     # Print average metrics
     logger("Average metrics across all cases:")
     for region in region_names:
-        logger(f"Region: {region}")
-        logger(f"  MAE: {avg_metrics[region]['mae']:.4f}")
-        logger(f"  SSIM: {avg_metrics[region]['ssim']:.4f}")
-        logger(f"  PSNR: {avg_metrics[region]['psnr']:.4f}")
-        logger(f"  DSC: {avg_metrics[region]['dsc']:.4f}")
-        logger(f"  Acutance: {avg_metrics[region]['acutance']:.4f}")
+        logger(f"Region {region}: MAE={avg_metrics[region]['mae']:.4f} HU")
     
     # Save metrics to JSON file
     metrics_output = {
