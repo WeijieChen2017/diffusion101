@@ -307,7 +307,7 @@ def main():
     # Parse arguments
     argparser = argparse.ArgumentParser(description='Run inference on test cases')
     argparser.add_argument('--cross_validation', type=int, default=1, help='Index of the cross validation fold')
-    argparser.add_argument('--checkpoint', type=str, default='LDM_adapter/results/fold_1/best_model_fold_1.pth', help='Path to model checkpoint')
+    argparser.add_argument('--checkpoint', type=str, default='results/fold_1/best_model_fold_1.pth', help='Path to model checkpoint')
     argparser.add_argument('--test_cases', type=str, default='LDM_adapter/LDM_folds_with_test.json', help='JSON file with test cases')
     argparser.add_argument('--data_dir', type=str, default='LDM_adapter/data', help='Directory containing the data')
     argparser.add_argument('--output_dir', type=str, default='LDM_adapter/results/predictions', help='Directory to save predictions')
