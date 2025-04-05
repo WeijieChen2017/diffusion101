@@ -650,6 +650,8 @@ def main():
     argparser.add_argument('--log_dir', type=str, default='LDM_adapter/logs', help='Directory to save logs')
     argparser.add_argument('--checkpoint', type=str, default='LDM_adapter/f4_noattn.pth', 
                           help='Path to pretrained checkpoint')
+    argparser.add_argument('--tag', type=str, default='', 
+                          help='Tag/suffix to add to the fold folder name for parallel training')
     args = argparser.parse_args()
     
     # Set the GPU device
@@ -678,7 +680,8 @@ def main():
     
     # Create folders for saving results
     cross_validation = args.cross_validation
-    root_folder = f"./results/fold_{cross_validation}/"
+    tag_suffix = f"_{args.tag}" if args.tag else ""
+    root_folder = f"./results/fold_{cross_validation}{tag_suffix}/"
     if not os.path.exists(root_folder):
         os.makedirs(root_folder)
     logger(f"Results will be saved to: {root_folder}")
@@ -700,7 +703,7 @@ def main():
             shuffle=False,
             num_workers_loader=4,
             num_workers_cache=4,
-            cache_rate=0.5
+            cache_irate=0.5
         ),
         test=DataLoaderConfig(
             batch_size=1,
