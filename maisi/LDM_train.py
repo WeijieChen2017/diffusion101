@@ -703,7 +703,7 @@ def main():
             shuffle=False,
             num_workers_loader=4,
             num_workers_cache=4,
-            cache_irate=0.5
+            cache_rate=0.5
         ),
         test=DataLoaderConfig(
             batch_size=1,
