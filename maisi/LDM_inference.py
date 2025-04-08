@@ -270,7 +270,7 @@ def main():
     # Parse arguments
     argparser = argparse.ArgumentParser(description='Run inference on test cases')
     argparser.add_argument('--cross_validation', type=int, default=1, help='Index of the cross validation fold')
-    argparser.add_argument('--checkpoint', type=str, default='results/fold_1/best_model_fold_1.pth', help='Path to model checkpoint')
+    argparser.add_argument('--checkpoint', type=str, default=None, help='Path to model checkpoint')
     argparser.add_argument('--test_cases', type=str, default='LDM_adapter/LDM_folds_with_test.json', help='JSON file with test cases')
     argparser.add_argument('--data_dir', type=str, default='LDM_adapter', help='Root directory containing the data')
     argparser.add_argument('--output_dir', type=str, default='LDM_adapter/results/predictions', help='Directory to save predictions')
@@ -279,6 +279,14 @@ def main():
     argparser.add_argument('--log_dir', type=str, default='LDM_adapter/results/inference_logs', help='Directory to save logs')
     argparser.add_argument('--overwrite_masks', action='store_false', help='Overwrite existing masks')
     args = argparser.parse_args()
+    
+    # Setup logger
+    logger = setup_logger(args.log_dir)
+    
+    # Set checkpoint path based on cross-validation fold if not manually specified
+    if args.checkpoint is None:
+        args.checkpoint = f'results/fold_{args.cross_validation}/best_model_fold_{args.cross_validation}.pth'
+        logger(f"Checkpoint path automatically set to: {args.checkpoint}")
     
     # Set random seed for reproducibility
     random_seed = 729
@@ -290,10 +298,9 @@ def main():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     
-    # Setup logger
-    logger = setup_logger(args.log_dir)
     logger(f"Starting inference with fold {args.cross_validation}")
     logger(f"Random seed: {random_seed}")
+    logger(f"Using checkpoint: {args.checkpoint}")
     
     # Create output directories
     os.makedirs(args.output_dir, exist_ok=True)
