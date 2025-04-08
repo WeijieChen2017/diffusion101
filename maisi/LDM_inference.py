@@ -14,7 +14,7 @@ from scipy.ndimage import sobel
 from LDM_utils import VQModel
 
 # Set the environment variable to use the GPU if available
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("The device is: ", device)
 
