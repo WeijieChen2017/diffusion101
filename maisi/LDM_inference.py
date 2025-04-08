@@ -7,6 +7,9 @@ import nibabel as nib
 import numpy as np
 import torch
 from scipy.ndimage import binary_fill_holes
+from skimage.metrics import structural_similarity as ssim
+from skimage.metrics import peak_signal_noise_ratio as psnr
+from scipy.ndimage import sobel
 
 from LDM_utils import VQModel
 
@@ -106,7 +109,7 @@ def generate_masks(ct_data, output_dir, case_name, ct_file, overwrite=False):
 def process_volume(model, volume, logger=None):
     """
     Process a volume from all three views (axial, coronal, sagittal)
-    and return the merged prediction.
+    and return the merged prediction and individual view predictions.
     """
     # Get original shape for later cropping
     original_shape = volume.shape
@@ -238,8 +241,11 @@ def process_volume(model, volume, logger=None):
     
     # Crop back to original size
     original_pred = merged_pred[:original_shape[0], :original_shape[1], :original_shape[2]]
+    original_axial = axial_pred[:original_shape[0], :original_shape[1], :original_shape[2]]
+    original_coronal = coronal_pred[:original_shape[0], :original_shape[1], :original_shape[2]]
+    original_sagittal = sagittal_pred[:original_shape[0], :original_shape[1], :original_shape[2]]
     
-    return original_pred
+    return original_pred, original_axial, original_coronal, original_sagittal
 
 def calculate_metrics(ct_data, pred_data, masks, region_names, logger=None):
     """Calculate only MAE for different regions using masks"""
@@ -384,13 +390,16 @@ def main():
         
         # Process the volume
         start_time = time.time()
-        predicted_volume = process_volume(model, input_volume, logger)
+        predicted_volume, axial_volume, coronal_volume, sagittal_volume = process_volume(model, input_volume, logger)
         inference_time = time.time() - start_time
         
         # Ensure the predicted volume matches the original input shape
         if predicted_volume.shape != input_volume.shape:
             logger(f"Warning: Predicted volume shape {predicted_volume.shape} does not match input shape {input_volume.shape}")
             predicted_volume = predicted_volume[:input_volume.shape[0], :input_volume.shape[1], :input_volume.shape[2]]
+            axial_volume = axial_volume[:input_volume.shape[0], :input_volume.shape[1], :input_volume.shape[2]]
+            coronal_volume = coronal_volume[:input_volume.shape[0], :input_volume.shape[1], :input_volume.shape[2]]
+            sagittal_volume = sagittal_volume[:input_volume.shape[0], :input_volume.shape[1], :input_volume.shape[2]]
         
         # Calculate metrics for different regions (only MAE)
         metrics = calculate_metrics(reference_volume, predicted_volume, masks, region_names, logger)
@@ -402,11 +411,29 @@ def main():
         
         logger(f"Case {case_id} - Inference time: {inference_time:.2f}s")
         
-        # Save the prediction as a NIfTI file
+        # Save the merged prediction as a NIfTI file
         output_path = os.path.join(args.output_dir, f"{case_id}_prediction.nii.gz")
         nib_img = nib.Nifti1Image(predicted_volume, affine, header)
         nib.save(nib_img, output_path)
-        logger(f"Prediction saved to {output_path}")
+        logger(f"Merged prediction saved to {output_path}")
+        
+        # Save the axial prediction as a NIfTI file
+        axial_output_path = os.path.join(args.output_dir, f"{case_id}_axial_prediction.nii.gz")
+        axial_nib_img = nib.Nifti1Image(axial_volume, affine, header)
+        nib.save(axial_nib_img, axial_output_path)
+        logger(f"Axial prediction saved to {axial_output_path}")
+        
+        # Save the coronal prediction as a NIfTI file
+        coronal_output_path = os.path.join(args.output_dir, f"{case_id}_coronal_prediction.nii.gz")
+        coronal_nib_img = nib.Nifti1Image(coronal_volume, affine, header)
+        nib.save(coronal_nib_img, coronal_output_path)
+        logger(f"Coronal prediction saved to {coronal_output_path}")
+        
+        # Save the sagittal prediction as a NIfTI file
+        sagittal_output_path = os.path.join(args.output_dir, f"{case_id}_sagittal_prediction.nii.gz")
+        sagittal_nib_img = nib.Nifti1Image(sagittal_volume, affine, header)
+        nib.save(sagittal_nib_img, sagittal_output_path)
+        logger(f"Sagittal prediction saved to {sagittal_output_path}")
     
     # Calculate average metrics across all cases
     avg_metrics = {region: {
