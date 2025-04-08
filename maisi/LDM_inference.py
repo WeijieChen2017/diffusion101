@@ -27,7 +27,7 @@ RANGE_HU = HU_MAX - HU_MIN
 BODY_CONTOUR_BOUNDARY = -500
 MIN_BOUNDARY = -1024
 SOFT_BOUNDARY = -500
-BONE_BOUNDARY = 1976
+BONE_BOUNDARY = 150
 MAX_BOUNDARY = 1976
 
 def normalize(tensor, hu_min=HU_MIN, hu_max=HU_MAX):
@@ -73,9 +73,9 @@ def setup_logger(log_dir):
 
 def generate_masks(ct_data, output_dir, case_name, ct_file, overwrite=False):
     """Generate body, soft tissue, and bone masks from CT data"""
-    body_mask_path = os.path.join(output_dir, f"mask_body_contour_{case_name}.nii.gz")
-    soft_mask_path = os.path.join(output_dir, f"mask_body_soft_{case_name}.nii.gz")
-    bone_mask_path = os.path.join(output_dir, f"mask_body_bone_{case_name}.nii.gz")
+    body_mask_path = os.path.join(output_dir, f"{case_name}_body.nii.gz")
+    soft_mask_path = os.path.join(output_dir, f"{case_name}_soft.nii.gz")
+    bone_mask_path = os.path.join(output_dir, f"{case_name}_bone.nii.gz")
     
     # If masks already exist and not overwriting, load them
     if os.path.exists(soft_mask_path) and not overwrite:
@@ -280,6 +280,13 @@ def main():
     argparser.add_argument('--overwrite_masks', action='store_false', help='Overwrite existing masks')
     args = argparser.parse_args()
     
+    # Create fold-specific output directories
+    fold_suffix = f"fold_{args.cross_validation}"
+    args.output_dir = os.path.join(args.output_dir, fold_suffix)
+    args.mask_dir = os.path.join(args.mask_dir, fold_suffix)
+    args.metrics_dir = os.path.join(args.metrics_dir, fold_suffix)
+    args.log_dir = os.path.join(args.log_dir, fold_suffix)
+    
     # Setup logger
     logger = setup_logger(args.log_dir)
     
@@ -419,25 +426,25 @@ def main():
         logger(f"Case {case_id} - Inference time: {inference_time:.2f}s")
         
         # Save the merged prediction as a NIfTI file
-        output_path = os.path.join(args.output_dir, f"{case_id}_prediction.nii.gz")
+        output_path = os.path.join(args.output_dir, f"{case_id}_merged.nii.gz")
         nib_img = nib.Nifti1Image(predicted_volume, affine, header)
         nib.save(nib_img, output_path)
         logger(f"Merged prediction saved to {output_path}")
         
         # Save the axial prediction as a NIfTI file
-        axial_output_path = os.path.join(args.output_dir, f"{case_id}_axial_prediction.nii.gz")
+        axial_output_path = os.path.join(args.output_dir, f"{case_id}_axial.nii.gz")
         axial_nib_img = nib.Nifti1Image(axial_volume, affine, header)
         nib.save(axial_nib_img, axial_output_path)
         logger(f"Axial prediction saved to {axial_output_path}")
         
         # Save the coronal prediction as a NIfTI file
-        coronal_output_path = os.path.join(args.output_dir, f"{case_id}_coronal_prediction.nii.gz")
+        coronal_output_path = os.path.join(args.output_dir, f"{case_id}_coronal.nii.gz")
         coronal_nib_img = nib.Nifti1Image(coronal_volume, affine, header)
         nib.save(coronal_nib_img, coronal_output_path)
         logger(f"Coronal prediction saved to {coronal_output_path}")
         
         # Save the sagittal prediction as a NIfTI file
-        sagittal_output_path = os.path.join(args.output_dir, f"{case_id}_sagittal_prediction.nii.gz")
+        sagittal_output_path = os.path.join(args.output_dir, f"{case_id}_sagittal.nii.gz")
         sagittal_nib_img = nib.Nifti1Image(sagittal_volume, affine, header)
         nib.save(sagittal_nib_img, sagittal_output_path)
         logger(f"Sagittal prediction saved to {sagittal_output_path}")
@@ -458,7 +465,7 @@ def main():
         "average_metrics": avg_metrics
     }
     
-    metrics_path = os.path.join(args.metrics_dir, f"metrics_fold_{args.cross_validation}.json")
+    metrics_path = os.path.join(args.metrics_dir, f"metrics.json")
     with open(metrics_path, 'w') as f:
         json.dump(metrics_output, f, indent=2)
     
