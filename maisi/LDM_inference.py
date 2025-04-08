@@ -6,6 +6,7 @@ import random
 import nibabel as nib
 import numpy as np
 import torch
+import pandas as pd
 from scipy.ndimage import binary_fill_holes
 from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import peak_signal_noise_ratio as psnr
@@ -470,6 +471,35 @@ def main():
         json.dump(metrics_output, f, indent=2)
     
     logger(f"Metrics saved to {metrics_path}")
+    
+    # Save metrics to Excel file
+    excel_path = os.path.join(args.metrics_dir, f"metrics.xlsx")
+    
+    # Create DataFrames for case metrics and average metrics
+    case_metrics_data = []
+    for case_id, metrics in case_metrics.items():
+        row = {"case_id": case_id}
+        for region, region_metrics in metrics.items():
+            for metric_name, value in region_metrics.items():
+                row[f"{region}_{metric_name}"] = value
+        case_metrics_data.append(row)
+    
+    case_df = pd.DataFrame(case_metrics_data)
+    
+    # Create a DataFrame for average metrics
+    avg_data = []
+    for region, region_metrics in avg_metrics.items():
+        for metric_name, value in region_metrics.items():
+            avg_data.append({"region": region, "metric": metric_name, "value": value})
+    
+    avg_df = pd.DataFrame(avg_data)
+    
+    # Create Excel writer
+    with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+        case_df.to_excel(writer, sheet_name='Case Metrics', index=False)
+        avg_df.to_excel(writer, sheet_name='Average Metrics', index=False)
+    
+    logger(f"Metrics saved to Excel: {excel_path}")
     logger("Inference completed successfully!")
 
 if __name__ == "__main__":
